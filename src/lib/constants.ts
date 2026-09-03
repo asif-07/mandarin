@@ -7,8 +7,7 @@ export const COMPANY = {
   addressLine1: "广州市越秀区长堤大马路316号",
   addressLine2: "民州金岁大厦2812房",
   addressLine3: "Guangzhou, China",
-  phone: "+86 138 0000 0000",
-  email: "info@mandarinroots.com",
+  phone: "+8519597408840",
 } as const;
 
 export const NAV_ITEMS = [

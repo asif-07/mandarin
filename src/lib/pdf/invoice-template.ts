@@ -1,5 +1,6 @@
 import { COMPANY } from "@/lib/constants";
 import { formatDate, formatNumber, padIndex } from "@/lib/format";
+import { CJK_FALLBACK_HREF, FONT_STACK } from "@/lib/pdf/fonts";
 
 /** Data needed to render an invoice. Pure input so the same template runs in the browser preview and in Puppeteer. */
 export type InvoiceTemplateData = {
@@ -31,6 +32,8 @@ export type TemplateAssets = {
   logoSrc: string;
   /** URL or data URI for the signature PNG */
   signatureSrc: string;
+  /** @font-face rules (data URIs on the server, /fonts URLs in the browser) */
+  fontCss: string;
 };
 
 export function escapeHtml(input: string | number | null | undefined): string {
@@ -50,13 +53,10 @@ function lines(text: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
-export const INVOICE_FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@600;700&family=Noto+Sans+SC:wght@400;700&display=block";
-
-/**
- * Returns the full HTML document for an invoice. A4, zero page margins; all
- * spacing is carried by the .page padding so Puppeteer output matches the
- * on-screen preview exactly.
+/*
+ * All measurements below were taken from the reference PDF
+ * (Mandarin_Roots_Invoice_MR2026179.pdf) with PyMuPDF and converted from
+ * points to CSS pixels (1pt = 1.3333px) on a 794px-wide A4 page.
  */
 export function renderInvoiceHtml(data: InvoiceTemplateData, assets: TemplateAssets): string {
   const money = (n: number) => `${escapeHtml(data.currency)} ${formatNumber(n)}`;
@@ -92,96 +92,100 @@ export function renderInvoiceHtml(data: InvoiceTemplateData, assets: TemplateAss
 <title>${escapeHtml(data.invoice_number)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="${INVOICE_FONTS_HREF}" rel="stylesheet" />
+<link href="${CJK_FALLBACK_HREF}" rel="stylesheet" />
 <style>
+${assets.fontCss}
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #fff; }
   body {
-    font-family: "Inter", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
-    font-size: 10.5pt;
-    line-height: 1.55;
+    font-family: ${FONT_STACK};
+    font-size: 8.07pt;
+    line-height: 1.5;
     color: #1A1A1A;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
   }
   .page {
     width: 210mm;
     min-height: 297mm;
-    padding: 46px 52px 40px 52px;
+    padding: 36px 40px 30px 40px;
     margin: 0 auto;
     position: relative;
+    overflow: hidden;
   }
-  .cjk { font-family: "Noto Sans SC", "Inter", sans-serif; }
   .micro {
-    font-size: 11px;
+    font-size: 5.76pt;
     font-weight: 700;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
     color: #9A9A9A;
     line-height: 1.2;
   }
   .header { display: flex; justify-content: space-between; align-items: flex-start; }
-  .header img.logo { width: 218px; height: auto; display: block; }
-  .title { text-align: right; }
+  .header img.logo { width: 168px; height: auto; display: block; margin-top: 0; }
+  .title { text-align: right; padding-top: 5px; }
   .title .word {
-    font-family: "Poppins", "Inter", sans-serif;
-    font-size: 27pt;
+    font-size: 20.75pt;
     font-weight: 700;
-    letter-spacing: 6px;
-    line-height: 1;
-    margin-right: -6px;
+    letter-spacing: 4.6px;
+    line-height: 1.15;
+    margin-right: -4.6px;
   }
   .title .number {
-    font-size: 8pt;
+    font-size: 6.34pt;
     font-weight: 400;
-    letter-spacing: 2.4px;
+    letter-spacing: 1.85px;
     color: #8A8A8A;
-    margin-top: 6px;
-    margin-right: -2.4px;
+    margin-top: 3.5px;
+    margin-right: -1.85px;
+    line-height: 1.2;
   }
-  .rule { border-top: 2px solid #1A1A1A; margin-top: 26px; }
-  .info { display: flex; margin-top: 26px; }
-  .info .c1 { width: 36%; padding-right: 16px; }
-  .info .c2 { width: 34%; padding-right: 16px; }
-  .info .c3 { width: 30%; }
-  .info .micro { margin-bottom: 8px; }
-  .info .name { font-weight: 700; }
+  .rule { border-top: 1.6px solid #1A1A1A; margin-top: 21px; }
+  .info { display: flex; margin-top: 22px; }
+  .info .c1 { width: 36%; padding-right: 12px; }
+  .info .c2 { width: 34%; padding-right: 12px; }
+  .info .c3 { width: 30%; padding-top: 3px; }
+  .info .micro { margin-bottom: 6px; }
+  .info .name { font-size: 8.64pt; font-weight: 700; margin-bottom: 2px; }
   .info .grey { color: #5C5C5C; }
-  .kv { display: flex; justify-content: space-between; gap: 12px; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; font-size: 7.49pt; padding: 3.25px 0; }
   .kv .k { color: #8A8A8A; }
   .kv .v { font-weight: 700; text-align: right; }
-  table.items { width: 100%; border-collapse: collapse; margin-top: 34px; }
+  table.items { width: 100%; border-collapse: collapse; margin-top: 32.5px; }
   table.items th {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #9A9A9A;
-    text-align: left; padding: 0 0 10px 0; border-bottom: 1.5px solid #1A1A1A;
+    font-size: 5.76pt; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #9A9A9A;
+    text-align: left; padding: 0 0 8.7px 0; border-bottom: 1.15px solid #1A1A1A; line-height: 1.2;
   }
-  table.items th.num, table.items td.num { text-align: right; }
-  table.items td { padding: 15px 0; border-bottom: 1px solid #ECECEC; vertical-align: top; }
+  table.items td { padding: 11.5px 0; border-bottom: 1px solid #ECECEC; vertical-align: middle; }
+  table.items td.desc { vertical-align: top; }
+  table.items td.num { text-align: right; color: #5C5C5C; }
   table.items td.idx { color: #5C5C5C; }
   table.items td.desc .t { font-weight: 700; }
-  table.items td.desc .sub { font-size: 9pt; color: #8A8A8A; line-height: 1.5; }
-  table.items td.amt { font-weight: 700; }
-  .totals { display: flex; margin-top: 24px; align-items: flex-end; }
+  table.items td.desc .sub { font-size: 6.92pt; color: #8A8A8A; line-height: 1.5; margin-top: 1px; }
+  table.items td.amt { font-weight: 700; color: #1A1A1A; }
+  .totals { display: flex; margin-top: 18.5px; align-items: flex-end; }
   .totals .left { width: 52%; padding-right: 24px; }
-  .totals .left .words { font-size: 9.5pt; font-style: italic; color: #5C5C5C; margin-top: 8px; }
+  .totals .left .micro { margin-bottom: 6px; }
+  .totals .left .words { font-size: 7.49pt; font-style: italic; color: #5C5C5C; }
   .totals .right { width: 48%; }
-  .totals .row { display: flex; justify-content: space-between; padding: 5px 0; }
+  .totals .row { display: flex; justify-content: space-between; padding: 4.7px 0; }
   .totals .row .k { color: #5C5C5C; }
   .totals .bar {
     display: flex; justify-content: space-between; align-items: center;
-    background: #E8192C; color: #fff; font-weight: 700; font-size: 12.5pt;
-    padding: 13px 18px; margin-top: 10px;
+    background: #E8192C; color: #fff; font-weight: 700; font-size: 9.8pt; line-height: 1.5;
+    padding: 10px 13.5px; margin-top: 9px;
   }
-  .terms { margin-top: 30px; background: #F7F7F7; padding: 18px 20px; }
-  .terms .micro { margin-bottom: 8px; }
-  .terms .body { font-size: 9.5pt; color: #5C5C5C; }
-  .footer { display: flex; margin-top: 44px; align-items: flex-end; }
-  .footer .left { width: 58%; font-size: 8.5pt; color: #8A8A8A; padding-right: 24px; }
-  .footer .right { width: 42%; text-align: right; }
-  .footer img.sig { height: 88px; width: auto; display: inline-block; margin-bottom: -14px; position: relative; z-index: 1; }
-  .footer .sigline { border-top: 1px solid #CFCFCF; padding-top: 8px; font-size: 9pt; color: #5C5C5C; }
+  .terms { margin-top: 22.5px; background: #F7F7F7; padding: 15px 15.3px 15.7px; }
+  .terms .micro { margin-bottom: 4px; }
+  .terms .body { font-size: 7.49pt; color: #5C5C5C; line-height: 1.56; }
+  .footer { display: flex; margin-top: 33px; align-items: flex-start; }
+  .footer .left { width: 58%; font-size: 6.34pt; color: #8A8A8A; line-height: 1.64; padding-right: 24px; }
+  .footer .right { width: 42%; }
+  .footer img.sig { height: 67.7px; width: auto; display: block; margin-left: 4.5px; margin-bottom: -6.3px; position: relative; z-index: 1; }
+  .footer .sigline { border-top: 1px solid #CFCFCF; padding-top: 7px; font-size: 6.92pt; color: #5C5C5C; line-height: 1.2; }
 </style>
 </head>
 <body>
@@ -200,8 +204,8 @@ export function renderInvoiceHtml(data: InvoiceTemplateData, assets: TemplateAss
     <div class="c1">
       <div class="micro">From</div>
       <div class="name">${escapeHtml(COMPANY.name)}</div>
-      <div class="grey cjk">${escapeHtml(COMPANY.addressLine1)}</div>
-      <div class="grey cjk">${escapeHtml(COMPANY.addressLine2)}</div>
+      <div class="grey">${escapeHtml(COMPANY.addressLine1)}</div>
+      <div class="grey">${escapeHtml(COMPANY.addressLine2)}</div>
       <div class="grey">${escapeHtml(COMPANY.addressLine3)}</div>
       <div class="grey">${escapeHtml(COMPANY.phone)}</div>
     </div>
@@ -226,9 +230,9 @@ export function renderInvoiceHtml(data: InvoiceTemplateData, assets: TemplateAss
       <tr>
         <th>#</th>
         <th>Description</th>
-        <th class="num">Qty</th>
-        <th class="num">Rate</th>
-        <th class="num">Amount</th>
+        <th>Qty</th>
+        <th>Rate</th>
+        <th>Amount</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
@@ -254,14 +258,11 @@ export function renderInvoiceHtml(data: InvoiceTemplateData, assets: TemplateAss
   <div class="footer">
     <div class="left">
       <div>Thank you for your business.</div>
-      <div>${escapeHtml(COMPANY.name)} · ${escapeHtml(COMPANY.phone)} · ${escapeHtml(COMPANY.email)}</div>
+      <div>For questions about this invoice, contact ${escapeHtml(COMPANY.phone)}.</div>
     </div>
     <div class="right">
       <img class="sig" src="${assets.signatureSrc}" alt="" />
-      <div class="sigline">
-        <div>Authorised Signatory</div>
-        <div>${escapeHtml(COMPANY.name)}</div>
-      </div>
+      <div class="sigline">Authorised Signatory, ${escapeHtml(COMPANY.name)}</div>
     </div>
   </div>
 </div>

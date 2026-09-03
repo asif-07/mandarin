@@ -29,8 +29,8 @@ export async function htmlToPdf(html: string): Promise<Buffer> {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: 1 });
-    await page.setContent(html, { waitUntil: ["load", "networkidle0"], timeout: 45_000 });
-    // Web fonts (Inter, Poppins, Noto Sans SC) must be ready before printing.
+    await page.setContent(html, { waitUntil: "load", timeout: 45_000 });
+    // Embedded fonts (and the optional Google CJK fallback) must be ready before printing.
     await page.evaluate(async () => {
       await document.fonts.ready;
     });

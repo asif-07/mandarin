@@ -97,7 +97,7 @@ async function main() {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: 2 });
-    await page.setContent(html, { waitUntil: ["load", "networkidle0"] });
+    await page.setContent(html, { waitUntil: "load" });
     await page.evaluate(async () => {
       await document.fonts.ready;
     });

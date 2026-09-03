@@ -1,13 +1,15 @@
 /** Typed result returned by every mutation (server action or route handler). */
+export type FieldErrors = Record<string, string[] | undefined>;
+
 export type ActionResult<T = void> =
   | { ok: true; data: T }
-  | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
+  | { ok: false; error: string; fieldErrors?: FieldErrors };
 
 export function ok<T>(data: T): ActionResult<T> {
   return { ok: true, data };
 }
 
-export function fail<T = never>(error: string, fieldErrors?: Record<string, string[]>): ActionResult<T> {
+export function fail<T = never>(error: string, fieldErrors?: FieldErrors): ActionResult<T> {
   return { ok: false, error, fieldErrors };
 }
 
