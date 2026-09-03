@@ -11,6 +11,6 @@ export const config = {
      * Match all request paths except static assets and images. Every other
      * route, including all API routes, requires a Supabase session.
      */
-    "/((?!_next/static|_next/image|favicon.ico|logo.png|signature.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|api/health|favicon.ico|logo.png|signature.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
