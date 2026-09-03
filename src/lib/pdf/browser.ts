@@ -23,11 +23,10 @@ export async function launchBrowser(): Promise<Browser> {
   });
 }
 
-/** Render a self-contained HTML document to an A4 PDF with zero margins. */
-export async function htmlToPdf(html: string): Promise<Buffer> {
-  const browser = await launchBrowser();
+/** Render HTML to an A4, zero-margin PDF using an already-open browser. */
+export async function renderPdfWithBrowser(browser: Browser, html: string): Promise<Buffer> {
+  const page = await browser.newPage();
   try {
-    const page = await browser.newPage();
     await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: 1 });
     await page.setContent(html, { waitUntil: "load", timeout: 45_000 });
     // Embedded fonts (and the optional Google CJK fallback) must be ready before printing.
@@ -41,6 +40,16 @@ export async function htmlToPdf(html: string): Promise<Buffer> {
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
     });
     return Buffer.from(pdf);
+  } finally {
+    await page.close();
+  }
+}
+
+/** Render a self-contained HTML document to an A4 PDF with zero margins. */
+export async function htmlToPdf(html: string): Promise<Buffer> {
+  const browser = await launchBrowser();
+  try {
+    return await renderPdfWithBrowser(browser, html);
   } finally {
     await browser.close();
   }
