@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
       "./public/fonts/**",
       "./node_modules/sharp/**",
       "./node_modules/@img/**",
+      // Chromium binary (brotli-compressed) for Puppeteer on Vercel.
+      "./node_modules/@sparticuz/chromium/**",
     ],
   },
   experimental: {
