@@ -1,0 +1,142 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ------------------------------------------------------------------ */
+/* Mandarin Roots brand tokens                                         */
+/* ------------------------------------------------------------------ */
+:root {
+  --mr-red: #e8192c;
+  --mr-red-hover: #c9101f;
+  --mr-ink: #1a1a1a;
+  --mr-body: #5c5c5c;
+  --mr-muted: #9a9a9a;
+  --mr-line: #e2e2e2;
+  --mr-surface: #f7f7f7;
+  --mr-bg: #ffffff;
+  --mr-success: #128a5a;
+  --mr-warning: #b87503;
+
+  /* shadcn/ui semantic tokens mapped onto the brand (light theme only) */
+  --radius: 0.5rem;
+  --background: var(--mr-bg);
+  --foreground: var(--mr-ink);
+  --card: var(--mr-bg);
+  --card-foreground: var(--mr-ink);
+  --popover: var(--mr-bg);
+  --popover-foreground: var(--mr-ink);
+  --primary: var(--mr-red);
+  --primary-foreground: #ffffff;
+  --secondary: var(--mr-surface);
+  --secondary-foreground: var(--mr-ink);
+  --muted: var(--mr-surface);
+  --muted-foreground: var(--mr-body);
+  --accent: var(--mr-surface);
+  --accent-foreground: var(--mr-ink);
+  --destructive: var(--mr-red);
+  --destructive-foreground: #ffffff;
+  --border: var(--mr-line);
+  --input: var(--mr-line);
+  --ring: var(--mr-ink);
+  --chart-1: var(--mr-red);
+  --chart-2: var(--mr-ink);
+  --chart-3: var(--mr-body);
+  --chart-4: var(--mr-muted);
+  --chart-5: var(--mr-line);
+  --sidebar: var(--mr-bg);
+  --sidebar-foreground: var(--mr-ink);
+  --sidebar-primary: var(--mr-red);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--mr-surface);
+  --sidebar-accent-foreground: var(--mr-ink);
+  --sidebar-border: var(--mr-line);
+  --sidebar-ring: var(--mr-ink);
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-poppins), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Brand colours as Tailwind utilities: bg-mr-red, text-mr-muted, border-mr-line ... */
+  --color-mr-red: var(--mr-red);
+  --color-mr-red-hover: var(--mr-red-hover);
+  --color-mr-ink: var(--mr-ink);
+  --color-mr-body: var(--mr-body);
+  --color-mr-muted: var(--mr-muted);
+  --color-mr-line: var(--mr-line);
+  --color-mr-surface: var(--mr-surface);
+  --color-mr-bg: var(--mr-bg);
+  --color-mr-success: var(--mr-success);
+  --color-mr-warning: var(--mr-warning);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading font-semibold tracking-tight text-mr-ink;
+  }
+}
+
+@utility micro-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mr-muted);
+  line-height: 1.2;
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}
