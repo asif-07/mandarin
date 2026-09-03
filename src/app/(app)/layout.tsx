@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
 import { AppShell } from "@/components/shell/app-shell";
 
+// Every page in this group depends on the session cookie and live data.
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const current = await getCurrentProfile();
   if (!current) redirect("/login");
