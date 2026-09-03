@@ -49,12 +49,3 @@ export function Pagination({ page, total, pageSize = PAGE_SIZE }: { page: number
   );
 }
 
-export function parsePage(value: string | undefined): number {
-  const n = Number(value);
-  return Number.isInteger(n) && n > 0 ? n : 1;
-}
-
-export function pageRange(page: number, pageSize = PAGE_SIZE): [number, number] {
-  const from = (page - 1) * pageSize;
-  return [from, from + pageSize - 1];
-}

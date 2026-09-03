@@ -4,9 +4,11 @@ import { Layers } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { GroupsList, GroupsToolbar, type GroupRow } from "@/components/travel/groups-manager";
-import { Pagination, pageRange, parsePage } from "@/components/shared/pagination";
+import { Pagination } from "@/components/shared/pagination";
+import { pageRange, parsePage } from "@/lib/pagination";
 import { SearchParamInput } from "@/components/shared/url-filters";
 import { createClient } from "@/lib/supabase/server";
+import { dateRangeForQuery } from "@/lib/actions/travel-groups";
 
 export const metadata: Metadata = { title: "Travel groups" };
 
@@ -24,10 +26,12 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
     .range(from, to);
   if (sp.q) {
     const q = sp.q.trim();
-    const like = `%${q.replace(/[%,]/g, "")}%`;
-    query = /^\d{4}-\d{2}(-\d{2})?$/.test(q)
-      ? query.like("travel_date::text", `${q}%`)
-      : query.or(`group_code.ilike.${like},label.ilike.${like},guide_name.ilike.${like}`);
+    const range = await dateRangeForQuery(q);
+    if (range) query = query.gte("travel_date", range[0]).lte("travel_date", range[1]);
+    else {
+      const like = `%${q.replace(/[%,]/g, "")}%`;
+      query = query.or(`group_code.ilike.${like},label.ilike.${like},guide_name.ilike.${like}`);
+    }
   }
   const { data, count, error } = await query;
 

@@ -16,6 +16,22 @@ function revalidateTravel() {
   revalidatePath("/");
 }
 
+/** "2026-10" -> whole month, "2026-10-15" -> that day; anything else -> null. */
+export async function dateRangeForQuery(q: string): Promise<[string, string] | null> {
+  return dateRange(q);
+}
+
+function dateRange(q: string): [string, string] | null {
+  const day = q.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (day) return [q, q];
+  const month = q.match(/^(\d{4})-(\d{2})$/);
+  if (month) {
+    const last = new Date(Date.UTC(Number(month[1]), Number(month[2]), 0)).getUTCDate();
+    return [`${q}-01`, `${q}-${String(last).padStart(2, "0")}`];
+  }
+  return null;
+}
+
 export type GroupOption = {
   id: string;
   travel_date: string;
@@ -24,17 +40,6 @@ export type GroupOption = {
   guide_name: string | null;
   traveller_count: number;
 };
-
-/** "15 Oct 2026 · G03 · Canton Phase 2 (7 travellers)" */
-export async function formatGroupOption(g: GroupOption): Promise<string> {
-  return groupLabel(g);
-}
-
-function groupLabel(g: GroupOption) {
-  const parts = [formatDate(g.travel_date), g.group_code];
-  if (g.label) parts.push(g.label);
-  return `${parts.join(" · ")} (${g.traveller_count} traveller${g.traveller_count === 1 ? "" : "s"})`;
-}
 
 export async function createGroup(input: GroupInput): Promise<ActionResult<{ id: string }>> {
   const profile = await requireProfile();
@@ -122,9 +127,12 @@ export async function searchGroups(query: string, limit = 60): Promise<GroupOpti
     .order("group_code", { ascending: true })
     .limit(limit);
   if (q) {
-    const like = `%${q.replace(/[%,]/g, "")}%`;
-    const iso = q.match(/^\d{4}-\d{2}(-\d{2})?$/);
-    req = iso ? req.like("travel_date::text", `${q}%`) : req.or(`group_code.ilike.${like},label.ilike.${like},guide_name.ilike.${like}`);
+    const range = dateRange(q);
+    if (range) req = req.gte("travel_date", range[0]).lte("travel_date", range[1]);
+    else {
+      const like = `%${q.replace(/[%,]/g, "")}%`;
+      req = req.or(`group_code.ilike.${like},label.ilike.${like},guide_name.ilike.${like}`);
+    }
   }
   const { data } = await req;
   return (data ?? []).map((g) => ({

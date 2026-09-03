@@ -9,7 +9,8 @@ import { KanbanBoard } from "@/components/leads/kanban-board";
 import { LeadsTable } from "@/components/leads/leads-table";
 import { LeadFilters } from "@/components/leads/lead-filters";
 import type { KanbanLead } from "@/components/leads/lead-card";
-import { Pagination, pageRange, parsePage } from "@/components/shared/pagination";
+import { Pagination } from "@/components/shared/pagination";
+import { pageRange, parsePage } from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 import { KANBAN_STATUSES } from "@/lib/constants";
 
