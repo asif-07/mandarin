@@ -24,7 +24,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
   const { data: t } = await supabase
     .from("travellers")
     .select(
-      "*, creator:profiles!travellers_created_by_fkey(display_name), group:travel_groups(id, travel_date, group_code, label, guide_name, travellers(count)), lead:leads(id, lead_ref, full_name), invoice:invoices(id, invoice_number)",
+      "*, creator:profiles!travellers_created_by_fkey(display_name), group:travel_groups(id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, travellers(count)), lead:leads(id, lead_ref, full_name), invoice:invoices(id, invoice_number)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -85,9 +85,11 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
     ? {
         id: t.group.id,
         travel_date: t.group.travel_date,
+        travel_end_date: t.group.travel_end_date,
         group_code: t.group.group_code,
         label: t.group.label,
         guide_name: t.group.guide_name,
+        reference_prefix: t.group.reference_prefix,
         traveller_count: Array.isArray(t.group.travellers) ? Number(t.group.travellers[0]?.count ?? 0) : 0,
       }
     : null;

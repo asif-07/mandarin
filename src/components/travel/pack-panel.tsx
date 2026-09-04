@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatDateTime } from "@/lib/format";
 
-async function requestPack(url: string): Promise<{ url: string; page_count?: number }> {
+async function requestPack(url: string): Promise<{ url: string; page_count?: number; file_name?: string; warnings?: string[] }> {
   const res = await fetch(url, { method: "POST" });
-  const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string; page_count?: number };
+  const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string; page_count?: number; file_name?: string; warnings?: string[] };
   if (!res.ok || !body.url) throw new Error(body.error ?? `Request failed (${res.status})`);
-  return { url: body.url, page_count: body.page_count };
+  return { url: body.url, page_count: body.page_count, file_name: body.file_name, warnings: body.warnings };
 }
 
 export function CompilePackButton({ travellerId, missing }: { travellerId: string; missing: string[] }) {
@@ -62,12 +62,14 @@ export function CompileGroupButton({ groupId, travellerCount }: { groupId: strin
 
   async function compile() {
     setBusy(true);
+    const started = toast.loading(`Compiling ${travellerCount} traveller${travellerCount === 1 ? "" : "s"} into one PDF…`);
     try {
-      const { url } = await requestPack(`/api/groups/${groupId}/packs`);
-      toast.success("ZIP ready. Downloading…");
+      const { url, file_name, page_count, warnings } = await requestPack(`/api/groups/${groupId}/packs`);
+      toast.success(`${file_name ?? "Group PDF"} ready${page_count ? ` (${page_count} pages)` : ""}. Downloading…`, { id: started });
+      warnings?.forEach((w) => toast.warning(w, { duration: 8000 }));
       window.location.assign(url);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not compile the group packs");
+      toast.error(e instanceof Error ? e.message : "Could not compile the group PDF", { id: started });
     } finally {
       setBusy(false);
     }
@@ -76,7 +78,7 @@ export function CompileGroupButton({ groupId, travellerCount }: { groupId: strin
   return (
     <Button variant="outline" size="sm" onClick={compile} disabled={busy || travellerCount === 0}>
       {busy ? <Loader2 className="animate-spin" /> : <FileStack />}
-      {busy ? "Compiling…" : "Compile all packs (ZIP)"}
+      {busy ? "Compiling…" : "Compile group PDF"}
     </Button>
   );
 }

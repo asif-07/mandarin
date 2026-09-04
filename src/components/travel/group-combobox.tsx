@@ -6,13 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { searchGroups, type GroupOption } from "@/lib/actions/travel-groups";
-import { formatDate } from "@/lib/format";
+import { formatDateRange } from "@/lib/format";
+import { groupTitle } from "@/lib/queries/travel";
 import { cn } from "@/lib/utils";
 
 export function groupOptionLabel(g: GroupOption) {
-  const parts = [formatDate(g.travel_date), g.group_code];
-  if (g.label) parts.push(g.label);
-  return `${parts.join(" · ")} (${g.traveller_count} traveller${g.traveller_count === 1 ? "" : "s"})`;
+  return `${groupTitle(g)} (${g.traveller_count} traveller${g.traveller_count === 1 ? "" : "s"})`;
 }
 
 /**
@@ -65,9 +64,10 @@ export function GroupCombobox({
   const grouped = useMemo(() => {
     const map = new Map<string, GroupOption[]>();
     results.forEach((g) => {
-      const list = map.get(g.travel_date) ?? [];
+      const key = formatDateRange(g.travel_date, g.travel_end_date);
+      const list = map.get(key) ?? [];
       list.push(g);
-      map.set(g.travel_date, list);
+      map.set(key, list);
     });
     return [...map.entries()];
   }, [results]);
@@ -112,8 +112,8 @@ export function GroupCombobox({
                 </CommandItem>
               </CommandGroup>
             )}
-            {grouped.map(([date, groups]) => (
-              <CommandGroup key={date} heading={formatDate(date)}>
+            {grouped.map(([range, groups]) => (
+              <CommandGroup key={range} heading={range}>
                 {groups.map((g) => (
                   <CommandItem
                     key={g.id}

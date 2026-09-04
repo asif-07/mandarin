@@ -19,7 +19,7 @@ import type { GroupOption } from "@/lib/actions/travel-groups";
 import { createTraveller, updateTraveller } from "@/lib/actions/travellers";
 import { travellerSchema, type TravellerInput, type TravellerValues } from "@/lib/validation/travel";
 import { TRAVELLER_STATUSES } from "@/lib/constants";
-import { todayISO } from "@/lib/format";
+import { formatDate, todayISO } from "@/lib/format";
 
 export function emptyTravellerValues(): TravellerInput {
   return {
@@ -161,7 +161,12 @@ export function TravellerForm({ mode, travellerId, defaultValues, initialGroup, 
                     initial={initialGroup}
                     onChange={(g) => {
                       setValue("travel_group_id", g?.id ?? null, { shouldDirty: true });
-                      if (g && !form.getValues("travel_start_date")) setValue("travel_start_date", g.travel_date);
+                      if (g) {
+                        // The group's window becomes the traveller's dates; they stay editable.
+                        setValue("travel_start_date", g.travel_date, { shouldDirty: true, shouldValidate: true });
+                        setValue("travel_end_date", g.travel_end_date, { shouldDirty: true, shouldValidate: true });
+                        toast.message(`Dates set to the group's window: ${formatDate(g.travel_date)} – ${formatDate(g.travel_end_date)}`);
+                      }
                     }}
                   />
                 )}

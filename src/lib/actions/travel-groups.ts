@@ -35,9 +35,11 @@ function dateRange(q: string): [string, string] | null {
 export type GroupOption = {
   id: string;
   travel_date: string;
+  travel_end_date: string;
   group_code: string;
   label: string | null;
   guide_name: string | null;
+  reference_prefix: string;
   traveller_count: number;
 };
 
@@ -76,7 +78,9 @@ export async function bulkCreateGroups(input: BulkGroupInput): Promise<ActionRes
     .filter((code) => !have.has(code))
     .map((code) => ({
       travel_date: parsed.data.travel_date,
+      travel_end_date: parsed.data.travel_end_date,
       group_code: code,
+      reference_prefix: parsed.data.reference_prefix,
       label: parsed.data.label,
       guide_name: parsed.data.guide_name,
       created_by: profile.id,
@@ -122,7 +126,7 @@ export async function searchGroups(query: string, limit = 60): Promise<GroupOpti
   const q = query.trim();
   let req = supabase
     .from("travel_groups")
-    .select("id, travel_date, group_code, label, guide_name, travellers(count)")
+    .select("id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, travellers(count)")
     .order("travel_date", { ascending: false })
     .order("group_code", { ascending: true })
     .limit(limit);
@@ -138,9 +142,11 @@ export async function searchGroups(query: string, limit = 60): Promise<GroupOpti
   return (data ?? []).map((g) => ({
     id: g.id,
     travel_date: g.travel_date,
+    travel_end_date: g.travel_end_date,
     group_code: g.group_code,
     label: g.label,
     guide_name: g.guide_name,
+    reference_prefix: g.reference_prefix,
     traveller_count: Array.isArray(g.travellers) ? Number(g.travellers[0]?.count ?? 0) : 0,
   }));
 }

@@ -12,27 +12,43 @@ import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/shared/date-picker";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { bulkCreateGroups, createGroup, deleteGroup, updateGroup } from "@/lib/actions/travel-groups";
-import { formatDate, todayISO } from "@/lib/format";
+import { groupPackReference } from "@/lib/queries/travel";
+import { formatDateRange, todayISO } from "@/lib/format";
 
 export type GroupRow = {
   id: string;
   travel_date: string;
+  travel_end_date: string;
   group_code: string;
   label: string | null;
   guide_name: string | null;
   notes: string | null;
+  reference_prefix: string;
   traveller_count: number;
   created_by_name: string | null;
   created_at: string | null;
 };
 
-type Editing = { id?: string; travel_date: string; group_code: string; label: string; guide_name: string; notes: string };
+type Editing = {
+  id?: string;
+  travel_date: string;
+  travel_end_date: string;
+  group_code: string;
+  reference_prefix: string;
+  label: string;
+  guide_name: string;
+  notes: string;
+};
+
+type Bulk = { travel_date: string; travel_end_date: string; count: string; reference_prefix: string; label: string; guide_name: string };
+
+const VALID_CODE = /^G\d{2}$/;
 
 export function GroupsToolbar() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [single, setSingle] = useState<Editing | null>(null);
-  const [bulk, setBulk] = useState<{ travel_date: string; count: string; label: string; guide_name: string } | null>(null);
+  const [bulk, setBulk] = useState<Bulk | null>(null);
 
   function saveSingle() {
     if (!single) return;
@@ -50,18 +66,29 @@ export function GroupsToolbar() {
     startTransition(async () => {
       const result = await bulkCreateGroups({ ...bulk, count: Number(bulk.count) });
       if (!result.ok) return void toast.error(result.error);
-      toast.success(`Created ${result.data.created} group${result.data.created === 1 ? "" : "s"}${result.data.skipped ? `, ${result.data.skipped} already existed` : ""}`);
+      toast.success(
+        `Created ${result.data.created} group${result.data.created === 1 ? "" : "s"}${result.data.skipped ? `, ${result.data.skipped} already existed` : ""}`,
+      );
       setBulk(null);
       router.refresh();
     });
   }
 
+  const today = todayISO();
+
   return (
     <>
-      <Button variant="outline" onClick={() => setBulk({ travel_date: todayISO(), count: "10", label: "", guide_name: "" })}>
+      <Button
+        variant="outline"
+        onClick={() => setBulk({ travel_date: today, travel_end_date: today, count: "10", reference_prefix: "MR144", label: "", guide_name: "" })}
+      >
         <Layers /> Bulk create
       </Button>
-      <Button onClick={() => setSingle({ travel_date: todayISO(), group_code: "G01", label: "", guide_name: "", notes: "" })}>
+      <Button
+        onClick={() =>
+          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", label: "", guide_name: "", notes: "" })
+        }
+      >
         <Plus /> New group
       </Button>
 
@@ -71,23 +98,34 @@ export function GroupsToolbar() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Bulk create groups</DialogTitle>
-            <DialogDescription>Creates G01 through Gn for one travel date. Existing codes are skipped.</DialogDescription>
+            <DialogDescription>Creates G01 through Gn for one travel window. Existing codes are skipped.</DialogDescription>
           </DialogHeader>
           {bulk && (
-            <fieldset disabled={pending} className="grid gap-4">
+            <fieldset disabled={pending} className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Travel date</Label>
-                <DatePicker value={bulk.travel_date} onChange={(v) => setBulk({ ...bulk, travel_date: v ?? "" })} />
+                <Label>Travel start</Label>
+                <DatePicker
+                  value={bulk.travel_date}
+                  onChange={(v) => setBulk({ ...bulk, travel_date: v ?? "", travel_end_date: v && bulk.travel_end_date < v ? v : bulk.travel_end_date })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Travel end</Label>
+                <DatePicker value={bulk.travel_end_date} onChange={(v) => setBulk({ ...bulk, travel_end_date: v ?? "" })} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="bulk_count">Number of groups</Label>
                 <Input id="bulk_count" type="number" min={1} max={30} value={bulk.count} onChange={(e) => setBulk({ ...bulk, count: e.target.value })} className="tnum" />
               </div>
               <div className="space-y-1.5">
+                <Label htmlFor="bulk_prefix">Reference prefix</Label>
+                <Input id="bulk_prefix" value={bulk.reference_prefix} onChange={(e) => setBulk({ ...bulk, reference_prefix: e.target.value.toUpperCase() })} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="bulk_label">Label (optional, applied to all)</Label>
                 <Input id="bulk_label" placeholder="Canton Phase 2" value={bulk.label} onChange={(e) => setBulk({ ...bulk, label: e.target.value })} />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="bulk_guide">Guide (optional)</Label>
                 <Input id="bulk_guide" value={bulk.guide_name} onChange={(e) => setBulk({ ...bulk, guide_name: e.target.value })} />
               </div>
@@ -97,7 +135,7 @@ export function GroupsToolbar() {
             <Button variant="outline" onClick={() => setBulk(null)} disabled={pending}>
               Cancel
             </Button>
-            <Button onClick={saveBulk} disabled={pending || !bulk?.travel_date || !Number(bulk?.count)}>
+            <Button onClick={saveBulk} disabled={pending || !bulk?.travel_date || !bulk?.travel_end_date || !Number(bulk?.count)}>
               {pending && <Loader2 className="animate-spin" />} Create {Number(bulk?.count) || ""} groups
             </Button>
           </DialogFooter>
@@ -118,22 +156,41 @@ function GroupDialog({
   onChange: (v: Editing | null) => void;
   onSave: () => void;
 }) {
+  const preview =
+    value && value.travel_date && value.travel_end_date && VALID_CODE.test(value.group_code)
+      ? groupPackReference(
+          { travel_date: value.travel_date, travel_end_date: value.travel_end_date, group_code: value.group_code, reference_prefix: value.reference_prefix },
+          5,
+        )
+      : null;
+
   return (
     <Dialog open={!!value} onOpenChange={(o) => !o && onChange(null)}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{value?.id ? "Edit group" : "New group"}</DialogTitle>
-          <DialogDescription>Group codes are unique per travel date.</DialogDescription>
+          <DialogDescription>Group codes are unique per travel start date.</DialogDescription>
         </DialogHeader>
         {value && (
           <fieldset disabled={pending} className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Travel date</Label>
-              <DatePicker value={value.travel_date} onChange={(v) => onChange({ ...value, travel_date: v ?? "" })} />
+              <Label>Travel start</Label>
+              <DatePicker
+                value={value.travel_date}
+                onChange={(v) => onChange({ ...value, travel_date: v ?? "", travel_end_date: v && value.travel_end_date < v ? v : value.travel_end_date })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Travel end</Label>
+              <DatePicker value={value.travel_end_date} onChange={(v) => onChange({ ...value, travel_end_date: v ?? "" })} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="g_code">Group code</Label>
               <Input id="g_code" placeholder="G01" value={value.group_code} onChange={(e) => onChange({ ...value, group_code: e.target.value.toUpperCase() })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="g_prefix">Reference prefix</Label>
+              <Input id="g_prefix" placeholder="MR144" value={value.reference_prefix} onChange={(e) => onChange({ ...value, reference_prefix: e.target.value.toUpperCase() })} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="g_label">Label</Label>
@@ -147,13 +204,21 @@ function GroupDialog({
               <Label htmlFor="g_notes">Notes</Label>
               <Input id="g_notes" value={value.notes} onChange={(e) => onChange({ ...value, notes: e.target.value })} />
             </div>
+            {preview && (
+              <p className="text-xs text-mr-muted sm:col-span-2">
+                Group PDF will be named like <span className="font-mono text-mr-body">{preview}.pdf</span> (pax count filled in at export).
+              </p>
+            )}
           </fieldset>
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onChange(null)} disabled={pending}>
             Cancel
           </Button>
-          <Button onClick={onSave} disabled={pending || !value?.travel_date || !/^G\d{2}$/.test(value?.group_code ?? "")}>
+          <Button
+            onClick={onSave}
+            disabled={pending || !value?.travel_date || !value?.travel_end_date || !VALID_CODE.test(value?.group_code ?? "")}
+          >
             {pending && <Loader2 className="animate-spin" />} Save
           </Button>
         </DialogFooter>
@@ -184,7 +249,7 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
       const result = await deleteGroup(group.id);
       setConfirmDelete(false);
       if (!result.ok) return void toast.error(result.error);
-      toast.success(`${group.group_code} on ${formatDate(group.travel_date)} deleted`);
+      toast.success(`${group.group_code} (${formatDateRange(group.travel_date, group.travel_end_date)}) deleted`);
       router.refresh();
     });
   }
@@ -199,7 +264,9 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
           setEditing({
             id: group.id,
             travel_date: group.travel_date,
+            travel_end_date: group.travel_end_date,
             group_code: group.group_code,
+            reference_prefix: group.reference_prefix,
             label: group.label ?? "",
             guide_name: group.guide_name ?? "",
             notes: group.notes ?? "",
@@ -215,7 +282,7 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title={`Delete ${group.group_code} on ${formatDate(group.travel_date)}?`}
+        title={`Delete ${group.group_code} (${formatDateRange(group.travel_date, group.travel_end_date)})?`}
         description="Only empty groups can be deleted."
         confirmLabel="Delete"
         destructive
@@ -227,15 +294,18 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
 }
 
 export function GroupsList({ groups }: { groups: GroupRow[] }) {
-  const byDate = new Map<string, GroupRow[]>();
-  groups.forEach((g) => byDate.set(g.travel_date, [...(byDate.get(g.travel_date) ?? []), g]));
+  const byRange = new Map<string, GroupRow[]>();
+  groups.forEach((g) => {
+    const key = formatDateRange(g.travel_date, g.travel_end_date);
+    byRange.set(key, [...(byRange.get(key) ?? []), g]);
+  });
 
   return (
     <div className="space-y-6">
-      {[...byDate.entries()].map(([date, list]) => (
-        <section key={date}>
+      {[...byRange.entries()].map(([range, list]) => (
+        <section key={range}>
           <h2 className="micro-label mb-2">
-            {formatDate(date)} <span className="ml-1 normal-case tracking-normal">({list.length} groups)</span>
+            {range} <span className="ml-1 normal-case tracking-normal">({list.length} group{list.length === 1 ? "" : "s"})</span>
           </h2>
           <ul className="divide-y divide-mr-line rounded-lg border border-mr-line">
             {list.map((g) => (
@@ -246,6 +316,7 @@ export function GroupsList({ groups }: { groups: GroupRow[] }) {
                 <span className="min-w-0 flex-1 truncate text-sm text-mr-body">
                   {g.label ?? <span className="text-mr-muted">No label</span>}
                   {g.guide_name ? ` · Guide: ${g.guide_name}` : ""}
+                  <span className="ml-2 font-mono text-[11px] text-mr-muted">{groupPackReference(g, g.traveller_count)}</span>
                 </span>
                 <span className="tnum text-sm text-mr-body">
                   {g.traveller_count} traveller{g.traveller_count === 1 ? "" : "s"}

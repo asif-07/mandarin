@@ -407,7 +407,9 @@ export type Database = {
           id: string
           label: string | null
           notes: string | null
+          reference_prefix: string
           travel_date: string
+          travel_end_date: string
         }
         Insert: {
           created_at?: string | null
@@ -417,7 +419,9 @@ export type Database = {
           id?: string
           label?: string | null
           notes?: string | null
+          reference_prefix?: string
           travel_date: string
+          travel_end_date: string
         }
         Update: {
           created_at?: string | null
@@ -427,7 +431,9 @@ export type Database = {
           id?: string
           label?: string | null
           notes?: string | null
+          reference_prefix?: string
           travel_date?: string
+          travel_end_date?: string
         }
         Relationships: [
           {

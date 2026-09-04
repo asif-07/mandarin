@@ -95,7 +95,7 @@ export function KanbanBoard({ leads: initial }: { leads: KanbanLead[] }) {
         </div>
         <DragOverlay>
           {active ? (
-            <div className="w-[260px] rounded-lg border border-mr-ink bg-white p-3">
+            <div className="w-[84vw] max-w-[280px] rounded-lg border border-mr-ink bg-white p-3 sm:w-[260px]">
               <LeadCardBody lead={active} />
             </div>
           ) : null}
@@ -122,7 +122,7 @@ function Column({ status, leads }: { status: LeadStatus; leads: KanbanLead[] }) 
     <div
       ref={setNodeRef}
       className={cn(
-        "flex w-[260px] shrink-0 snap-start flex-col rounded-lg border border-mr-line bg-mr-surface/60",
+        "flex w-[84vw] max-w-[280px] shrink-0 snap-start flex-col rounded-lg border border-mr-line bg-mr-surface/60 sm:w-[260px]",
         isOver && "border-mr-ink",
       )}
     >

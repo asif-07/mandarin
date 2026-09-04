@@ -6,7 +6,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import type { Database } from "@/types/database";
 import { renderPdfWithBrowser } from "@/lib/pdf/browser";
 import { loadTemplateAssets } from "@/lib/pdf/assets";
-import { renderCoverHtml } from "@/lib/pdf/cover-template";
+import { renderCoverHtml, renderGroupCoverHtml } from "@/lib/pdf/cover-template";
 import { BUCKETS, DOC_TYPES, REQUIRED_DOC_TYPES, TIMEZONE, labelFor } from "@/lib/constants";
 
 const [A4_W, A4_H] = PageSizes.A4;
@@ -115,6 +115,80 @@ export async function buildTravelPackPdf(browser: Browser, traveller: PackTravel
     bytes: await merged.save(),
     pageCount: merged.getPageCount(),
     includedDocIds: parts.map((p) => p.docId),
+    warnings,
+  };
+}
+
+export type GroupPackInput = {
+  reference: string;
+  group_code: string;
+  label: string | null;
+  guide_name: string | null;
+  travel_start_date: string;
+  travel_end_date: string;
+  travellers: { traveller: PackTraveller; sources: PackSource[] }[];
+};
+
+/**
+ * One merged PDF for a whole group: a group cover listing every traveller,
+ * then each traveller's section (their own cover, then PAR, passport, flight
+ * ticket, hotel booking and any extras, in merge order).
+ */
+export async function buildGroupPackPdf(browser: Browser, input: GroupPackInput): Promise<BuiltPack> {
+  const warnings: string[] = [];
+  const sections: { traveller: PackTraveller; built: BuiltPack; sources: PackSource[] }[] = [];
+
+  for (const t of input.travellers) {
+    const built = await buildTravelPackPdf(browser, t.traveller, t.sources);
+    warnings.push(...built.warnings.map((w) => `${t.traveller.full_name}: ${w}`));
+    sections.push({ traveller: t.traveller, built, sources: t.sources });
+  }
+
+  const assets = await loadTemplateAssets();
+  const coverHtml = renderGroupCoverHtml(
+    {
+      reference: input.reference,
+      group_code: input.group_code,
+      label: input.label,
+      guide_name: input.guide_name,
+      travel_start_date: input.travel_start_date,
+      travel_end_date: input.travel_end_date,
+      generated_at: new Date(),
+      travellers: sections.map((s) => {
+        const present = new Set(s.sources.map((x) => x.docType));
+        return {
+          full_name: s.traveller.full_name,
+          passport_number: s.traveller.passport_number,
+          nationality: s.traveller.nationality,
+          docs: REQUIRED_DOC_TYPES.filter((r) => present.has(r)).length,
+          docs_total: REQUIRED_DOC_TYPES.length,
+          pages: s.built.pageCount,
+        };
+      }),
+    },
+    assets,
+  );
+  const coverPdf = await PDFDocument.load(await renderPdfWithBrowser(browser, coverHtml));
+
+  const merged = await PDFDocument.create();
+  for (const page of await merged.copyPages(coverPdf, coverPdf.getPageIndices())) merged.addPage(page);
+  for (const s of sections) {
+    const doc = await PDFDocument.load(s.built.bytes);
+    for (const page of await merged.copyPages(doc, doc.getPageIndices())) merged.addPage(page);
+  }
+
+  merged.setTitle(`${input.reference} - Group Travel Pack`);
+  merged.setAuthor("Mandarin Roots");
+  merged.setSubject(`Group ${input.group_code} travel documents`);
+  merged.setCreator("Mandarin Roots operations platform");
+  merged.setProducer("pdf-lib");
+  merged.setCreationDate(new Date());
+  merged.setModificationDate(new Date());
+
+  return {
+    bytes: await merged.save(),
+    pageCount: merged.getPageCount(),
+    includedDocIds: sections.flatMap((s) => s.built.includedDocIds),
     warnings,
   };
 }

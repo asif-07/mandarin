@@ -20,7 +20,7 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
 
   let query = supabase
     .from("travel_groups")
-    .select("id, travel_date, group_code, label, guide_name, notes, created_at, travellers(count), creator:profiles!travel_groups_created_by_fkey(display_name)", { count: "exact" })
+    .select("id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, created_at, travellers(count), creator:profiles!travel_groups_created_by_fkey(display_name)", { count: "exact" })
     .order("travel_date", { ascending: false })
     .order("group_code", { ascending: true })
     .range(from, to);
@@ -38,10 +38,12 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
   const groups: GroupRow[] = (data ?? []).map((g) => ({
     id: g.id,
     travel_date: g.travel_date,
+    travel_end_date: g.travel_end_date,
     group_code: g.group_code,
     label: g.label,
     guide_name: g.guide_name,
     notes: g.notes,
+    reference_prefix: g.reference_prefix,
     traveller_count: Array.isArray(g.travellers) ? Number(g.travellers[0]?.count ?? 0) : 0,
     created_by_name: g.creator?.display_name ?? null,
     created_at: g.created_at,
@@ -49,7 +51,7 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
-      <PageHeader title="Travel groups" description="Codes are unique per travel date, so G01 can exist on every date." actions={<GroupsToolbar />} />
+      <PageHeader title="Travel groups" description="Each group has a travel window and a code. Codes are unique per start date, so G01 can exist on every date." actions={<GroupsToolbar />} />
       <Suspense>
         <div className="mb-4">
           <SearchParamInput placeholder="Search date (2026-10-15), code or label" className="md:w-80" />

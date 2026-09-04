@@ -11,9 +11,9 @@ import { CompileGroupButton } from "@/components/travel/pack-panel";
 import { TravelDateNav } from "@/components/travel/date-param";
 import { GroupsToolbar } from "@/components/travel/groups-manager";
 import { createClient } from "@/lib/supabase/server";
-import { docCompleteness } from "@/lib/queries/travel";
+import { docCompleteness, groupPackReference } from "@/lib/queries/travel";
 import { TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
-import { formatDate, todayISO } from "@/lib/format";
+import { formatDate, formatDateRange, todayISO } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Travel" };
 
@@ -40,7 +40,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const { data: groups, error } = await supabase
     .from("travel_groups")
     .select(
-      "id, group_code, label, guide_name, notes, travellers(id, full_name, status, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, travellers(id, full_name, status, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
     )
     .eq("travel_date", date)
     .order("group_code");
@@ -83,6 +83,9 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                   <span className="min-w-0 flex-1 truncate text-sm text-mr-body">
                     {g.label ?? <span className="text-mr-muted">No label</span>}
                     {g.guide_name ? ` · ${g.guide_name}` : ""}
+                    <span className="block truncate text-xs text-mr-muted">
+                      {formatDateRange(g.travel_date, g.travel_end_date)} · {groupPackReference(g, travellers.length)}
+                    </span>
                   </span>
                   <span className="tnum text-xs text-mr-body">
                     {travellers.length} pax

@@ -21,6 +21,24 @@ export function formatDate(input: DateInput): string {
   return d ? formatInTimeZone(d, TIMEZONE, "d MMM yyyy") : "";
 }
 
+/** "15–20 Oct 2026", "25 Aug – 2 Sep 2026", "30 Dec 2026 – 2 Jan 2027", or a single date when equal. */
+export function formatDateRange(start: string | null | undefined, end: string | null | undefined): string {
+  if (!start) return "";
+  if (!end || end === start) return formatDate(start);
+  const [sy, sm] = start.split("-");
+  const [ey, em] = end.split("-");
+  const endLabel = formatDate(end);
+  if (sy === ey && sm === em) return `${Number(start.slice(8, 10))}–${endLabel}`;
+  if (sy === ey) return `${formatDate(start).replace(` ${sy}`, "")} – ${endLabel}`;
+  return `${formatDate(start)} – ${endLabel}`;
+}
+
+/** "Aug25" style token used in pack file names. */
+export function formatMonthDay(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return formatInTimeZone(new Date(Date.UTC(y, m - 1, d, 12)), "UTC", "MMMdd");
+}
+
 /** "22 Aug 2026, 14:05" in Asia/Dubai. */
 export function formatDateTime(input: DateInput): string {
   const d = toDate(input);

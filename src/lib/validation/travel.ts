@@ -19,26 +19,49 @@ const optionalUuid = z
   .transform((v) => (v ? v : null))
   .refine((v) => !v || z.string().uuid().safeParse(v).success, "Invalid reference");
 
-export const groupSchema = z.object({
-  travel_date: dateStr,
-  group_code: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^G\d{2}$/, "Use the format G01"),
-  label: optionalText,
-  guide_name: optionalText,
-  notes: optionalText,
-});
+const referencePrefix = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9]{2,12}$/, "Letters and digits only, e.g. MR144")
+  .optional()
+  .nullable()
+  .transform((v) => (v ? v : "MR144"));
+
+export const groupSchema = z
+  .object({
+    travel_date: dateStr,
+    travel_end_date: dateStr,
+    group_code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^G\d{2}$/, "Use the format G01"),
+    reference_prefix: referencePrefix,
+    label: optionalText,
+    guide_name: optionalText,
+    notes: optionalText,
+  })
+  .refine((v) => v.travel_end_date >= v.travel_date, {
+    message: "End date must be on or after the start date",
+    path: ["travel_end_date"],
+  });
 export type GroupInput = z.input<typeof groupSchema>;
 export type GroupValues = z.output<typeof groupSchema>;
 
-export const bulkGroupSchema = z.object({
-  travel_date: dateStr,
-  count: z.coerce.number().int().min(1).max(30),
-  label: optionalText,
-  guide_name: optionalText,
-});
+export const bulkGroupSchema = z
+  .object({
+    travel_date: dateStr,
+    travel_end_date: dateStr,
+    count: z.coerce.number().int().min(1).max(30),
+    reference_prefix: referencePrefix,
+    label: optionalText,
+    guide_name: optionalText,
+  })
+  .refine((v) => v.travel_end_date >= v.travel_date, {
+    message: "End date must be on or after the start date",
+    path: ["travel_end_date"],
+  });
 export type BulkGroupInput = z.input<typeof bulkGroupSchema>;
 
 export const travellerSchema = z
