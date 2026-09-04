@@ -42,6 +42,16 @@ export async function updateTraveller(id: string, input: TravellerInput): Promis
   return ok({ id });
 }
 
+/** Take a traveller out of their group. The traveller record and documents are kept. */
+export async function removeTravellerFromGroup(id: string): Promise<ActionResult<{ id: string }>> {
+  await requireProfile();
+  const supabase = await createClient();
+  const { error } = await supabase.from("travellers").update({ travel_group_id: null }).eq("id", id);
+  if (error) return fail(errorMessage(error, "Could not remove from group"));
+  await revalidateTraveller(id);
+  return ok({ id });
+}
+
 export async function setTravellerStatus(id: string, status: string): Promise<ActionResult<{ status: string }>> {
   await requireProfile();
   if (!TRAVELLER_STATUSES.some((s) => s.value === status)) return fail("Invalid status");

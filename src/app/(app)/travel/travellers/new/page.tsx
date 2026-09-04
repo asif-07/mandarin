@@ -26,7 +26,7 @@ export default async function NewTravellerPage({ searchParams }: { searchParams:
   if (leadId) {
     const supabase = await createClient();
     const [{ data: lead }, { data: invoice }] = await Promise.all([
-      supabase.from("leads").select("id, lead_ref, full_name, phone, email, country, customer_id, notes").eq("id", leadId).maybeSingle(),
+      supabase.from("leads").select("id, lead_ref, full_name, phone, email, country, customer_id, notes, package_tier").eq("id", leadId).maybeSingle(),
       supabase
         .from("invoices")
         .select("id, invoice_number, visa_reference")
@@ -47,6 +47,7 @@ export default async function NewTravellerPage({ searchParams }: { searchParams:
         customer_id: lead.customer_id,
         invoice_id: invoice?.id ?? null,
         visa_reference: invoice?.visa_reference ?? "",
+        package_tier: lead.package_tier,
       };
       if (invoice) linkedInvoice = { invoice_number: invoice.invoice_number };
     }

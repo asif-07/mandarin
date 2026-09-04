@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Users } from "lucide-react";
-import { COUNTRIES, ENQUIRY_TYPES, labelFor } from "@/lib/constants";
+import { COUNTRIES, ENQUIRY_TYPES, PACKAGE_TIERS, labelFor } from "@/lib/constants";
 import { daysFromToday, formatMoney, initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ export type KanbanLead = {
   full_name: string;
   phone: string;
   enquiry_type: string;
+  package_tier: string | null;
   country: string | null;
   pax_count: number | null;
   quoted_amount: number | null;
@@ -19,6 +20,13 @@ export type KanbanLead = {
   assigned_name: string | null;
   created_at: string | null;
 };
+
+/** "144hr Visa", "Package 4★" */
+export function enquiryShort(enquiryType: string, packageTier: string | null | undefined) {
+  const base = ENQUIRY_TYPES.find((t) => t.value === enquiryType)?.short ?? labelFor(ENQUIRY_TYPES, enquiryType);
+  const tier = PACKAGE_TIERS.find((t) => t.value === packageTier)?.short;
+  return tier ? `${base} ${tier}` : base;
+}
 
 export function followupDue(date: string | null) {
   const d = daysFromToday(date);
@@ -41,7 +49,7 @@ export function LeadCardBody({ lead, className }: { lead: KanbanLead; className?
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="rounded-md bg-mr-surface px-1.5 py-0.5 text-[11px] font-medium text-mr-body">
-          {ENQUIRY_TYPES.find((t) => t.value === lead.enquiry_type)?.short ?? labelFor(ENQUIRY_TYPES, lead.enquiry_type)}
+          {enquiryShort(lead.enquiry_type, lead.package_tier)}
         </span>
         {country && (
           <span className="text-[11px] text-mr-body" title={country.label}>

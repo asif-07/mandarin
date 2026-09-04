@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { href: "/travel", label: "By group", exact: true },
   { href: "/travel/travellers", label: "By traveller" },
+  { href: "/travel/packages", label: "Packages" },
   { href: "/travel/calendar", label: "Calendar" },
   { href: "/travel/groups", label: "Groups" },
 ];

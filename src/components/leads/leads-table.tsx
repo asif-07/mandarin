@@ -4,8 +4,8 @@ import Link from "next/link";
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusPill, LEAD_TONES } from "@/components/shared/status-pill";
-import { followupDue, type KanbanLead } from "@/components/leads/lead-card";
-import { COUNTRIES, ENQUIRY_TYPES, LEAD_STATUSES, labelFor } from "@/lib/constants";
+import { enquiryShort, followupDue, type KanbanLead } from "@/components/leads/lead-card";
+import { COUNTRIES, LEAD_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +32,7 @@ const columns: ColumnDef<KanbanLead>[] = [
   {
     accessorKey: "enquiry_type",
     header: "Enquiry",
-    cell: ({ getValue }) => ENQUIRY_TYPES.find((t) => t.value === getValue<string>())?.short ?? getValue<string>(),
+    cell: ({ row }) => enquiryShort(row.original.enquiry_type, row.original.package_tier),
   },
   {
     accessorKey: "country",
@@ -117,7 +117,7 @@ export function LeadsTable({ rows }: { rows: KanbanLead[] }) {
               <StatusPill label={labelFor(LEAD_STATUSES, lead.status)} tone={LEAD_TONES[lead.status]} />
             </div>
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-mr-body">
-              <span>{ENQUIRY_TYPES.find((t) => t.value === lead.enquiry_type)?.short}</span>
+              <span>{enquiryShort(lead.enquiry_type, lead.package_tier)}</span>
               <span className={cn("tnum", followupDue(lead.next_followup_date) && "font-medium text-mr-red")}>
                 {lead.next_followup_date ? `Follow-up ${formatDate(lead.next_followup_date)}` : ""}
               </span>

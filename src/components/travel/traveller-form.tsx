@@ -18,7 +18,7 @@ import { GroupCombobox } from "@/components/travel/group-combobox";
 import type { GroupOption } from "@/lib/actions/travel-groups";
 import { createTraveller, updateTraveller } from "@/lib/actions/travellers";
 import { travellerSchema, type TravellerInput, type TravellerValues } from "@/lib/validation/travel";
-import { TRAVELLER_STATUSES } from "@/lib/constants";
+import { PACKAGE_TIERS, TRAVELLER_STATUSES } from "@/lib/constants";
 import { formatDate, todayISO } from "@/lib/format";
 
 export function emptyTravellerValues(): TravellerInput {
@@ -33,6 +33,7 @@ export function emptyTravellerValues(): TravellerInput {
     travel_group_id: null,
     visa_reference: "",
     status: "documents_pending",
+    package_tier: null,
     notes: "",
     lead_id: null,
     invoice_id: null,
@@ -190,6 +191,28 @@ export function TravellerForm({ mode, travellerId, defaultValues, initialGroup, 
                       {TRAVELLER_STATUSES.map((s) => (
                         <SelectItem key={s.value} value={s.value}>
                           {s.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="t_package">Hotel package</Label>
+              <Controller
+                control={control}
+                name="package_tier"
+                render={({ field }) => (
+                  <Select value={field.value ?? "none"} onValueChange={(v) => field.onChange(v === "none" ? null : v)}>
+                    <SelectTrigger id="t_package" className="w-full rounded-lg">
+                      <SelectValue placeholder="No package" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No package</SelectItem>
+                      {PACKAGE_TIERS.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

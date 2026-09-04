@@ -289,6 +289,7 @@ export type Database = {
           lost_reason: string | null
           next_followup_date: string | null
           notes: string | null
+          package_tier: string | null
           pax_count: number | null
           phone: string
           quoted_amount: number | null
@@ -315,6 +316,7 @@ export type Database = {
           lost_reason?: string | null
           next_followup_date?: string | null
           notes?: string | null
+          package_tier?: string | null
           pax_count?: number | null
           phone: string
           quoted_amount?: number | null
@@ -341,6 +343,7 @@ export type Database = {
           lost_reason?: string | null
           next_followup_date?: string | null
           notes?: string | null
+          package_tier?: string | null
           pax_count?: number | null
           phone?: string
           quoted_amount?: number | null
@@ -569,6 +572,7 @@ export type Database = {
           lead_id: string | null
           nationality: string | null
           notes: string | null
+          package_tier: string | null
           passport_number: string | null
           phone: string | null
           status: string
@@ -590,6 +594,7 @@ export type Database = {
           lead_id?: string | null
           nationality?: string | null
           notes?: string | null
+          package_tier?: string | null
           passport_number?: string | null
           phone?: string | null
           status?: string
@@ -611,6 +616,7 @@ export type Database = {
           lead_id?: string | null
           nationality?: string | null
           notes?: string | null
+          package_tier?: string | null
           passport_number?: string | null
           phone?: string | null
           status?: string

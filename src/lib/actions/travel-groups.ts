@@ -108,15 +108,26 @@ export async function updateGroup(id: string, input: GroupInput): Promise<Action
   return ok({ id });
 }
 
-export async function deleteGroup(id: string): Promise<ActionResult<{ id: string }>> {
+/**
+ * Delete a group. Travellers in it are never deleted: with `unassign` they are
+ * kept and detached from the group; without it a non-empty group is refused.
+ */
+export async function deleteGroup(id: string, unassign = false): Promise<ActionResult<{ id: string; unassigned: number }>> {
   await requireProfile();
   const supabase = await createClient();
   const { count } = await supabase.from("travellers").select("id", { count: "exact", head: true }).eq("travel_group_id", id);
-  if (count && count > 0) return fail(`This group has ${count} traveller${count === 1 ? "" : "s"}. Move them first.`);
+  const travellers = count ?? 0;
+  if (travellers > 0 && !unassign) {
+    return fail(`This group has ${travellers} traveller${travellers === 1 ? "" : "s"}. Confirm to remove them from the group and delete it.`);
+  }
+  if (travellers > 0) {
+    const { error: unassignError } = await supabase.from("travellers").update({ travel_group_id: null }).eq("travel_group_id", id);
+    if (unassignError) return fail(errorMessage(unassignError, "Could not remove travellers from the group"));
+  }
   const { error } = await supabase.from("travel_groups").delete().eq("id", id);
   if (error) return fail(errorMessage(error, "Could not delete group"));
   revalidateTravel();
-  return ok({ id });
+  return ok({ id, unassigned: travellers });
 }
 
 /** Searchable group list for dropdowns, newest travel dates first. */

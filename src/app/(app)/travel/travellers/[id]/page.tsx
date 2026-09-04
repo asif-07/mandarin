@@ -75,6 +75,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
     travel_group_id: t.travel_group_id,
     visa_reference: t.visa_reference ?? "",
     status: t.status,
+    package_tier: t.package_tier,
     notes: t.notes ?? "",
     lead_id: t.lead_id,
     invoice_id: t.invoice_id,

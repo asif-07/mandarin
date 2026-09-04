@@ -6,10 +6,11 @@ import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { StatusPill, TRAVELLER_TONES } from "@/components/shared/status-pill";
-import { DocsBadge } from "@/components/travel/traveller-table";
+import { DocsBadge, PackageBadge } from "@/components/travel/traveller-table";
 import { CompileGroupButton } from "@/components/travel/pack-panel";
 import { TravelDateNav } from "@/components/travel/date-param";
-import { GroupsToolbar } from "@/components/travel/groups-manager";
+import { GroupRowActions, GroupsToolbar } from "@/components/travel/groups-manager";
+import { RemoveFromGroupButton } from "@/components/travel/remove-from-group-button";
 import { createClient } from "@/lib/supabase/server";
 import { docCompleteness, groupPackReference } from "@/lib/queries/travel";
 import { TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
@@ -40,7 +41,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const { data: groups, error } = await supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, travellers(id, full_name, status, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
     )
     .eq("travel_date", date)
     .order("group_code");
@@ -91,6 +92,23 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                     {travellers.length} pax
                   </span>
                   <DocsBadge count={complete} total={travellers.length || 0} />
+                  <span onClick={(e) => e.preventDefault()} className="contents">
+                    <GroupRowActions
+                      group={{
+                        id: g.id,
+                        travel_date: g.travel_date,
+                        travel_end_date: g.travel_end_date,
+                        group_code: g.group_code,
+                        label: g.label,
+                        guide_name: g.guide_name,
+                        notes: g.notes,
+                        reference_prefix: g.reference_prefix,
+                        traveller_count: travellers.length,
+                        created_by_name: null,
+                        created_at: null,
+                      }}
+                    />
+                  </span>
                 </summary>
                 <div className="border-t border-mr-line px-4 py-3">
                   {travellers.length === 0 ? (
@@ -110,8 +128,10 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                                 {t.visa_reference ? ` · ${t.visa_reference}` : ""}
                               </p>
                             </div>
+                            <PackageBadge tier={t.package_tier} />
                             <StatusPill label={labelFor(TRAVELLER_STATUSES, t.status)} tone={TRAVELLER_TONES[t.status]} className="hidden sm:inline-flex" />
                             <DocsBadge count={c.count} total={c.total} />
+                            <RemoveFromGroupButton travellerId={t.id} travellerName={t.full_name} groupCode={g.group_code} />
                           </li>
                         );
                       })}

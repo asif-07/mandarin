@@ -11,11 +11,11 @@ import { pageRange, parsePage } from "@/lib/pagination";
 import { ClearFilters, DateRangeParams, SearchParamInput, SelectParam } from "@/components/shared/url-filters";
 import { createClient } from "@/lib/supabase/server";
 import { docCompleteness, groupTitle } from "@/lib/queries/travel";
-import { TRAVELLER_STATUSES } from "@/lib/constants";
+import { PACKAGE_TIERS, TRAVELLER_STATUSES } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Travellers" };
 
-type Search = { q?: string; status?: string; from?: string; to?: string; page?: string };
+type Search = { q?: string; status?: string; tier?: string; from?: string; to?: string; page?: string };
 
 export default async function TravellersPage({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
@@ -26,13 +26,14 @@ export default async function TravellersPage({ searchParams }: { searchParams: P
   let query = supabase
     .from("travellers")
     .select(
-      "id, traveller_ref, full_name, travel_start_date, travel_end_date, status, visa_reference, group:travel_groups(travel_date, group_code, label), traveller_documents(doc_type, deleted_at)",
+      "id, traveller_ref, full_name, travel_start_date, travel_end_date, status, package_tier, visa_reference, group:travel_groups(travel_date, travel_end_date, group_code, label), traveller_documents(doc_type, deleted_at)",
       { count: "exact" },
     )
     .order("travel_start_date", { ascending: false })
     .order("full_name")
     .range(from, to);
   if (sp.status) query = query.eq("status", sp.status);
+  if (sp.tier) query = query.eq("package_tier", sp.tier);
   if (sp.from) query = query.gte("travel_start_date", sp.from);
   if (sp.to) query = query.lte("travel_start_date", sp.to);
   if (sp.q) {
@@ -52,12 +53,13 @@ export default async function TravellersPage({ searchParams }: { searchParams: P
       group_title: t.group ? groupTitle(t.group) : null,
       group_date: t.group?.travel_date ?? null,
       status: t.status,
+      package_tier: t.package_tier,
       docs_count: c.count,
       docs_total: c.total,
       visa_reference: t.visa_reference,
     };
   });
-  const hasFilters = !!(sp.q || sp.status || sp.from || sp.to);
+  const hasFilters = !!(sp.q || sp.status || sp.tier || sp.from || sp.to);
 
   return (
     <>
@@ -73,8 +75,9 @@ export default async function TravellersPage({ searchParams }: { searchParams: P
         <div className="mb-4 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
           <SearchParamInput placeholder="Search name, ref, passport or visa ref" className="md:w-80" />
           <SelectParam name="status" options={TRAVELLER_STATUSES} placeholder="Status" allLabel="All statuses" className="md:w-[190px]" />
+          <SelectParam name="tier" options={PACKAGE_TIERS} placeholder="Package" allLabel="Any package" className="md:w-[150px]" />
           <DateRangeParams />
-          <ClearFilters keys={["q", "status", "from", "to"]} />
+          <ClearFilters keys={["q", "status", "tier", "from", "to"]} />
         </div>
       </Suspense>
       {error ? (

@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "Leads" };
 type Search = { q?: string; status?: string; type?: string; country?: string; source?: string; owner?: string; view?: string; page?: string };
 
 const LEAD_COLUMNS =
-  "id, lead_ref, full_name, phone, enquiry_type, country, pax_count, quoted_amount, quoted_currency, status, next_followup_date, created_at, assignee:profiles!leads_assigned_to_fkey(display_name)";
+  "id, lead_ref, full_name, phone, enquiry_type, package_tier, country, pax_count, quoted_amount, quoted_currency, status, next_followup_date, created_at, assignee:profiles!leads_assigned_to_fkey(display_name)";
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
@@ -55,6 +55,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     full_name: l.full_name,
     phone: l.phone,
     enquiry_type: l.enquiry_type,
+    package_tier: l.package_tier,
     country: l.country,
     pax_count: l.pax_count,
     quoted_amount: l.quoted_amount == null ? null : Number(l.quoted_amount),

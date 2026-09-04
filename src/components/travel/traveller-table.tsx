@@ -4,7 +4,7 @@ import Link from "next/link";
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusPill, TRAVELLER_TONES } from "@/components/shared/status-pill";
-import { TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
+import { PACKAGE_TIERS, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -17,10 +17,17 @@ export type TravellerRow = {
   group_title: string | null;
   group_date: string | null;
   status: string;
+  package_tier: string | null;
   docs_count: number;
   docs_total: number;
   visa_reference: string | null;
 };
+
+export function PackageBadge({ tier }: { tier: string | null | undefined }) {
+  const t = PACKAGE_TIERS.find((p) => p.value === tier);
+  if (!t) return null;
+  return <span className="inline-flex items-center rounded-md bg-mr-ink px-1.5 py-0.5 text-[11px] font-medium text-white">{t.label}</span>;
+}
 
 export function DocsBadge({ count, total }: { count: number; total: number }) {
   const complete = count >= total;
@@ -67,6 +74,11 @@ const columns: ColumnDef<TravellerRow>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ getValue }) => <StatusPill label={labelFor(TRAVELLER_STATUSES, getValue<string>())} tone={TRAVELLER_TONES[getValue<string>()]} />,
+  },
+  {
+    accessorKey: "package_tier",
+    header: "Package",
+    cell: ({ getValue }) => (getValue<string | null>() ? <PackageBadge tier={getValue<string | null>()} /> : <span className="text-mr-muted">—</span>),
   },
   {
     id: "docs",
@@ -132,7 +144,10 @@ export function TravellerTable({ rows }: { rows: TravellerRow[] }) {
               {formatDate(t.travel_start_date)} – {formatDate(t.travel_end_date)}
             </p>
             <div className="mt-2 flex items-center justify-between gap-2">
-              <StatusPill label={labelFor(TRAVELLER_STATUSES, t.status)} tone={TRAVELLER_TONES[t.status]} />
+              <span className="flex items-center gap-1.5">
+                <StatusPill label={labelFor(TRAVELLER_STATUSES, t.status)} tone={TRAVELLER_TONES[t.status]} />
+                <PackageBadge tier={t.package_tier} />
+              </span>
               <span className="truncate text-xs text-mr-muted">{t.group_title ?? "No group"}</span>
             </div>
           </li>

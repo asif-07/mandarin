@@ -23,6 +23,7 @@ import {
   ENQUIRY_TYPES,
   LEAD_SOURCES,
   LEAD_STATUSES,
+  PACKAGE_TIERS,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ export function emptyLeadValues(): LeadInput {
     pax_count: 1,
     travel_month: "",
     canton_phase: null,
+    package_tier: null,
     quoted_amount: "",
     quoted_currency: "USD",
     assigned_to: null,
@@ -75,6 +77,7 @@ export function LeadForm({ mode, leadId, defaultValues, profiles, currentUserId,
   const enquiryType = useWatch({ control, name: "enquiry_type" });
   const isVisa = enquiryType === "144hr_visa" || enquiryType === "china_business_visa";
   const isCanton = enquiryType === "canton_fair_package";
+  const isPackage = enquiryType === "package";
 
   function onSubmit(values: LeadValues) {
     startTransition(async () => {
@@ -169,6 +172,32 @@ export function LeadForm({ mode, leadId, defaultValues, profiles, currentUserId,
                     </Select>
                   )}
                 />
+              </div>
+            )}
+            {isPackage && (
+              <div className="space-y-1.5">
+                <Label htmlFor="package_tier">
+                  Package tier <span className="text-mr-red">*</span>
+                </Label>
+                <Controller
+                  control={control}
+                  name="package_tier"
+                  render={({ field }) => (
+                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                      <SelectTrigger id="package_tier" className="w-full rounded-lg" aria-invalid={!!errors.package_tier}>
+                        <SelectValue placeholder="3, 4 or 5 star" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PACKAGE_TIERS.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>
+                            {t.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FieldError message={errors.package_tier?.message} />
               </div>
             )}
             {isVisa && (

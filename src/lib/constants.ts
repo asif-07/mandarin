@@ -25,9 +25,18 @@ export const ENQUIRY_TYPES = [
   { value: "canton_fair_package", label: "Canton Fair Package", short: "Canton Fair" },
   { value: "china_business_visa", label: "China Business Visa (M Visa)", short: "M Visa" },
   { value: "group_tour", label: "Group Tour", short: "Group Tour" },
+  { value: "package", label: "Hotel Package (3 / 4 / 5 star)", short: "Package" },
   { value: "other", label: "Other", short: "Other" },
 ] as const satisfies readonly Option[];
 export type EnquiryType = (typeof ENQUIRY_TYPES)[number]["value"];
+
+/** Hotel package tiers, used on leads and travellers with enquiry type "package". */
+export const PACKAGE_TIERS = [
+  { value: "3_star", label: "3 Star", short: "3★" },
+  { value: "4_star", label: "4 Star", short: "4★" },
+  { value: "5_star", label: "5 Star", short: "5★" },
+] as const satisfies readonly Option[];
+export type PackageTier = (typeof PACKAGE_TIERS)[number]["value"];
 
 export const LEAD_SOURCES = [
   { value: "whatsapp", label: "WhatsApp" },

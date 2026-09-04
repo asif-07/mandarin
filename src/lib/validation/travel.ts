@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
-import { ACCEPTED_UPLOAD_TYPES, DOC_TYPES, MAX_UPLOAD_BYTES, TRAVELLER_STATUSES } from "@/lib/constants";
+import { ACCEPTED_UPLOAD_TYPES, DOC_TYPES, MAX_UPLOAD_BYTES, PACKAGE_TIERS, TRAVELLER_STATUSES } from "@/lib/constants";
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date");
 
@@ -95,6 +95,11 @@ export const travellerSchema = z
     travel_group_id: optionalUuid,
     visa_reference: optionalText,
     status: z.enum(TRAVELLER_STATUSES.map((s) => s.value) as [string, ...string[]]).default("documents_pending"),
+    package_tier: z
+      .enum(PACKAGE_TIERS.map((t) => t.value) as [string, ...string[]])
+      .optional()
+      .nullable()
+      .transform((v) => (v ? v : null)),
     notes: optionalText,
     lead_id: optionalUuid,
     invoice_id: optionalUuid,

@@ -246,10 +246,14 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
 
   function remove() {
     startTransition(async () => {
-      const result = await deleteGroup(group.id);
+      const result = await deleteGroup(group.id, group.traveller_count > 0);
       setConfirmDelete(false);
       if (!result.ok) return void toast.error(result.error);
-      toast.success(`${group.group_code} (${formatDateRange(group.travel_date, group.travel_end_date)}) deleted`);
+      toast.success(
+        `${group.group_code} (${formatDateRange(group.travel_date, group.travel_end_date)}) deleted${
+          result.data.unassigned ? `; ${result.data.unassigned} traveller${result.data.unassigned === 1 ? "" : "s"} kept without a group` : ""
+        }`,
+      );
       router.refresh();
     });
   }
@@ -275,7 +279,7 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
       >
         <Pencil />
       </Button>
-      <Button variant="ghost" size="icon-sm" aria-label="Delete group" disabled={group.traveller_count > 0} onClick={() => setConfirmDelete(true)}>
+      <Button variant="ghost" size="icon-sm" aria-label="Delete group" onClick={() => setConfirmDelete(true)}>
         <Trash2 />
       </Button>
       <GroupDialog value={editing} pending={pending} onChange={setEditing} onSave={save} />
@@ -283,8 +287,12 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         title={`Delete ${group.group_code} (${formatDateRange(group.travel_date, group.travel_end_date)})?`}
-        description="Only empty groups can be deleted."
-        confirmLabel="Delete"
+        description={
+          group.traveller_count > 0
+            ? `${group.traveller_count} traveller${group.traveller_count === 1 ? " is" : "s are"} in this group. They will be kept, with their documents, but left without a group.`
+            : "The group is empty and will be removed."
+        }
+        confirmLabel={group.traveller_count > 0 ? "Remove travellers and delete" : "Delete"}
         destructive
         pending={pending}
         onConfirm={remove}
