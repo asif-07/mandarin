@@ -9,9 +9,11 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { UserMenu } from "@/components/shell/user-menu";
 import type { Profile } from "@/lib/auth";
+import { isAdmin } from "@/lib/roles";
 
 export function AppShell({ profile, children }: { profile: Profile; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const admin = isAdmin(profile);
 
   return (
     <div className="flex min-h-screen bg-white">
@@ -23,7 +25,7 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
           </Link>
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-2">
-          <SidebarNav />
+          <SidebarNav admin={admin} />
         </div>
         <div className="border-t border-mr-line p-3">
           <UserMenu profile={profile} variant="sidebar" />
@@ -38,7 +40,7 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
             <Image src="/logo.png" alt="Mandarin Roots" width={174} height={32} className="h-8 w-auto" />
           </div>
           <div className="px-3 py-2">
-            <SidebarNav onNavigate={() => setOpen(false)} />
+            <SidebarNav admin={admin} onNavigate={() => setOpen(false)} />
           </div>
         </SheetContent>
       </Sheet>

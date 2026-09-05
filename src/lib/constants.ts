@@ -11,11 +11,12 @@ export const COMPANY = {
 } as const;
 
 export const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: "LayoutDashboard" },
-  { href: "/invoices", label: "Invoices", icon: "FileText" },
-  { href: "/leads", label: "Leads", icon: "Users" },
-  { href: "/travel", label: "Travel", icon: "Plane" },
-  { href: "/settings", label: "Settings", icon: "Settings" },
+  { href: "/", label: "Dashboard", icon: "LayoutDashboard", adminOnly: false },
+  { href: "/invoices", label: "Invoices", icon: "FileText", adminOnly: false },
+  { href: "/leads", label: "Leads", icon: "Users", adminOnly: false },
+  { href: "/travel", label: "Travel", icon: "Plane", adminOnly: false },
+  { href: "/accounts", label: "Accounts", icon: "Wallet", adminOnly: true },
+  { href: "/settings", label: "Settings", icon: "Settings", adminOnly: false },
 ] as const;
 
 export type Option<T extends string = string> = { value: T; label: string; short?: string };
@@ -176,3 +177,44 @@ export const BUCKETS = {
 export function labelFor<T extends string>(options: readonly Option<T>[], value: T | null | undefined) {
   return options.find((o) => o.value === value)?.label ?? value ?? "";
 }
+
+// ---------------------------------------------------------------------------
+// Accounts (admin only)
+// ---------------------------------------------------------------------------
+export const PARTY_TYPES = [
+  { value: "b2b_partner", label: "B2B partner", short: "Partner" },
+  { value: "supplier", label: "Supplier", short: "Supplier" },
+  { value: "both", label: "Partner & supplier", short: "Both" },
+] as const satisfies readonly Option[];
+export type PartyType = (typeof PARTY_TYPES)[number]["value"];
+
+export const DEAL_STATUSES = [
+  { value: "draft", label: "Draft" },
+  { value: "active", label: "Active" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+] as const satisfies readonly Option[];
+export type DealStatus = (typeof DEAL_STATUSES)[number]["value"];
+
+export const PAYMENT_METHODS = [
+  { value: "bank_transfer", label: "Bank transfer" },
+  { value: "cash", label: "Cash" },
+  { value: "card", label: "Card" },
+  { value: "wechat", label: "WeChat Pay" },
+  { value: "alipay", label: "Alipay" },
+  { value: "other", label: "Other" },
+] as const satisfies readonly Option[];
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number]["value"];
+
+export const EXPENSE_STATUSES = [
+  { value: "unpaid", label: "Unpaid" },
+  { value: "paid", label: "Paid" },
+] as const satisfies readonly Option[];
+export type ExpenseStatus = (typeof EXPENSE_STATUSES)[number]["value"];
+
+export const BANK_ACCOUNT_TYPES = [
+  { value: "bank", label: "Bank account" },
+  { value: "cash", label: "Cash" },
+  { value: "wallet", label: "Wallet (WeChat / Alipay)" },
+] as const satisfies readonly Option[];
+export type BankAccountType = (typeof BANK_ACCOUNT_TYPES)[number]["value"];

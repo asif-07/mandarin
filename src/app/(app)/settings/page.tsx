@@ -69,7 +69,7 @@ export default async function SettingsPage() {
               ))}
             </ul>
             <p className="mt-3 text-xs text-mr-muted">
-              All accounts have full access in v1. Roles are stored so permissions can be enforced later.
+              Invoices, Leads and Travel are shared by every account. Accounts (deals, receipts, expenses, ledgers) is limited to the admin role, enforced in the database.
             </p>
           </CardContent>
         </Card>

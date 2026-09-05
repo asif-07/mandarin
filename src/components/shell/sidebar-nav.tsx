@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, LayoutDashboard, Plane, Settings, Users, type LucideIcon } from "lucide-react";
+import { FileText, LayoutDashboard, Plane, Settings, Users, Wallet, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 
@@ -11,15 +11,17 @@ const ICONS: Record<(typeof NAV_ITEMS)[number]["icon"], LucideIcon> = {
   FileText,
   Users,
   Plane,
+  Wallet,
   Settings,
 };
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+export function SidebarNav({ onNavigate, admin = false }: { onNavigate?: () => void; admin?: boolean }) {
   const pathname = usePathname();
+  const items = NAV_ITEMS.filter((item) => admin || !item.adminOnly);
 
   return (
     <nav className="flex flex-col gap-0.5" aria-label="Main">
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const Icon = ICONS[item.icon];
         const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         return (

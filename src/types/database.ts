@@ -14,6 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_transfers: {
+        Row: {
+          amount_in: number
+          amount_out: number
+          created_at: string | null
+          created_by: string | null
+          from_account_id: string
+          id: string
+          notes: string | null
+          reference: string | null
+          to_account_id: string
+          transferred_on: string
+        }
+        Insert: {
+          amount_in: number
+          amount_out: number
+          created_at?: string | null
+          created_by?: string | null
+          from_account_id: string
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          to_account_id: string
+          transferred_on?: string
+        }
+        Update: {
+          amount_in?: number
+          amount_out?: number
+          created_at?: string | null
+          created_by?: string | null
+          from_account_id?: string
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          to_account_id?: string
+          transferred_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_transfers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_transfers_from_account_id_fkey"
+            columns: ["from_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_transfers_to_account_id_fkey"
+            columns: ["to_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_accounts: {
+        Row: {
+          account_number: string | null
+          account_type: string
+          bank_name: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          opening_balance: number
+          opening_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_number?: string | null
+          account_type: string
+          bank_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          opening_balance?: number
+          opening_date?: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_number?: string | null
+          account_type?: string
+          bank_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          opening_balance?: number
+          opening_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_accounts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       counters: {
         Row: {
           current_value: number
@@ -79,6 +196,222 @@ export type Database = {
           },
         ]
       }
+      deals: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          deal_ref: string
+          deal_value: number
+          description: string | null
+          end_date: string | null
+          id: string
+          notes: string | null
+          party_id: string
+          pax_count: number | null
+          payment_due_on: string | null
+          start_date: string | null
+          status: string
+          title: string
+          travel_group_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          deal_ref?: string
+          deal_value?: number
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          party_id: string
+          pax_count?: number | null
+          payment_due_on?: string | null
+          start_date?: string | null
+          status?: string
+          title: string
+          travel_group_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          deal_ref?: string
+          deal_value?: number
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          party_id?: string
+          pax_count?: number | null
+          payment_due_on?: string | null
+          start_date?: string | null
+          status?: string
+          title?: string
+          travel_group_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_travel_group_id_fkey"
+            columns: ["travel_group_id"]
+            isOneToOne: false
+            referencedRelation: "travel_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_categories: {
+        Row: {
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: [
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          bank_account_id: string | null
+          category_id: string
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          deal_id: string | null
+          description: string
+          due_on: string | null
+          expense_ref: string
+          id: string
+          method: string | null
+          notes: string | null
+          paid_on: string | null
+          party_id: string | null
+          reference: string | null
+          spent_on: string
+          status: string
+          travel_group_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          bank_account_id?: string | null
+          category_id: string
+          created_at?: string | null
+          created_by?: string | null
+          currency: string
+          deal_id?: string | null
+          description: string
+          due_on?: string | null
+          expense_ref?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          paid_on?: string | null
+          party_id?: string | null
+          reference?: string | null
+          spent_on?: string
+          status?: string
+          travel_group_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string | null
+          category_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          deal_id?: string | null
+          description?: string
+          due_on?: string | null
+          expense_ref?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          paid_on?: string | null
+          party_id?: string | null
+          reference?: string | null
+          spent_on?: string
+          status?: string
+          travel_group_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_travel_group_id_fkey"
+            columns: ["travel_group_id"]
+            isOneToOne: false
+            referencedRelation: "travel_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           amount: number
@@ -134,6 +467,7 @@ export type Database = {
           created_by: string | null
           currency: string
           customer_id: string | null
+          deal_id: string | null
           due_date_label: string | null
           id: string
           invoice_number: string
@@ -159,6 +493,7 @@ export type Database = {
           created_by?: string | null
           currency?: string
           customer_id?: string | null
+          deal_id?: string | null
           due_date_label?: string | null
           id?: string
           invoice_number: string
@@ -184,6 +519,7 @@ export type Database = {
           created_by?: string | null
           currency?: string
           customer_id?: string | null
+          deal_id?: string | null
           due_date_label?: string | null
           id?: string
           invoice_number?: string
@@ -212,6 +548,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
           {
@@ -377,6 +720,68 @@ export type Database = {
           },
         ]
       }
+      parties: {
+        Row: {
+          address: string | null
+          contact_name: string | null
+          country: string | null
+          created_at: string | null
+          created_by: string | null
+          default_currency: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          party_type: string
+          payment_terms: string | null
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          default_currency?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          party_type: string
+          payment_terms?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          default_currency?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          party_type?: string
+          payment_terms?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parties_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -400,6 +805,102 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      receipts: {
+        Row: {
+          amount: number
+          applied_amount: number | null
+          bank_account_id: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          deal_id: string | null
+          id: string
+          invoice_id: string | null
+          method: string
+          notes: string | null
+          party_id: string | null
+          payer_name: string | null
+          receipt_ref: string
+          received_on: string
+          reference: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          applied_amount?: number | null
+          bank_account_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency: string
+          deal_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          method?: string
+          notes?: string | null
+          party_id?: string | null
+          payer_name?: string | null
+          receipt_ref?: string
+          received_on?: string
+          reference?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          applied_amount?: number | null
+          bank_account_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          deal_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          method?: string
+          notes?: string | null
+          party_id?: string | null
+          payer_name?: string | null
+          receipt_ref?: string
+          received_on?: string
+          reference?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipts_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       travel_groups: {
         Row: {
@@ -667,7 +1168,34 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      bank_account_balances: {
+        Row: {
+          balance: number | null
+          bank_account_id: string | null
+        }
+        Relationships: []
+      }
+      deal_balances: {
+        Row: {
+          costs: number | null
+          costs_other_currency: number | null
+          deal_id: string | null
+          invoiced: number | null
+          received: number | null
+        }
+        Relationships: []
+      }
+      invoice_balances: {
+        Row: {
+          balance: number | null
+          invoice_id: string | null
+          last_received_on: string | null
+          receipt_count: number | null
+          received: number | null
+          total: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       create_invoice: {
@@ -679,6 +1207,7 @@ export type Database = {
         Args: { p_year: number; p_traveller: Json }
         Returns: string
       }
+      is_admin: { Args: never; Returns: boolean }
       next_counter: { Args: { counter_key: string }; Returns: number }
       update_invoice: {
         Args: { p_id: string; p_invoice: Json; p_items: Json }

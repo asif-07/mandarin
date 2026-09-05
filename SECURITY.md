@@ -13,7 +13,7 @@ This platform stores scanned passports and other identity documents. Read this b
 ## How access control works in v1
 
 - Every table has Row Level Security enabled. Two policies exist per table: full access for the `authenticated` role, deny-all for `anon`.
-- All four accounts have identical access. Roles (`admin`, `sales`, `document`) are stored on `profiles.role` so per-role policies can be added later without a schema rewrite, for example `using (role = 'admin')` for counters or deletion.
+- Invoices, leads and travel are shared by all four accounts. The Accounts module (`parties`, `deals`, `bank_accounts`, `receipts`, `expenses`, `account_transfers`, `expense_categories` and the balance views) is limited to `profiles.role = 'admin'` (ambro, asif) by RLS policies that call `public.is_admin()`; a sales or document session gets zero rows even if it calls the API directly. The UI hides the Accounts navigation for non-admins and the pages, server actions and CSV export re-check the role. To give another person access, set their profile role to `admin`.
 - `next_counter()` is `SECURITY DEFINER` so counters cannot be edited directly by the app; the numbered-insert functions are `SECURITY INVOKER` so RLS still applies.
 - Next.js middleware refreshes the Supabase session and redirects every route except `/login` when there is no user. API routes additionally re-check the user before doing any work.
 

@@ -36,6 +36,18 @@ export const TRAVELLER_TONES: Record<string, Tone> = {
   cancelled: "red",
 };
 
+export const DEAL_TONES: Record<string, Tone> = {
+  draft: "neutral",
+  active: "ink",
+  completed: "success",
+  cancelled: "red",
+};
+
+export const EXPENSE_TONES: Record<string, Tone> = {
+  unpaid: "warning",
+  paid: "success",
+};
+
 export function StatusPill({
   label,
   tone = "neutral",
