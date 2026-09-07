@@ -906,6 +906,8 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          entry_port: string | null
+          exit_port: string | null
           group_code: string
           guide_name: string | null
           id: string
@@ -918,6 +920,8 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          entry_port?: string | null
+          exit_port?: string | null
           group_code: string
           guide_name?: string | null
           id?: string
@@ -930,6 +934,8 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          entry_port?: string | null
+          exit_port?: string | null
           group_code?: string
           guide_name?: string | null
           id?: string

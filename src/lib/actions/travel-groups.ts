@@ -40,6 +40,8 @@ export type GroupOption = {
   label: string | null;
   guide_name: string | null;
   reference_prefix: string;
+  entry_port?: string | null;
+  exit_port?: string | null;
   traveller_count: number;
 };
 
@@ -81,6 +83,8 @@ export async function bulkCreateGroups(input: BulkGroupInput): Promise<ActionRes
       travel_end_date: parsed.data.travel_end_date,
       group_code: code,
       reference_prefix: parsed.data.reference_prefix,
+      entry_port: parsed.data.entry_port,
+      exit_port: parsed.data.exit_port,
       label: parsed.data.label,
       guide_name: parsed.data.guide_name,
       created_by: profile.id,
@@ -137,7 +141,7 @@ export async function searchGroups(query: string, limit = 60): Promise<GroupOpti
   const q = query.trim();
   let req = supabase
     .from("travel_groups")
-    .select("id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, travellers(count)")
+    .select("id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, travellers(count)")
     .order("travel_date", { ascending: false })
     .order("group_code", { ascending: true })
     .limit(limit);
@@ -158,6 +162,8 @@ export async function searchGroups(query: string, limit = 60): Promise<GroupOpti
     label: g.label,
     guide_name: g.guide_name,
     reference_prefix: g.reference_prefix,
+    entry_port: g.entry_port,
+    exit_port: g.exit_port,
     traveller_count: Array.isArray(g.travellers) ? Number(g.travellers[0]?.count ?? 0) : 0,
   }));
 }

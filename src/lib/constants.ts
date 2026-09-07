@@ -149,6 +149,24 @@ export const TRAVELLER_STATUSES = [
 ] as const satisfies readonly Option[];
 export type TravellerStatus = (typeof TRAVELLER_STATUSES)[number]["value"];
 
+/** Common China entry / exit ports for group visas; free text is also accepted. */
+export const CHINA_PORTS = [
+  "Guangzhou Baiyun International Airport (CAN)",
+  "Shenzhen Bao'an International Airport (SZX)",
+  "Shenzhen Bay Port",
+  "Futian Port (Shenzhen)",
+  "Luohu Port (Shenzhen)",
+  "Gongbei Port (Zhuhai)",
+  "Hengqin Port (Zhuhai)",
+  "Hong Kong-Zhuhai-Macao Bridge Port",
+  "Shanghai Pudong International Airport (PVG)",
+  "Beijing Capital International Airport (PEK)",
+  "Beijing Daxing International Airport (PKX)",
+  "Hangzhou Xiaoshan International Airport (HGH)",
+  "Chengdu Tianfu International Airport (TFU)",
+  "Xiamen Gaoqi International Airport (XMN)",
+] as const;
+
 export const DOC_TYPES = [
   { value: "par", label: "PAR", mergeOrder: 1, required: true, keywords: ["par", "arrival", "record"] },
   { value: "passport", label: "Passport", mergeOrder: 2, required: true, keywords: ["passport", "ppt", "pp"] },

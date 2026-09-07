@@ -24,7 +24,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
   const { data: t } = await supabase
     .from("travellers")
     .select(
-      "*, creator:profiles!travellers_created_by_fkey(display_name), group:travel_groups(id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, travellers(count)), lead:leads(id, lead_ref, full_name), invoice:invoices(id, invoice_number)",
+      "*, creator:profiles!travellers_created_by_fkey(display_name), group:travel_groups(id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, travellers(count)), lead:leads(id, lead_ref, full_name), invoice:invoices(id, invoice_number)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -162,6 +162,11 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
                 <Link href={`/travel?date=${t.group.travel_date}`} className="block hover:underline">
                   <span className="font-medium">{groupTitle(t.group)}</span>
                   {t.group.guide_name && <span className="ml-2 text-mr-muted">Guide: {t.group.guide_name}</span>}
+                  {(t.group.entry_port || t.group.exit_port) && (
+                    <span className="block text-xs text-mr-muted">
+                      In: {t.group.entry_port ?? "—"} · Out: {t.group.exit_port ?? "—"}
+                    </span>
+                  )}
                 </Link>
               )}
             </CardContent>

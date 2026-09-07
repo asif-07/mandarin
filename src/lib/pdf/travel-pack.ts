@@ -124,6 +124,8 @@ export type GroupPackInput = {
   group_code: string;
   label: string | null;
   guide_name: string | null;
+  entry_port?: string | null;
+  exit_port?: string | null;
   travel_start_date: string;
   travel_end_date: string;
   travellers: { traveller: PackTraveller; sources: PackSource[] }[];
@@ -151,6 +153,8 @@ export async function buildGroupPackPdf(browser: Browser, input: GroupPackInput)
       group_code: input.group_code,
       label: input.label,
       guide_name: input.guide_name,
+      entry_port: input.entry_port ?? null,
+      exit_port: input.exit_port ?? null,
       travel_start_date: input.travel_start_date,
       travel_end_date: input.travel_end_date,
       generated_at: new Date(),

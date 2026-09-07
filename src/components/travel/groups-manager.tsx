@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { bulkCreateGroups, createGroup, deleteGroup, updateGroup } from "@/lib/actions/travel-groups";
 import { groupPackReference } from "@/lib/queries/travel";
 import { formatDateRange, todayISO } from "@/lib/format";
+import { CHINA_PORTS } from "@/lib/constants";
 
 export type GroupRow = {
   id: string;
@@ -24,6 +25,8 @@ export type GroupRow = {
   guide_name: string | null;
   notes: string | null;
   reference_prefix: string;
+  entry_port: string | null;
+  exit_port: string | null;
   traveller_count: number;
   created_by_name: string | null;
   created_at: string | null;
@@ -35,12 +38,28 @@ type Editing = {
   travel_end_date: string;
   group_code: string;
   reference_prefix: string;
+  entry_port: string;
+  exit_port: string;
   label: string;
   guide_name: string;
   notes: string;
 };
 
-type Bulk = { travel_date: string; travel_end_date: string; count: string; reference_prefix: string; label: string; guide_name: string };
+type Bulk = { travel_date: string; travel_end_date: string; count: string; reference_prefix: string; entry_port: string; exit_port: string; label: string; guide_name: string };
+
+/** Entry / exit port input with common China ports as suggestions. */
+function PortInput({ id, value, onChange, placeholder }: { id: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <>
+      <Input id={id} list="china-ports" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} autoComplete="off" />
+      <datalist id="china-ports">
+        {CHINA_PORTS.map((p) => (
+          <option key={p} value={p} />
+        ))}
+      </datalist>
+    </>
+  );
+}
 
 const VALID_CODE = /^G\d{2}$/;
 
@@ -80,13 +99,13 @@ export function GroupsToolbar() {
     <>
       <Button
         variant="outline"
-        onClick={() => setBulk({ travel_date: today, travel_end_date: today, count: "10", reference_prefix: "MR144", label: "", guide_name: "" })}
+        onClick={() => setBulk({ travel_date: today, travel_end_date: today, count: "10", reference_prefix: "MR144", entry_port: "", exit_port: "", label: "", guide_name: "" })}
       >
         <Layers /> Bulk create
       </Button>
       <Button
         onClick={() =>
-          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", label: "", guide_name: "", notes: "" })
+          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", label: "", guide_name: "", notes: "" })
         }
       >
         <Plus /> New group
@@ -121,6 +140,14 @@ export function GroupsToolbar() {
                 <Label htmlFor="bulk_prefix">Reference prefix</Label>
                 <Input id="bulk_prefix" value={bulk.reference_prefix} onChange={(e) => setBulk({ ...bulk, reference_prefix: e.target.value.toUpperCase() })} />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bulk_entry">Entry port</Label>
+                <PortInput id="bulk_entry" value={bulk.entry_port} onChange={(v) => setBulk({ ...bulk, entry_port: v })} placeholder="Guangzhou Baiyun Airport" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bulk_exit">Exit port</Label>
+                <PortInput id="bulk_exit" value={bulk.exit_port} onChange={(v) => setBulk({ ...bulk, exit_port: v })} placeholder="Shenzhen Bay Port" />
+              </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="bulk_label">Label (optional, applied to all)</Label>
                 <Input id="bulk_label" placeholder="Canton Phase 2" value={bulk.label} onChange={(e) => setBulk({ ...bulk, label: e.target.value })} />
@@ -135,7 +162,7 @@ export function GroupsToolbar() {
             <Button variant="outline" onClick={() => setBulk(null)} disabled={pending}>
               Cancel
             </Button>
-            <Button onClick={saveBulk} disabled={pending || !bulk?.travel_date || !bulk?.travel_end_date || !Number(bulk?.count)}>
+            <Button onClick={saveBulk} disabled={pending || !bulk?.travel_date || !bulk?.travel_end_date || !Number(bulk?.count) || !bulk?.entry_port.trim() || !bulk?.exit_port.trim()}>
               {pending && <Loader2 className="animate-spin" />} Create {Number(bulk?.count) || ""} groups
             </Button>
           </DialogFooter>
@@ -169,7 +196,7 @@ function GroupDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{value?.id ? "Edit group" : "New group"}</DialogTitle>
-          <DialogDescription>Group codes are unique per travel start date.</DialogDescription>
+          <DialogDescription>Group codes are unique per travel start date. Entry and exit ports are required for the group visa.</DialogDescription>
         </DialogHeader>
         {value && (
           <fieldset disabled={pending} className="grid gap-4 sm:grid-cols-2">
@@ -191,6 +218,14 @@ function GroupDialog({
             <div className="space-y-1.5">
               <Label htmlFor="g_prefix">Reference prefix</Label>
               <Input id="g_prefix" placeholder="MR144" value={value.reference_prefix} onChange={(e) => onChange({ ...value, reference_prefix: e.target.value.toUpperCase() })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="g_entry">Entry port</Label>
+              <PortInput id="g_entry" value={value.entry_port} onChange={(v) => onChange({ ...value, entry_port: v })} placeholder="Guangzhou Baiyun Airport" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="g_exit">Exit port</Label>
+              <PortInput id="g_exit" value={value.exit_port} onChange={(v) => onChange({ ...value, exit_port: v })} placeholder="Shenzhen Bay Port" />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="g_label">Label</Label>
@@ -217,7 +252,7 @@ function GroupDialog({
           </Button>
           <Button
             onClick={onSave}
-            disabled={pending || !value?.travel_date || !value?.travel_end_date || !VALID_CODE.test(value?.group_code ?? "")}
+            disabled={pending || !value?.travel_date || !value?.travel_end_date || !VALID_CODE.test(value?.group_code ?? "") || !value?.entry_port.trim() || !value?.exit_port.trim()}
           >
             {pending && <Loader2 className="animate-spin" />} Save
           </Button>
@@ -271,6 +306,8 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
             travel_end_date: group.travel_end_date,
             group_code: group.group_code,
             reference_prefix: group.reference_prefix,
+            entry_port: group.entry_port ?? "",
+            exit_port: group.exit_port ?? "",
             label: group.label ?? "",
             guide_name: group.guide_name ?? "",
             notes: group.notes ?? "",
@@ -325,6 +362,9 @@ export function GroupsList({ groups }: { groups: GroupRow[] }) {
                   {g.label ?? <span className="text-mr-muted">No label</span>}
                   {g.guide_name ? ` · Guide: ${g.guide_name}` : ""}
                   <span className="ml-2 font-mono text-[11px] text-mr-muted">{groupPackReference(g, g.traveller_count)}</span>
+                  <span className="block truncate text-xs text-mr-muted">
+                    {g.entry_port && g.exit_port ? `In: ${g.entry_port} · Out: ${g.exit_port}` : <span className="text-mr-warning">Entry / exit port missing</span>}
+                  </span>
                 </span>
                 <span className="tnum text-sm text-mr-body">
                   {g.traveller_count} traveller{g.traveller_count === 1 ? "" : "s"}

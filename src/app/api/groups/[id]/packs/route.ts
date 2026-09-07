@@ -28,7 +28,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const { data: group } = await supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, travellers(id, traveller_ref, full_name, passport_number, nationality, travel_start_date, travel_end_date, visa_reference, status, traveller_documents(id, doc_type, file_name, storage_path, mime_type, merge_order, uploaded_at, deleted_at))",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, travellers(id, traveller_ref, full_name, passport_number, nationality, travel_start_date, travel_end_date, visa_reference, status, traveller_documents(id, doc_type, file_name, storage_path, mime_type, merge_order, uploaded_at, deleted_at))",
     )
     .eq("id", id)
     .maybeSingle();
@@ -81,6 +81,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       group_code: group.group_code,
       label: group.label,
       guide_name: group.guide_name,
+      entry_port: group.entry_port,
+      exit_port: group.exit_port,
       travel_start_date: group.travel_date,
       travel_end_date: group.travel_end_date,
       travellers: inputs,

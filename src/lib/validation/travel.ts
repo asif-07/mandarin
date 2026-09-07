@@ -28,6 +28,8 @@ const referencePrefix = z
   .nullable()
   .transform((v) => (v ? v : "MR144"));
 
+const port = z.string().trim().min(1, "Required for the group visa").max(120);
+
 export const groupSchema = z
   .object({
     travel_date: dateStr,
@@ -38,6 +40,8 @@ export const groupSchema = z
       .toUpperCase()
       .regex(/^G\d{2}$/, "Use the format G01"),
     reference_prefix: referencePrefix,
+    entry_port: port,
+    exit_port: port,
     label: optionalText,
     guide_name: optionalText,
     notes: optionalText,
@@ -55,6 +59,8 @@ export const bulkGroupSchema = z
     travel_end_date: dateStr,
     count: z.coerce.number().int().min(1).max(30),
     reference_prefix: referencePrefix,
+    entry_port: port,
+    exit_port: port,
     label: optionalText,
     guide_name: optionalText,
   })

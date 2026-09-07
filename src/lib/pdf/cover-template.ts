@@ -23,6 +23,8 @@ export type GroupCoverData = {
   group_code: string;
   label: string | null;
   guide_name: string | null;
+  entry_port: string | null;
+  exit_port: string | null;
   travel_start_date: string;
   travel_end_date: string;
   generated_at: Date;
@@ -35,6 +37,8 @@ export function renderGroupCoverHtml(data: GroupCoverData, assets: Pick<Template
     ["Reference", data.reference],
     ["Group", `${data.group_code}${data.label ? ` · ${data.label}` : ""}`],
     ["Travel Dates", `${formatDate(data.travel_start_date)} – ${formatDate(data.travel_end_date)}`],
+    ["Entry Port", data.entry_port ?? "—"],
+    ["Exit Port", data.exit_port ?? "—"],
     ["Guide", data.guide_name ?? "—"],
     ["Travellers", String(data.travellers.length)],
     ["Generated On", formatDateTime(data.generated_at)],

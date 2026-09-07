@@ -20,7 +20,7 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
 
   let query = supabase
     .from("travel_groups")
-    .select("id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, created_at, travellers(count), creator:profiles!travel_groups_created_by_fkey(display_name)", { count: "exact" })
+    .select("id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, created_at, travellers(count), creator:profiles!travel_groups_created_by_fkey(display_name)", { count: "exact" })
     .order("travel_date", { ascending: false })
     .order("group_code", { ascending: true })
     .range(from, to);
@@ -30,7 +30,7 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
     if (range) query = query.gte("travel_date", range[0]).lte("travel_date", range[1]);
     else {
       const like = `%${q.replace(/[%,]/g, "")}%`;
-      query = query.or(`group_code.ilike.${like},label.ilike.${like},guide_name.ilike.${like}`);
+      query = query.or(`group_code.ilike.${like},label.ilike.${like},guide_name.ilike.${like},entry_port.ilike.${like},exit_port.ilike.${like}`);
     }
   }
   const { data, count, error } = await query;
@@ -44,6 +44,8 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
     guide_name: g.guide_name,
     notes: g.notes,
     reference_prefix: g.reference_prefix,
+    entry_port: g.entry_port,
+    exit_port: g.exit_port,
     traveller_count: Array.isArray(g.travellers) ? Number(g.travellers[0]?.count ?? 0) : 0,
     created_by_name: g.creator?.display_name ?? null,
     created_at: g.created_at,

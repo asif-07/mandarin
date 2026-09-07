@@ -11,6 +11,7 @@ import { CompileGroupButton } from "@/components/travel/pack-panel";
 import { TravelDateNav } from "@/components/travel/date-param";
 import { GroupRowActions, GroupsToolbar } from "@/components/travel/groups-manager";
 import { RemoveFromGroupButton } from "@/components/travel/remove-from-group-button";
+import { StopToggle } from "@/components/shared/stop-toggle";
 import { createClient } from "@/lib/supabase/server";
 import { docCompleteness, groupPackReference } from "@/lib/queries/travel";
 import { TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
@@ -41,7 +42,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const { data: groups, error } = await supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
     )
     .eq("travel_date", date)
     .order("group_code");
@@ -87,12 +88,15 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                     <span className="block truncate text-xs text-mr-muted">
                       {formatDateRange(g.travel_date, g.travel_end_date)} · {groupPackReference(g, travellers.length)}
                     </span>
+                    <span className="block truncate text-xs text-mr-muted">
+                      {g.entry_port && g.exit_port ? `In: ${g.entry_port} · Out: ${g.exit_port}` : <span className="text-mr-warning">Entry / exit port missing</span>}
+                    </span>
                   </span>
                   <span className="tnum text-xs text-mr-body">
                     {travellers.length} pax
                   </span>
                   <DocsBadge count={complete} total={travellers.length || 0} />
-                  <span onClick={(e) => e.preventDefault()} className="contents">
+                  <StopToggle>
                     <GroupRowActions
                       group={{
                         id: g.id,
@@ -103,12 +107,14 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                         guide_name: g.guide_name,
                         notes: g.notes,
                         reference_prefix: g.reference_prefix,
+                        entry_port: g.entry_port,
+                        exit_port: g.exit_port,
                         traveller_count: travellers.length,
                         created_by_name: null,
                         created_at: null,
                       }}
                     />
-                  </span>
+                  </StopToggle>
                 </summary>
                 <div className="border-t border-mr-line px-4 py-3">
                   {travellers.length === 0 ? (
