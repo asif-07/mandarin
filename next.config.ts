@@ -22,6 +22,10 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "20mb",
     },
+    // Re-use a page's server payload for 30s when navigating back to it, so
+    // back/forward and repeated tab switches are instant. Mutations call
+    // router.refresh(), which bypasses this cache.
+    staleTimes: { dynamic: 30, static: 180 },
   },
 };
 

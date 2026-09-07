@@ -77,7 +77,7 @@ async function main() {
     await writeFile(path.join(OUT_DIR, "travel-pack-check.pdf"), built.bytes);
     console.log(`wrote ${path.join(OUT_DIR, "travel-pack-check.pdf")}`);
 
-    // Group PDF: group cover + (traveller cover + docs) per traveller, named from the group.
+    // Group PDF: one group cover, then every traveller's documents (no per-traveller covers), named from the group.
     const group = { travel_date: "2026-08-25", travel_end_date: "2026-08-30", group_code: "G01", reference_prefix: "MR144" };
     const reference = groupPackReference(group, 2);
     assert(reference === "MR144-Aug25-Aug30-02px-G01", `group reference (${reference})`);
@@ -108,7 +108,7 @@ async function main() {
         },
       ],
     });
-    assert(groupBuilt.pageCount === 5, `group pdf = 1 group cover + 2 x (cover + 1 doc) = 5 pages (got ${groupBuilt.pageCount})`);
+    assert(groupBuilt.pageCount === 3, `group pdf = 1 group cover + 2 x 1 doc = 3 pages (got ${groupBuilt.pageCount})`);
     const gdoc = await PDFDocument.load(groupBuilt.bytes);
     assert(gdoc.getTitle() === `${reference} - Group Travel Pack`, `group metadata title (${gdoc.getTitle()})`);
     await writeFile(path.join(OUT_DIR, `${reference}.pdf`), groupBuilt.bytes);

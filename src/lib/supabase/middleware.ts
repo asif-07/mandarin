@@ -36,11 +36,12 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Do not add logic between createServerClient and getUser(): it can cause
-  // hard-to-debug session invalidation.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Do not add logic between createServerClient and getClaims(): it can cause
+  // hard-to-debug session invalidation. getClaims() verifies the session JWT
+  // (locally when the project uses asymmetric keys) and refreshes it when it
+  // is about to expire, so most requests avoid a round trip to Supabase Auth.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

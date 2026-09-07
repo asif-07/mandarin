@@ -58,14 +58,12 @@ export async function imageToPdfPage(pdf: PDFDocument, bytes: Uint8Array): Promi
   page.drawImage(image, { x: (A4_W - w) / 2, y: (A4_H - h) / 2, width: w, height: h });
 }
 
-/**
- * Pure builder: cover page + documents (already downloaded) merged into one
- * PDF with metadata. No storage or database access, so it is unit-testable.
- */
-export async function buildTravelPackPdf(browser: Browser, traveller: PackTraveller, sources: PackSource[]): Promise<BuiltPack> {
-  const warnings: string[] = [];
-  const parts: { docId: string; label: string; fileName: string; doc: PDFDocument }[] = [];
+type Part = { docId: string; docType: string; label: string; fileName: string; doc: PDFDocument };
 
+/** Open every downloaded document as a PDF (images become one A4 page each). Unreadable files are skipped with a warning. */
+async function loadParts(sources: PackSource[]): Promise<{ parts: Part[]; warnings: string[] }> {
+  const warnings: string[] = [];
+  const parts: Part[] = [];
   for (const s of sources) {
     const label = labelFor(DOC_TYPES, s.docType);
     try {
@@ -76,11 +74,20 @@ export async function buildTravelPackPdf(browser: Browser, traveller: PackTravel
         doc = await PDFDocument.create();
         await imageToPdfPage(doc, s.bytes);
       }
-      parts.push({ docId: s.docId, label, fileName: s.fileName, doc });
+      parts.push({ docId: s.docId, docType: s.docType, label, fileName: s.fileName, doc });
     } catch (e) {
       warnings.push(`${label} (${s.fileName}) skipped: ${e instanceof Error ? e.message : "unreadable"}`);
     }
   }
+  return { parts, warnings };
+}
+
+/**
+ * Pure builder: cover page + documents (already downloaded) merged into one
+ * PDF with metadata. No storage or database access, so it is unit-testable.
+ */
+export async function buildTravelPackPdf(browser: Browser, traveller: PackTraveller, sources: PackSource[]): Promise<BuiltPack> {
+  const { parts, warnings } = await loadParts(sources);
 
   const present = new Set(sources.map((s) => s.docType));
   const missing = REQUIRED_DOC_TYPES.filter((r) => !present.has(r)).map((r) => labelFor(DOC_TYPES, r));
@@ -132,18 +139,19 @@ export type GroupPackInput = {
 };
 
 /**
- * One merged PDF for a whole group: a group cover listing every traveller,
- * then each traveller's section (their own cover, then PAR, passport, flight
- * ticket, hotel booking and any extras, in merge order).
+ * One merged PDF for a whole group: a single group cover listing every
+ * traveller, then each traveller's documents back to back (PAR, passport,
+ * flight ticket, hotel booking and any extras, in merge order). No
+ * per-traveller cover pages, so the pack is only the cover plus documents.
  */
 export async function buildGroupPackPdf(browser: Browser, input: GroupPackInput): Promise<BuiltPack> {
   const warnings: string[] = [];
-  const sections: { traveller: PackTraveller; built: BuiltPack; sources: PackSource[] }[] = [];
+  const sections: { traveller: PackTraveller; parts: Part[]; sources: PackSource[] }[] = [];
 
   for (const t of input.travellers) {
-    const built = await buildTravelPackPdf(browser, t.traveller, t.sources);
-    warnings.push(...built.warnings.map((w) => `${t.traveller.full_name}: ${w}`));
-    sections.push({ traveller: t.traveller, built, sources: t.sources });
+    const loaded = await loadParts(t.sources);
+    warnings.push(...loaded.warnings.map((w) => `${t.traveller.full_name}: ${w}`));
+    sections.push({ traveller: t.traveller, parts: loaded.parts, sources: t.sources });
   }
 
   const assets = await loadTemplateAssets();
@@ -166,7 +174,7 @@ export async function buildGroupPackPdf(browser: Browser, input: GroupPackInput)
           nationality: s.traveller.nationality,
           docs: REQUIRED_DOC_TYPES.filter((r) => present.has(r)).length,
           docs_total: REQUIRED_DOC_TYPES.length,
-          pages: s.built.pageCount,
+          pages: s.parts.reduce((n, p) => n + p.doc.getPageCount(), 0),
         };
       }),
     },
@@ -177,8 +185,9 @@ export async function buildGroupPackPdf(browser: Browser, input: GroupPackInput)
   const merged = await PDFDocument.create();
   for (const page of await merged.copyPages(coverPdf, coverPdf.getPageIndices())) merged.addPage(page);
   for (const s of sections) {
-    const doc = await PDFDocument.load(s.built.bytes);
-    for (const page of await merged.copyPages(doc, doc.getPageIndices())) merged.addPage(page);
+    for (const p of s.parts) {
+      for (const page of await merged.copyPages(p.doc, p.doc.getPageIndices())) merged.addPage(page);
+    }
   }
 
   merged.setTitle(`${input.reference} - Group Travel Pack`);
@@ -192,7 +201,7 @@ export async function buildGroupPackPdf(browser: Browser, input: GroupPackInput)
   return {
     bytes: await merged.save(),
     pageCount: merged.getPageCount(),
-    includedDocIds: sections.flatMap((s) => s.built.includedDocIds),
+    includedDocIds: sections.flatMap((s) => s.parts.map((p) => p.docId)),
     warnings,
   };
 }
