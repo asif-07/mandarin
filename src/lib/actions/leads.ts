@@ -138,3 +138,63 @@ export async function setFollowupDate(id: string, date: string | null): Promise<
   revalidateLeads(id);
   return ok({ next_followup_date: date });
 }
+
+// ---------------------------------------------------------------------------
+// bulk import
+// ---------------------------------------------------------------------------
+export type BulkLeadResult = {
+  created: number;
+  skipped: number;
+  failed: { row: number; error: string }[];
+};
+
+/**
+ * Create many leads from a CSV. Each row is validated with the normal lead
+ * schema and numbered atomically through create_lead(); rows that fail are
+ * reported with their row number and the rest still go in.
+ */
+export async function bulkCreateLeads(rows: LeadInput[], options?: { skipExistingPhones?: boolean }): Promise<ActionResult<BulkLeadResult>> {
+  await requireProfile();
+  if (!Array.isArray(rows) || rows.length === 0) return fail("Nothing to import");
+  if (rows.length > 500) return fail("Import at most 500 rows at a time");
+
+  const supabase = await createClient();
+  const result: BulkLeadResult = { created: 0, skipped: 0, failed: [] };
+
+  let existing = new Set<string>();
+  if (options?.skipExistingPhones) {
+    const phones = rows.map((r) => String(r.phone ?? "").trim()).filter(Boolean);
+    if (phones.length) {
+      const { data } = await supabase.from("leads").select("phone").in("phone", phones);
+      existing = new Set((data ?? []).map((l) => l.phone));
+    }
+  }
+
+  const year = new Date().getUTCFullYear();
+  const seen = new Set<string>();
+  for (let i = 0; i < rows.length; i++) {
+    const parsed = leadSchema.safeParse(rows[i]);
+    if (!parsed.success) {
+      const fields = z.flattenError(parsed.error).fieldErrors as Record<string, string[] | undefined>;
+      const msg = Object.entries(fields)
+        .map(([k, v]) => `${k}: ${v?.[0] ?? "invalid"}`)
+        .join("; ");
+      result.failed.push({ row: i + 1, error: msg || "Invalid row" });
+      continue;
+    }
+    const phone = parsed.data.phone;
+    if (options?.skipExistingPhones && (existing.has(phone) || seen.has(phone))) {
+      result.skipped++;
+      continue;
+    }
+    seen.add(phone);
+    const { error } = await supabase.rpc("create_lead", { p_year: year, p_lead: parsed.data });
+    if (error) result.failed.push({ row: i + 1, error: errorMessage(error, "Could not create lead") });
+    else result.created++;
+  }
+
+  revalidatePath("/leads");
+  revalidatePath("/leads/followups");
+  revalidatePath("/");
+  return ok(result);
+}

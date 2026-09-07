@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { CalendarClock, Plus, Users } from "lucide-react";
+import { CalendarClock, Download, Plus, Upload, Users } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { buttonVariants } from "@/components/ui/button";
@@ -66,6 +66,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     created_at: l.created_at,
   }));
   const hasFilters = !!(sp.q || sp.status || sp.type || sp.country || sp.source || sp.owner);
+  const exportQs = new URLSearchParams(
+    Object.fromEntries(Object.entries({ q: sp.q, status: sp.status, type: sp.type, country: sp.country, source: sp.source, owner: sp.owner }).filter(([, v]) => !!v)) as Record<string, string>,
+  ).toString();
 
   return (
     <>
@@ -73,6 +76,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         title="Leads"
         actions={
           <>
+            <a href={`/api/leads/export${exportQs ? `?${exportQs}` : ""}`} className={buttonVariants({ variant: "outline" })} title={hasFilters ? "Exports the filtered list" : "Exports all leads"}>
+              <Download /> Export
+            </a>
+            <Link href="/leads/import" className={buttonVariants({ variant: "outline" })}>
+              <Upload /> Import
+            </Link>
             <Link href="/leads/followups" className={buttonVariants({ variant: "outline" })}>
               <CalendarClock /> Follow-ups
             </Link>
