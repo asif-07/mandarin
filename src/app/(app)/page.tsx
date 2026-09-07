@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertTriangle, ArrowRight, Plane } from "lucide-react";
 import { addDays, parseISO, subDays } from "date-fns";
 import { PageHeader } from "@/components/shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +10,9 @@ import { DocsBadge } from "@/components/travel/traveller-table";
 import { createClient } from "@/lib/supabase/server";
 import { getFollowups } from "@/lib/queries/followups";
 import { docCompleteness, groupTitle } from "@/lib/queries/travel";
+import { CompileGroupButton } from "@/components/travel/pack-panel";
 import { ENQUIRY_TYPES, INVOICE_STATUSES, labelFor } from "@/lib/constants";
-import { daysFromToday, formatDate, formatMoney, formatNumber, todayISO, toISODate } from "@/lib/format";
+import { daysFromToday, formatDate, formatDateRange, formatMoney, formatNumber, todayISO, toISODate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -33,6 +34,7 @@ export default async function DashboardPage() {
     { data: urgentRows },
     { data: recentInvoices },
     { data: leadTypes },
+    { data: groupRows },
   ] = await Promise.all([
     supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", monthStartTs),
     supabase.from("leads").select("status").in("status", ["won", "lost"]).gte("updated_at", ago90Ts),
@@ -57,7 +59,21 @@ export default async function DashboardPage() {
       .order("sequence_number", { ascending: false })
       .limit(6),
     supabase.from("leads").select("enquiry_type").gte("created_at", ago90Ts),
+    supabase
+      .from("travel_groups")
+      .select("id, travel_date, travel_end_date, group_code, label, guide_name, entry_port, exit_port, travellers(id, status, traveller_documents(doc_type, deleted_at))")
+      .gte("travel_end_date", today)
+      .order("travel_date", { ascending: true })
+      .order("group_code", { ascending: true })
+      .limit(9),
   ]);
+
+  const upcomingGroups = (groupRows ?? []).map((g) => {
+    const active = g.travellers.filter((t) => t.status !== "cancelled");
+    const complete = active.filter((t) => docCompleteness(t.traveller_documents).complete).length;
+    const days = daysFromToday(g.travel_date) ?? 0;
+    return { ...g, pax: active.length, complete, days, travelling: days <= 0 };
+  });
 
   const won = (closed ?? []).filter((l) => l.status === "won").length;
   const closedCount = closed?.length ?? 0;
@@ -90,6 +106,63 @@ export default async function DashboardPage() {
         <Stat label="Invoiced this month" value={`USD ${formatNumber(invoiced)}`} hint="issued and paid, USD invoices" href="/invoices" />
         <Stat label="Travelling in 7 days" value={String(travellersNext7 ?? 0)} hint={`${formatDate(today)} to ${formatDate(in7)}`} href="/travel/travellers" />
       </div>
+
+      <section className="mt-6" aria-labelledby="upcoming-groups">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 id="upcoming-groups" className="flex items-center gap-2 text-base font-semibold text-mr-ink">
+            <Plane className="size-4 text-mr-red" /> Travelling groups
+          </h2>
+          <Link href="/travel" className="inline-flex items-center gap-1 text-xs font-medium text-mr-body hover:text-mr-ink">
+            All groups <ArrowRight className="size-3" />
+          </Link>
+        </div>
+        {upcomingGroups.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-mr-line px-4 py-6 text-center text-sm text-mr-muted">
+            No groups travelling today or later. <Link href="/travel/groups" className="underline">Create groups</Link> to see them here.
+          </p>
+        ) : (
+          <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {upcomingGroups.map((g) => (
+              <li key={g.id} className={cn("rounded-lg border bg-white p-5", g.travelling ? "border-mr-ink" : "border-mr-line")}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="tnum text-sm font-medium text-mr-body">{formatDateRange(g.travel_date, g.travel_end_date)}</p>
+                    <Link href={`/travel?date=${g.travel_date}`} className="mt-0.5 block truncate font-heading text-xl font-semibold text-mr-ink hover:underline">
+                      {g.group_code}
+                      {g.label ? <span className="font-sans text-base font-normal text-mr-body"> · {g.label}</span> : null}
+                    </Link>
+                  </div>
+                  <span className={cn("shrink-0 rounded-md px-2 py-1 text-xs font-medium", g.travelling ? "bg-mr-ink text-white" : g.days <= 7 ? "bg-mr-warning/10 text-mr-warning" : "bg-mr-surface text-mr-body")}>
+                    {g.travelling ? "Travelling now" : g.days === 1 ? "Tomorrow" : `In ${g.days} days`}
+                  </span>
+                </div>
+                <div className="mt-4 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="micro-label">Travellers</p>
+                    <p className="tnum mt-1 font-heading text-3xl font-semibold leading-none text-mr-ink">{g.pax}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="micro-label">Documents complete</p>
+                    <div className="mt-1 flex justify-end">
+                      <DocsBadge count={g.complete} total={g.pax} />
+                    </div>
+                  </div>
+                </div>
+                <p className="mt-4 truncate border-t border-mr-line pt-3 text-xs text-mr-muted">
+                  {g.entry_port && g.exit_port ? `In: ${g.entry_port} · Out: ${g.exit_port}` : <span className="text-mr-warning">Entry / exit port missing</span>}
+                  {g.guide_name ? ` · Guide: ${g.guide_name}` : ""}
+                </p>
+                <div className="mt-3 flex items-center justify-between">
+                  <Link href={`/travel?date=${g.travel_date}`} className="text-xs font-medium text-mr-body hover:text-mr-ink hover:underline">
+                    Open group
+                  </Link>
+                  <CompileGroupButton groupId={g.id} travellerCount={g.pax} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Card className="xl:order-1">
