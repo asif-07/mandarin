@@ -16,7 +16,7 @@ import { toISODate } from "@/lib/format";
 export const metadata: Metadata = { title: "Packages" };
 
 /**
- * Travellers on hotel packages, grouped by tier. Shows everyone travelling
+ * Travellers on packages, grouped by package type. Shows everyone travelling
  * from a week ago onwards so packages in progress and upcoming ones are visible.
  */
 export default async function PackagesPage({ searchParams }: { searchParams: Promise<{ all?: string }> }) {
@@ -47,7 +47,7 @@ export default async function PackagesPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader
         title="Packages"
-        description={`${total} traveller${total === 1 ? "" : "s"} on hotel packages${all === "1" ? " (all time)" : ", travelling from a week ago onwards"}.`}
+        description={`${total} traveller${total === 1 ? "" : "s"} on packages${all === "1" ? " (all time)" : ", travelling from a week ago onwards"}.`}
         actions={
           <>
             <Link href={all === "1" ? "/travel/packages" : "/travel/packages?all=1"} className={buttonVariants({ variant: "outline" })}>
@@ -65,7 +65,7 @@ export default async function PackagesPage({ searchParams }: { searchParams: Pro
       ) : total === 0 ? (
         <EmptyState
           icon={Hotel}
-          title="No package travellers yet. Set a hotel package on a traveller, or mark a lead as a package enquiry and add them to travel."
+          title="No package travellers yet. Set a package on a traveller, or mark a lead as a package enquiry and add them to travel."
           action={
             <Link href="/travel/travellers/new" className={buttonVariants()}>
               <Plus /> New traveller
@@ -80,7 +80,7 @@ export default async function PackagesPage({ searchParams }: { searchParams: Pro
             return (
               <section key={tier.value} className="rounded-lg border border-mr-line bg-white">
                 <header className="flex items-center justify-between border-b border-mr-line px-4 py-3">
-                  <h2 className="text-base">{tier.label} package</h2>
+                  <h2 className="text-base">{tier.label}</h2>
                   <span className="tnum text-xs text-mr-body">
                     {list.length} pax · <DocsBadge count={complete} total={list.length} />
                   </span>

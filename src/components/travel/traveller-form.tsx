@@ -199,7 +199,7 @@ export function TravellerForm({ mode, travellerId, defaultValues, initialGroup, 
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="t_package">Hotel package</Label>
+              <Label htmlFor="t_package">Package</Label>
               <Controller
                 control={control}
                 name="package_tier"

@@ -26,16 +26,22 @@ export const ENQUIRY_TYPES = [
   { value: "canton_fair_package", label: "Canton Fair Package", short: "Canton Fair" },
   { value: "china_business_visa", label: "China Business Visa (M Visa)", short: "M Visa" },
   { value: "group_tour", label: "Group Tour", short: "Group Tour" },
-  { value: "package", label: "Hotel Package (3 / 4 / 5 star)", short: "Package" },
+  { value: "package", label: "Package (Visa / Transit / Hotel)", short: "Package" },
   { value: "other", label: "Other", short: "Other" },
 ] as const satisfies readonly Option[];
 export type EnquiryType = (typeof ENQUIRY_TYPES)[number]["value"];
 
-/** Hotel package tiers, used on leads and travellers with enquiry type "package". */
+/** Package options, used on leads and travellers with enquiry type "package". */
 export const PACKAGE_TIERS = [
-  { value: "3_star", label: "3 Star", short: "3★" },
-  { value: "4_star", label: "4 Star", short: "4★" },
-  { value: "5_star", label: "5 Star", short: "5★" },
+  { value: "visa_only", label: "Visa Only", short: "Visa" },
+  { value: "visa_transit", label: "Visa + Transit", short: "Visa+Transit" },
+  { value: "visa_transit_hotel", label: "Visa + Transit + Hotel", short: "Visa+Transit+Hotel" },
+] as const satisfies readonly Option[];
+
+/** Where a travel group came from. */
+export const GROUP_SOURCES = [
+  { value: "internal", label: "Our group" },
+  { value: "b2b", label: "B2B partner" },
 ] as const satisfies readonly Option[];
 export type PackageTier = (typeof PACKAGE_TIERS)[number]["value"];
 

@@ -8,6 +8,7 @@ import {
   PACKAGE_TIERS,
   type Option,
 } from "@/lib/constants";
+import type { PackageTier } from "@/lib/constants";
 import type { LeadInput } from "@/lib/validation/lead";
 
 /**
@@ -23,7 +24,7 @@ export const LEAD_CSV_COLUMNS = [
   { key: "city", label: "City", required: false, example: "Dubai" },
   { key: "entry_city", label: "Entry city", required: false, example: "Guangzhou" },
   { key: "enquiry_type", label: "Enquiry type", required: true, example: "144hr Visa", hint: ENQUIRY_TYPES.map((t) => t.short).join(" / ") },
-  { key: "package_tier", label: "Package tier", required: false, example: "", hint: "3 Star / 4 Star / 5 Star (package enquiries only)" },
+  { key: "package_tier", label: "Package tier", required: false, example: "", hint: "Visa Only / Visa + Transit / Visa + Transit + Hotel (package enquiries only)" },
   { key: "source", label: "Source", required: false, example: "WhatsApp", hint: LEAD_SOURCES.map((s) => s.label).join(" / ") },
   { key: "status", label: "Status", required: false, example: "New", hint: LEAD_STATUSES.map((s) => s.label).join(" / ") },
   { key: "pax_count", label: "Pax", required: false, example: "2" },
@@ -193,10 +194,22 @@ const ENQUIRY_ALIASES: Record<string, string> = {
   tour: "group_tour",
   package: "package",
   "hotel package": "package",
-  "3 star": "package",
-  "4 star": "package",
-  "5 star": "package",
+  "visa only": "package",
+  "visa transit": "package",
+  "visa transit hotel": "package",
+  "visa and transit": "package",
+  "visa transit and hotel": "package",
 };
+
+/** "visa + transit + hotel", "visa transit", "visa only" in any spacing/punctuation. */
+function matchPackage(raw: string): PackageTier | null {
+  const n = norm(raw);
+  if (!n) return null;
+  if (/hotel/.test(n)) return "visa_transit_hotel";
+  if (/transit/.test(n)) return "visa_transit";
+  if (/visa/.test(n)) return "visa_only";
+  return null;
+}
 
 export type NormalisedRow = { input: LeadInput; warnings: string[] };
 
@@ -214,7 +227,8 @@ export function normaliseRow(cells: string[], keys: (LeadCsvKey | null)[], profi
   const enquiryRaw = get("enquiry_type");
   const enquiry = matchOption(ENQUIRY_TYPES, enquiryRaw) ?? ENQUIRY_ALIASES[norm(enquiryRaw)] ?? (enquiryRaw || "");
   let tier = matchOption(PACKAGE_TIERS, get("package_tier"));
-  if (!tier && /star/i.test(enquiryRaw)) tier = matchOption(PACKAGE_TIERS, enquiryRaw);
+  if (!tier && /transit|visa only/i.test(enquiryRaw)) tier = matchPackage(enquiryRaw);
+  if (!tier && get("package_tier")) tier = matchPackage(get("package_tier"));
 
   const countryRaw = get("country");
   const country = countryRaw ? (matchOption(COUNTRIES as unknown as readonly Option[], countryRaw) ?? (/uae|emirates|dubai|abu dhabi/i.test(countryRaw) ? "UAE" : "Other")) : null;

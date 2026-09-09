@@ -913,7 +913,15 @@ export type Database = {
           id: string
           label: string | null
           notes: string | null
+          pack_file_name: string | null
+          pack_path: string | null
+          pack_uploaded_at: string | null
+          pack_uploaded_by: string | null
+          partner_code: string | null
+          partner_reference: string | null
+          pax_expected: number | null
           reference_prefix: string
+          source: string
           travel_date: string
           travel_end_date: string
         }
@@ -927,7 +935,15 @@ export type Database = {
           id?: string
           label?: string | null
           notes?: string | null
+          pack_file_name?: string | null
+          pack_path?: string | null
+          pack_uploaded_at?: string | null
+          pack_uploaded_by?: string | null
+          partner_code?: string | null
+          partner_reference?: string | null
+          pax_expected?: number | null
           reference_prefix?: string
+          source?: string
           travel_date: string
           travel_end_date: string
         }
@@ -941,7 +957,15 @@ export type Database = {
           id?: string
           label?: string | null
           notes?: string | null
+          pack_file_name?: string | null
+          pack_path?: string | null
+          pack_uploaded_at?: string | null
+          pack_uploaded_by?: string | null
+          partner_code?: string | null
+          partner_reference?: string | null
+          pax_expected?: number | null
           reference_prefix?: string
+          source?: string
           travel_date?: string
           travel_end_date?: string
         }
@@ -949,6 +973,13 @@ export type Database = {
           {
             foreignKeyName: "travel_groups_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_groups_pack_uploaded_by_fkey"
+            columns: ["pack_uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1214,7 +1245,9 @@ export type Database = {
         Returns: string
       }
       is_admin: { Args: never; Returns: boolean }
+      create_b2b_group: { Args: { p: Json }; Returns: Json }
       next_counter: { Args: { counter_key: string }; Returns: number }
+      next_group_code: { Args: { p_date: string }; Returns: string }
       update_invoice: {
         Args: { p_id: string; p_invoice: Json; p_items: Json }
         Returns: string

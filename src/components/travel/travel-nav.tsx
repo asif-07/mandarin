@@ -8,6 +8,7 @@ const TABS = [
   { href: "/travel", label: "By group", exact: true },
   { href: "/travel/travellers", label: "By traveller" },
   { href: "/travel/packages", label: "Packages" },
+  { href: "/travel/b2b", label: "B2B groups" },
   { href: "/travel/calendar", label: "Calendar" },
   { href: "/travel/groups", label: "Groups" },
 ];

@@ -24,13 +24,13 @@ export default async function TravelCalendarPage({ searchParams }: { searchParam
   const supabase = await createClient();
   const [{ data: travellers }, { data: groups }] = await Promise.all([
     supabase.from("travellers").select("travel_start_date").gte("travel_start_date", from).lte("travel_start_date", to).neq("status", "cancelled"),
-    supabase.from("travel_groups").select("travel_date").gte("travel_date", from).lte("travel_date", to),
+    supabase.from("travel_groups").select("travel_date, group_code, source, partner_code, pax_expected").gte("travel_date", from).lte("travel_date", to).order("group_code"),
   ]);
 
   const travellerCount = new Map<string, number>();
   (travellers ?? []).forEach((t) => travellerCount.set(t.travel_start_date, (travellerCount.get(t.travel_start_date) ?? 0) + 1));
-  const groupCount = new Map<string, number>();
-  (groups ?? []).forEach((g) => groupCount.set(g.travel_date, (groupCount.get(g.travel_date) ?? 0) + 1));
+  const groupsByDay = new Map<string, { group_code: string; source: string; partner_code: string | null; pax_expected: number | null }[]>();
+  (groups ?? []).forEach((g) => groupsByDay.set(g.travel_date, [...(groupsByDay.get(g.travel_date) ?? []), g]));
 
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
   const prevMonth = format(addMonths(monthStart, -1), "yyyy-MM");
@@ -40,7 +40,7 @@ export default async function TravelCalendarPage({ searchParams }: { searchParam
     <>
       <PageHeader
         title="Travel calendar"
-        description="Travellers departing and groups running per day."
+        description="Travellers departing and groups starting per day. Dark chips are B2B partner groups."
         actions={
           <div className="flex items-center gap-2">
             <Link href={`/travel/calendar?month=${prevMonth}`} className={buttonVariants({ variant: "outline", size: "icon" })} aria-label="Previous month">
@@ -67,7 +67,8 @@ export default async function TravelCalendarPage({ searchParams }: { searchParam
               const iso = format(day, "yyyy-MM-dd");
               const inMonth = day >= monthStart && day <= monthEnd;
               const tc = travellerCount.get(iso) ?? 0;
-              const gc = groupCount.get(iso) ?? 0;
+              const dayGroups = groupsByDay.get(iso) ?? [];
+              const gc = dayGroups.length;
               const isToday = iso === today;
               return (
                 <Link
@@ -87,8 +88,18 @@ export default async function TravelCalendarPage({ searchParams }: { searchParam
                     </span>
                   )}
                   {gc > 0 && (
-                    <span className="tnum text-xs text-mr-body">
-                      {gc} group{gc === 1 ? "" : "s"}
+                    <span className="mt-1 flex flex-wrap gap-1">
+                      {dayGroups.slice(0, 4).map((g) => (
+                        <span
+                          key={g.group_code}
+                          className={cn("rounded px-1 py-0.5 text-[10px] font-medium leading-none", g.source === "b2b" ? "bg-mr-ink text-white" : "bg-mr-surface text-mr-body")}
+                          title={g.source === "b2b" ? `${g.group_code} · B2B ${g.partner_code} · ${g.pax_expected ?? 0} pax` : g.group_code}
+                        >
+                          {g.group_code}
+                          {g.source === "b2b" ? ` ${g.partner_code}` : ""}
+                        </span>
+                      ))}
+                      {gc > 4 && <span className="text-[10px] text-mr-muted">+{gc - 4}</span>}
                     </span>
                   )}
                 </Link>

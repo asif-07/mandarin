@@ -27,6 +27,9 @@ export type GroupRow = {
   reference_prefix: string;
   entry_port: string | null;
   exit_port: string | null;
+  source?: string | null;
+  partner_code?: string | null;
+  pax_expected?: number | null;
   traveller_count: number;
   created_by_name: string | null;
   created_at: string | null;
@@ -359,6 +362,7 @@ export function GroupsList({ groups }: { groups: GroupRow[] }) {
                   {g.group_code}
                 </Link>
                 <span className="min-w-0 flex-1 truncate text-sm text-mr-body">
+                  {g.source === "b2b" && <span className="mr-2 rounded-md bg-mr-ink px-1.5 py-0.5 text-[11px] font-medium text-white">B2B {g.partner_code}</span>}
                   {g.label ?? <span className="text-mr-muted">No label</span>}
                   {g.guide_name ? ` · Guide: ${g.guide_name}` : ""}
                   <span className="ml-2 font-mono text-[11px] text-mr-muted">{groupPackReference(g, g.traveller_count)}</span>
@@ -367,7 +371,7 @@ export function GroupsList({ groups }: { groups: GroupRow[] }) {
                   </span>
                 </span>
                 <span className="tnum text-sm text-mr-body">
-                  {g.traveller_count} traveller{g.traveller_count === 1 ? "" : "s"}
+                  {g.source === "b2b" && g.pax_expected ? `${g.pax_expected} pax` : `${g.traveller_count} traveller${g.traveller_count === 1 ? "" : "s"}`}
                 </span>
                 <GroupRowActions group={g} />
               </li>

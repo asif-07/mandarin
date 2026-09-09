@@ -1,5 +1,6 @@
 import { DOC_TYPES, REQUIRED_DOC_TYPES, labelFor } from "@/lib/constants";
 import { formatDateRange, formatMonthDay } from "@/lib/format";
+import { b2bReference } from "@/lib/travel/b2b-code";
 
 export type DocStub = { doc_type: string; deleted_at: string | null };
 
@@ -22,6 +23,9 @@ export type GroupLike = {
   group_code: string;
   label?: string | null;
   reference_prefix?: string | null;
+  source?: string | null;
+  partner_code?: string | null;
+  pax_expected?: number | null;
 };
 
 /** "15–20 Oct 2026 · G03" (+ label) */
@@ -38,6 +42,13 @@ export function groupTitle(g: GroupLike | null | undefined) {
  *   prefix - start - end - pax count - group code
  */
 export function groupPackReference(g: GroupLike, pax: number): string {
+  if (g.source === "b2b" && g.partner_code) {
+    // Partner groups keep the partner's own code shape: MR144-EDPT-OCT15-OCT20-100PX-G03
+    return b2bReference(
+      { reference_prefix: g.reference_prefix, partner_code: g.partner_code, travel_date: g.travel_date, travel_end_date: g.travel_end_date ?? g.travel_date, group_code: g.group_code },
+      g.pax_expected ?? pax,
+    );
+  }
   const prefix = (g.reference_prefix || "MR144").toUpperCase();
   const start = formatMonthDay(g.travel_date);
   const end = formatMonthDay(g.travel_end_date ?? g.travel_date);

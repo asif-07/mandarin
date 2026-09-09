@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { bulkGroupSchema, groupSchema, type BulkGroupInput, type GroupInput } from "@/lib/validation/travel";
 import { errorMessage, fail, ok, type ActionResult } from "@/lib/result";
-import { formatDate } from "@/lib/format";
+import { formatDate, todayISO } from "@/lib/format";
+import { BUCKETS } from "@/lib/constants";
+import { b2bReference, parseB2bCode } from "@/lib/travel/b2b-code";
 
 function revalidateTravel() {
   revalidatePath("/travel");
@@ -42,6 +44,9 @@ export type GroupOption = {
   reference_prefix: string;
   entry_port?: string | null;
   exit_port?: string | null;
+  source?: string | null;
+  partner_code?: string | null;
+  pax_expected?: number | null;
   traveller_count: number;
 };
 
@@ -141,7 +146,7 @@ export async function searchGroups(query: string, limit = 60): Promise<GroupOpti
   const q = query.trim();
   let req = supabase
     .from("travel_groups")
-    .select("id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, travellers(count)")
+    .select("id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, travellers(count)")
     .order("travel_date", { ascending: false })
     .order("group_code", { ascending: true })
     .limit(limit);
@@ -164,6 +169,139 @@ export async function searchGroups(query: string, limit = 60): Promise<GroupOpti
     reference_prefix: g.reference_prefix,
     entry_port: g.entry_port,
     exit_port: g.exit_port,
+    source: g.source,
+    partner_code: g.partner_code,
+    pax_expected: g.pax_expected,
     traveller_count: Array.isArray(g.travellers) ? Number(g.travellers[0]?.count ?? 0) : 0,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// B2B partner groups
+// ---------------------------------------------------------------------------
+export type B2bPreview = {
+  partner_code: string;
+  travel_date: string;
+  travel_end_date: string;
+  pax: number;
+  partner_group: string;
+  partner_reference: string;
+  our_group_code: string;
+  our_reference: string;
+  existing_codes: string[];
+  duplicate: { id: string; group_code: string } | null;
+};
+
+/** Parse a partner code and work out which G-code it will get on that date. */
+export async function previewB2bCode(code: string): Promise<ActionResult<B2bPreview>> {
+  await requireProfile();
+  const parsed = parseB2bCode(code, todayISO());
+  if (!parsed.ok) return fail(parsed.error);
+  const v = parsed.value;
+  const supabase = await createClient();
+  const [{ data: existing }, { data: next }] = await Promise.all([
+    supabase.from("travel_groups").select("id, group_code, partner_reference").eq("travel_date", v.travel_date).order("group_code"),
+    supabase.rpc("next_group_code", { p_date: v.travel_date }),
+  ]);
+  const ourCode = typeof next === "string" ? next : "G01";
+  const dup = (existing ?? []).find((g) => g.partner_reference && g.partner_reference.toUpperCase() === v.normalised) ?? null;
+  return ok({
+    partner_code: v.partner_code,
+    travel_date: v.travel_date,
+    travel_end_date: v.travel_end_date,
+    pax: v.pax,
+    partner_group: v.partner_group,
+    partner_reference: v.normalised,
+    our_group_code: ourCode,
+    our_reference: b2bReference({ reference_prefix: v.prefix, partner_code: v.partner_code, travel_date: v.travel_date, travel_end_date: v.travel_end_date, group_code: ourCode }, v.pax),
+    existing_codes: (existing ?? []).map((g) => g.group_code),
+    duplicate: dup ? { id: dup.id, group_code: dup.group_code } : null,
+  });
+}
+
+const b2bRegisterSchema = z.object({
+  code: z.string().trim().min(1, "Enter the partner's code"),
+  upload_path: z.string().min(1).max(500),
+  file_name: z.string().trim().min(1).max(255),
+  entry_port: z.string().trim().max(120).optional().nullable().transform((v) => (v ? v : null)),
+  exit_port: z.string().trim().max(120).optional().nullable().transform((v) => (v ? v : null)),
+  label: z.string().trim().max(200).optional().nullable().transform((v) => (v ? v : null)),
+  guide_name: z.string().trim().max(200).optional().nullable().transform((v) => (v ? v : null)),
+  notes: z.string().trim().max(2000).optional().nullable().transform((v) => (v ? v : null)),
+});
+export type B2bRegisterInput = z.input<typeof b2bRegisterSchema>;
+
+/**
+ * Create the group for an uploaded partner pack. The file was uploaded by the
+ * browser to a temporary path; it is moved under the new group and renamed
+ * to our reference (partner code, dates, pax and OUR group number).
+ */
+export async function registerB2bGroup(input: B2bRegisterInput): Promise<ActionResult<{ id: string; group_code: string; reference: string; travel_date: string }>> {
+  const profile = await requireProfile();
+  const parsed = b2bRegisterSchema.safeParse(input);
+  if (!parsed.success) return fail("Please fix the highlighted fields", z.flattenError(parsed.error).fieldErrors);
+  const code = parseB2bCode(parsed.data.code, todayISO());
+  if (!code.ok) return fail(code.error, { code: [code.error] });
+  if (!parsed.data.upload_path.startsWith("_b2b/incoming/")) return fail("Upload the PDF first");
+  const v = code.value;
+  const supabase = await createClient();
+
+  const { data: created, error } = await supabase.rpc("create_b2b_group", {
+    p: {
+      travel_date: v.travel_date,
+      travel_end_date: v.travel_end_date,
+      reference_prefix: v.prefix,
+      partner_code: v.partner_code,
+      partner_reference: v.normalised,
+      pax_expected: v.pax,
+      label: parsed.data.label ?? `${v.partner_code} · ${v.pax} pax`,
+      guide_name: parsed.data.guide_name,
+      notes: parsed.data.notes,
+      entry_port: parsed.data.entry_port,
+      exit_port: parsed.data.exit_port,
+    },
+  });
+  const row = created as { id?: string; group_code?: string } | null;
+  if (error || !row?.id || !row.group_code) return fail(errorMessage(error, "Could not create the group"));
+
+  const reference = b2bReference({ reference_prefix: v.prefix, partner_code: v.partner_code, travel_date: v.travel_date, travel_end_date: v.travel_end_date, group_code: row.group_code }, v.pax);
+  const finalPath = `_b2b/${row.id}/${reference}.pdf`;
+  const { error: moveError } = await supabase.storage.from(BUCKETS.travelPacks).move(parsed.data.upload_path, finalPath);
+  if (moveError) return fail(`Group ${row.group_code} was created but the file could not be filed: ${moveError.message}`);
+
+  const { error: updateError } = await supabase
+    .from("travel_groups")
+    .update({ pack_path: finalPath, pack_file_name: `${reference}.pdf`, pack_uploaded_at: new Date().toISOString(), pack_uploaded_by: profile.id })
+    .eq("id", row.id);
+  if (updateError) return fail(errorMessage(updateError, "Could not record the pack"));
+
+  revalidateTravel();
+  revalidatePath("/travel/b2b");
+  return ok({ id: row.id, group_code: row.group_code, reference, travel_date: v.travel_date });
+}
+
+/** Replace the partner pack on an existing B2B group (file already uploaded to the incoming path). */
+export async function replaceB2bPack(groupId: string, uploadPath: string): Promise<ActionResult<{ reference: string }>> {
+  const profile = await requireProfile();
+  if (!uploadPath.startsWith("_b2b/incoming/")) return fail("Upload the PDF first");
+  const supabase = await createClient();
+  const { data: g } = await supabase
+    .from("travel_groups")
+    .select("id, travel_date, travel_end_date, group_code, reference_prefix, partner_code, pax_expected, pack_path")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (!g || !g.partner_code) return fail("B2B group not found");
+  const reference = b2bReference({ reference_prefix: g.reference_prefix, partner_code: g.partner_code, travel_date: g.travel_date, travel_end_date: g.travel_end_date, group_code: g.group_code }, g.pax_expected ?? 0);
+  const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+  const finalPath = `_b2b/${g.id}/${stamp}/${reference}.pdf`;
+  const { error: moveError } = await supabase.storage.from(BUCKETS.travelPacks).move(uploadPath, finalPath);
+  if (moveError) return fail(errorMessage(moveError, "Could not file the new pack"));
+  const { error } = await supabase
+    .from("travel_groups")
+    .update({ pack_path: finalPath, pack_file_name: `${reference}.pdf`, pack_uploaded_at: new Date().toISOString(), pack_uploaded_by: profile.id })
+    .eq("id", groupId);
+  if (error) return fail(errorMessage(error, "Could not record the pack"));
+  revalidateTravel();
+  revalidatePath("/travel/b2b");
+  return ok({ reference });
 }

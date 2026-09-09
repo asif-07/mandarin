@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Layers, Plus } from "lucide-react";
+import { Download, Layers, Plus } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { buttonVariants } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const { data: groups, error } = await supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
     )
     .eq("travel_date", date)
     .order("group_code");
@@ -83,6 +83,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                 <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
                   <span className="text-base font-semibold text-mr-ink">{g.group_code}</span>
                   <span className="min-w-0 flex-1 truncate text-sm text-mr-body">
+                    {g.source === "b2b" && <span className="mr-2 rounded-md bg-mr-ink px-1.5 py-0.5 text-[11px] font-medium text-white">B2B {g.partner_code}</span>}
                     {g.label ?? <span className="text-mr-muted">No label</span>}
                     {g.guide_name ? ` · ${g.guide_name}` : ""}
                     <span className="block truncate text-xs text-mr-muted">
@@ -93,9 +94,9 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                     </span>
                   </span>
                   <span className="tnum text-xs text-mr-body">
-                    {travellers.length} pax
+                    {g.source === "b2b" && g.pax_expected ? `${g.pax_expected} pax` : `${travellers.length} pax`}
                   </span>
-                  <DocsBadge count={complete} total={travellers.length || 0} />
+                  {g.source !== "b2b" && <DocsBadge count={complete} total={travellers.length || 0} />}
                   <StopToggle>
                     <GroupRowActions
                       group={{
@@ -109,6 +110,9 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                         reference_prefix: g.reference_prefix,
                         entry_port: g.entry_port,
                         exit_port: g.exit_port,
+                        source: g.source,
+                        partner_code: g.partner_code,
+                        pax_expected: g.pax_expected,
                         traveller_count: travellers.length,
                         created_by_name: null,
                         created_at: null,
@@ -118,7 +122,9 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                 </summary>
                 <div className="border-t border-mr-line px-4 py-3">
                   {travellers.length === 0 ? (
-                    <p className="text-sm text-mr-muted">No travellers assigned yet.</p>
+                    <p className="text-sm text-mr-muted">
+                      {g.source === "b2b" ? `Partner group: ${g.partner_code} compiled this pack themselves (${g.pax_expected ?? 0} pax). No individual travellers are tracked here.` : "No travellers assigned yet."}
+                    </p>
                   ) : (
                     <ul className="divide-y divide-mr-line">
                       {travellers.map((t) => {
@@ -147,7 +153,19 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                     <Link href={`/travel/travellers/new`} className="text-xs text-mr-body hover:text-mr-ink hover:underline">
                       + Add traveller
                     </Link>
-                    <CompileGroupButton groupId={g.id} travellerCount={travellers.length} />
+                    {g.source === "b2b" ? (
+                      g.pack_path ? (
+                        <a href={`/api/groups/${g.id}/b2b-pack`} className={buttonVariants({ size: "sm" })}>
+                          <Download /> Download partner pack
+                        </a>
+                      ) : (
+                        <Link href="/travel/b2b" className="text-xs text-mr-warning hover:underline">
+                          No pack file yet
+                        </Link>
+                      )
+                    ) : (
+                      <CompileGroupButton groupId={g.id} travellerCount={travellers.length} />
+                    )}
                   </div>
                 </div>
               </details>

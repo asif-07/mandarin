@@ -185,7 +185,7 @@ export function LeadForm({ mode, leadId, defaultValues, profiles, currentUserId,
                   render={({ field }) => (
                     <Select value={field.value ?? ""} onValueChange={field.onChange}>
                       <SelectTrigger id="package_tier" className="w-full rounded-lg" aria-invalid={!!errors.package_tier}>
-                        <SelectValue placeholder="3, 4 or 5 star" />
+                        <SelectValue placeholder="Choose the package" />
                       </SelectTrigger>
                       <SelectContent>
                         {PACKAGE_TIERS.map((t) => (

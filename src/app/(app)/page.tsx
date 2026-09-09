@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Plane } from "lucide-react";
+import { AlertTriangle, ArrowRight, Download, Plane } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { addDays, parseISO, subDays } from "date-fns";
 import { PageHeader } from "@/components/shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,7 +62,7 @@ export default async function DashboardPage() {
     supabase.from("leads").select("enquiry_type").gte("created_at", ago90Ts),
     supabase
       .from("travel_groups")
-      .select("id, travel_date, travel_end_date, group_code, label, guide_name, entry_port, exit_port, travellers(id, status, traveller_documents(doc_type, deleted_at))")
+      .select("id, travel_date, travel_end_date, group_code, label, guide_name, entry_port, exit_port, source, partner_code, pax_expected, pack_path, travellers(id, status, traveller_documents(doc_type, deleted_at))")
       .gte("travel_end_date", today)
       .order("travel_date", { ascending: true })
       .order("group_code", { ascending: true })
@@ -72,7 +73,8 @@ export default async function DashboardPage() {
     const active = g.travellers.filter((t) => t.status !== "cancelled");
     const complete = active.filter((t) => docCompleteness(t.traveller_documents).complete).length;
     const days = daysFromToday(g.travel_date) ?? 0;
-    return { ...g, pax: active.length, complete, days, travelling: days <= 0 };
+    const b2b = g.source === "b2b";
+    return { ...g, b2b, pax: b2b && g.pax_expected ? g.pax_expected : active.length, complete, days, travelling: days <= 0 };
   });
 
   const won = (closed ?? []).filter((l) => l.status === "won").length;
@@ -129,6 +131,7 @@ export default async function DashboardPage() {
                     <p className="tnum text-sm font-medium text-mr-body">{formatDateRange(g.travel_date, g.travel_end_date)}</p>
                     <Link href={`/travel?date=${g.travel_date}`} className="mt-0.5 block truncate font-heading text-xl font-semibold text-mr-ink hover:underline">
                       {g.group_code}
+                      {g.b2b && <span className="ml-2 align-middle rounded-md bg-mr-ink px-1.5 py-0.5 font-sans text-[11px] font-medium text-white">B2B {g.partner_code}</span>}
                       {g.label ? <span className="font-sans text-base font-normal text-mr-body"> · {g.label}</span> : null}
                     </Link>
                   </div>
@@ -141,12 +144,20 @@ export default async function DashboardPage() {
                     <p className="micro-label">Travellers</p>
                     <p className="tnum mt-1 font-heading text-3xl font-semibold leading-none text-mr-ink">{g.pax}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="micro-label">Documents complete</p>
-                    <div className="mt-1 flex justify-end">
-                      <DocsBadge count={g.complete} total={g.pax} />
+                  {!g.b2b && (
+                    <div className="text-right">
+                      <p className="micro-label">Documents complete</p>
+                      <div className="mt-1 flex justify-end">
+                        <DocsBadge count={g.complete} total={g.pax} />
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  {g.b2b && (
+                    <div className="text-right">
+                      <p className="micro-label">Pack</p>
+                      <p className="mt-1 text-xs text-mr-body">{g.pack_path ? "Partner PDF filed" : "Not uploaded"}</p>
+                    </div>
+                  )}
                 </div>
                 <p className="mt-4 truncate border-t border-mr-line pt-3 text-xs text-mr-muted">
                   {g.entry_port && g.exit_port ? `In: ${g.entry_port} · Out: ${g.exit_port}` : <span className="text-mr-warning">Entry / exit port missing</span>}
@@ -156,7 +167,15 @@ export default async function DashboardPage() {
                   <Link href={`/travel?date=${g.travel_date}`} className="text-xs font-medium text-mr-body hover:text-mr-ink hover:underline">
                     Open group
                   </Link>
-                  <CompileGroupButton groupId={g.id} travellerCount={g.pax} />
+                  {g.b2b ? (
+                    g.pack_path ? (
+                      <a href={`/api/groups/${g.id}/b2b-pack`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                        <Download /> Partner pack
+                      </a>
+                    ) : null
+                  ) : (
+                    <CompileGroupButton groupId={g.id} travellerCount={g.pax} />
+                  )}
                 </div>
               </li>
             ))}
