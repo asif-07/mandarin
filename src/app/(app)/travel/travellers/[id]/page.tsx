@@ -11,6 +11,7 @@ import { CompilePackButton, PackHistory } from "@/components/travel/pack-panel";
 import { TravellerStatusSelect } from "@/components/travel/traveller-status-select";
 import { createClient } from "@/lib/supabase/server";
 import { docCompleteness, groupTitle } from "@/lib/queries/travel";
+import { DeleteTravellerButton } from "@/components/travel/delete-traveller-button";
 import { BUCKETS, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
 import type { TravellerInput } from "@/lib/validation/travel";
@@ -76,6 +77,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
     visa_reference: t.visa_reference ?? "",
     status: t.status,
     package_tier: t.package_tier,
+    hotel_name: t.hotel_name,
     notes: t.notes ?? "",
     lead_id: t.lead_id,
     invoice_id: t.invoice_id,
@@ -100,7 +102,12 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
       <PageHeader
         title={t.full_name}
         description={`${t.traveller_ref} · ${formatDate(t.travel_start_date)} – ${formatDate(t.travel_end_date)}${t.group ? ` · ${groupTitle(t.group)}` : ""}`}
-        actions={<CompilePackButton travellerId={t.id} missing={completeness.missingLabels} />}
+        actions={
+          <>
+            <DeleteTravellerButton travellerId={t.id} travellerName={t.full_name} />
+            <CompilePackButton travellerId={t.id} missing={completeness.missingLabels} />
+          </>
+        }
       />
 
       <div className="mb-6 flex flex-wrap items-center gap-3">

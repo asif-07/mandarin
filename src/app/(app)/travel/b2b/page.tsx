@@ -7,6 +7,9 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { B2bUploadButton, ReplaceB2bPackButton } from "@/components/travel/b2b-upload";
 import { GroupRowActions } from "@/components/travel/groups-manager";
+import { GroupVisaPanel } from "@/components/travel/group-visa";
+import { PartnerLogosCard } from "@/components/travel/partner-logos";
+import { BUCKETS, PACKAGE_TIERS, labelFor } from "@/lib/constants";
 import { SearchParamInput } from "@/components/shared/url-filters";
 import { createClient } from "@/lib/supabase/server";
 import { groupPackReference } from "@/lib/queries/travel";
@@ -20,7 +23,7 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
   let query = supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, partner_reference, pax_expected, pack_path, pack_file_name, pack_uploaded_at, uploader:profiles!travel_groups_pack_uploaded_by_fkey(display_name), travellers(count)",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, partner_reference, pax_expected, pack_path, pack_file_name, pack_uploaded_at, package_tier, hotel_name, visa_status, visa_applied_at, visa_uploaded_at, visa_path, uploader:profiles!travel_groups_pack_uploaded_by_fkey(display_name), travellers(count)",
     )
     .eq("source", "b2b")
     .order("travel_date", { ascending: false })
@@ -30,8 +33,13 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
     const like = `%${sp.q.trim().replace(/[%,]/g, "")}%`;
     query = query.or(`partner_code.ilike.${like},partner_reference.ilike.${like},group_code.ilike.${like},label.ilike.${like}`);
   }
-  const { data, error } = await query;
+  const [{ data, error }, { data: partnerRows }] = await Promise.all([query, supabase.from("b2b_partners").select("id, code, name, logo_path, logo_file_name").order("code")]);
   const groups = data ?? [];
+  const logoPaths = (partnerRows ?? []).map((p) => p.logo_path).filter((p): p is string => !!p);
+  const { data: signedLogos } = logoPaths.length ? await supabase.storage.from(BUCKETS.partnerLogos).createSignedUrls(logoPaths, 3600) : { data: [] as { path: string | null; signedUrl: string }[] };
+  const logoUrl = new Map((signedLogos ?? []).map((s) => [s.path, s.signedUrl]));
+  const partners = (partnerRows ?? []).map((p) => ({ ...p, logo_url: p.logo_path ? (logoUrl.get(p.logo_path) ?? null) : null }));
+  const partnerHasLogo = new Map(partners.map((p) => [p.code, !!p.logo_path]));
 
   const byPartner = new Map<string, number>();
   groups.forEach((g) => byPartner.set(g.partner_code ?? "?", (byPartner.get(g.partner_code ?? "?") ?? 0) + 1));
@@ -53,6 +61,10 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
           )}
         </div>
       </Suspense>
+
+      <div className="mb-6">
+        <PartnerLogosCard partners={partners} />
+      </div>
 
       {error ? (
         <p className="text-sm text-mr-red">Could not load groups: {error.message}</p>
@@ -85,6 +97,8 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
                       reference_prefix: g.reference_prefix,
                       entry_port: g.entry_port,
                       exit_port: g.exit_port,
+                      package_tier: g.package_tier,
+                      hotel_name: g.hotel_name,
                       source: g.source,
                       partner_code: g.partner_code,
                       pax_expected: g.pax_expected,
@@ -107,6 +121,7 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
                 <p className="mt-3 break-all border-t border-mr-line pt-3 font-mono text-xs text-mr-ink">{reference}.pdf</p>
                 <p className="mt-1 truncate text-xs text-mr-muted">
                   {g.entry_port && g.exit_port ? `In: ${g.entry_port} · Out: ${g.exit_port}` : <span className="text-mr-warning">Entry / exit port missing</span>}
+                  {g.package_tier ? ` · ${labelFor(PACKAGE_TIERS, g.package_tier)}${g.hotel_name ? ` (${g.hotel_name})` : ""}` : ""}
                   {g.pack_uploaded_at ? ` · uploaded ${formatDateTime(g.pack_uploaded_at)}${g.uploader?.display_name ? ` by ${g.uploader.display_name}` : ""}` : ""}
                 </p>
                 <div className="mt-3 flex items-center justify-between gap-2">
@@ -118,6 +133,22 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
                     <span className="text-xs text-mr-warning">No pack file</span>
                   )}
                   <ReplaceB2bPackButton groupId={g.id} label={g.pack_path ? "Replace" : "Upload pack"} />
+                </div>
+                <div className="mt-3 border-t border-mr-line pt-3">
+                  <GroupVisaPanel
+                    group={{
+                      id: g.id,
+                      source: g.source,
+                      partner_code: g.partner_code,
+                      visa_status: g.visa_status,
+                      visa_applied_at: g.visa_applied_at,
+                      visa_uploaded_at: g.visa_uploaded_at,
+                      visa_path: g.visa_path,
+                      pack_path: g.pack_path,
+                      traveller_count: Array.isArray(g.travellers) ? Number(g.travellers[0]?.count ?? 0) : 0,
+                      partner_has_logo: g.partner_code ? (partnerHasLogo.get(g.partner_code) ?? false) : false,
+                    }}
+                  />
                 </div>
               </li>
             );

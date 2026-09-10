@@ -12,6 +12,8 @@ import { TravelDateNav } from "@/components/travel/date-param";
 import { GroupRowActions, GroupsToolbar } from "@/components/travel/groups-manager";
 import { RemoveFromGroupButton } from "@/components/travel/remove-from-group-button";
 import { StopToggle } from "@/components/shared/stop-toggle";
+import { GroupVisaPanel, VisaStatusPill } from "@/components/travel/group-visa";
+import { PACKAGE_TIERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { docCompleteness, groupPackReference } from "@/lib/queries/travel";
 import { TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
@@ -42,12 +44,15 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const { data: groups, error } = await supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, visa_status, visa_applied_at, visa_uploaded_at, visa_path, travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
     )
     .eq("travel_date", date)
     .order("group_code");
 
   const totalTravellers = (groups ?? []).reduce((n, g) => n + g.travellers.length, 0);
+  const partnerCodes = [...new Set((groups ?? []).map((g) => g.partner_code).filter((c): c is string => !!c))];
+  const { data: partnerRows } = partnerCodes.length ? await supabase.from("b2b_partners").select("code, logo_path").in("code", partnerCodes) : { data: [] as { code: string; logo_path: string | null }[] };
+  const partnerHasLogo = new Map((partnerRows ?? []).map((p) => [p.code, !!p.logo_path]));
 
   return (
     <>
@@ -91,8 +96,10 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                     </span>
                     <span className="block truncate text-xs text-mr-muted">
                       {g.entry_port && g.exit_port ? `In: ${g.entry_port} · Out: ${g.exit_port}` : <span className="text-mr-warning">Entry / exit port missing</span>}
+                      {g.package_tier ? ` · ${labelFor(PACKAGE_TIERS, g.package_tier)}${g.hotel_name ? ` (${g.hotel_name})` : ""}` : ""}
                     </span>
                   </span>
+                  <VisaStatusPill group={g} className="hidden lg:inline-flex" />
                   <span className="tnum text-xs text-mr-body">
                     {g.source === "b2b" && g.pax_expected ? `${g.pax_expected} pax` : `${travellers.length} pax`}
                   </span>
@@ -110,6 +117,8 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                         reference_prefix: g.reference_prefix,
                         entry_port: g.entry_port,
                         exit_port: g.exit_port,
+                        package_tier: g.package_tier,
+                        hotel_name: g.hotel_name,
                         source: g.source,
                         partner_code: g.partner_code,
                         pax_expected: g.pax_expected,
@@ -149,6 +158,22 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                       })}
                     </ul>
                   )}
+                  <div className="mt-3 border-t border-mr-line pt-3">
+                    <GroupVisaPanel
+                      group={{
+                        id: g.id,
+                        source: g.source,
+                        partner_code: g.partner_code,
+                        visa_status: g.visa_status,
+                        visa_applied_at: g.visa_applied_at,
+                        visa_uploaded_at: g.visa_uploaded_at,
+                        visa_path: g.visa_path,
+                        pack_path: g.pack_path,
+                        traveller_count: travellers.length,
+                        partner_has_logo: g.partner_code ? (partnerHasLogo.get(g.partner_code) ?? false) : false,
+                      }}
+                    />
+                  </div>
                   <div className="mt-3 flex items-center justify-between">
                     <Link href={`/travel/travellers/new`} className="text-xs text-mr-body hover:text-mr-ink hover:underline">
                       + Add traveller

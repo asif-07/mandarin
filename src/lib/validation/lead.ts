@@ -68,6 +68,7 @@ export const leadSchema = z
     .optional()
     .nullable()
     .transform((v) => (v ? v : null)),
+  hotel_name: optionalText,
   quoted_amount: z
     .union([z.coerce.number().min(0).max(99_999_999), z.literal(""), z.null(), z.undefined()])
     .transform((v) => (v === "" || v === undefined || v === null ? null : v)),
@@ -85,7 +86,10 @@ export const leadSchema = z
     message: "Choose the package tier",
     path: ["package_tier"],
   })
-  .transform((v) => ({ ...v, package_tier: v.enquiry_type === "package" ? v.package_tier : null }));
+  .transform((v) => {
+    const package_tier = v.enquiry_type === "package" ? v.package_tier : null;
+    return { ...v, package_tier, hotel_name: package_tier === "visa_transit_hotel" ? v.hotel_name : null };
+  });
 
 export type LeadInput = z.input<typeof leadSchema>;
 export type LeadValues = z.output<typeof leadSchema>;

@@ -7,8 +7,10 @@ import { requireProfile } from "@/lib/auth";
 import { bulkGroupSchema, groupSchema, type BulkGroupInput, type GroupInput } from "@/lib/validation/travel";
 import { errorMessage, fail, ok, type ActionResult } from "@/lib/result";
 import { formatDate, todayISO } from "@/lib/format";
-import { BUCKETS } from "@/lib/constants";
+import { BUCKETS, PACKAGE_TIERS } from "@/lib/constants";
+import { markGroupVisaApproved } from "@/lib/travel/visa";
 import { b2bReference, parseB2bCode } from "@/lib/travel/b2b-code";
+import { groupPackReference } from "@/lib/queries/travel";
 
 function revalidateTravel() {
   revalidatePath("/travel");
@@ -90,6 +92,8 @@ export async function bulkCreateGroups(input: BulkGroupInput): Promise<ActionRes
       reference_prefix: parsed.data.reference_prefix,
       entry_port: parsed.data.entry_port,
       exit_port: parsed.data.exit_port,
+      package_tier: parsed.data.package_tier,
+      hotel_name: parsed.data.package_tier === "visa_transit_hotel" ? parsed.data.hotel_name : null,
       label: parsed.data.label,
       guide_name: parsed.data.guide_name,
       created_by: profile.id,
@@ -228,6 +232,12 @@ const b2bRegisterSchema = z.object({
   label: z.string().trim().max(200).optional().nullable().transform((v) => (v ? v : null)),
   guide_name: z.string().trim().max(200).optional().nullable().transform((v) => (v ? v : null)),
   notes: z.string().trim().max(2000).optional().nullable().transform((v) => (v ? v : null)),
+  package_tier: z
+    .enum(PACKAGE_TIERS.map((t) => t.value) as [string, ...string[]])
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null)),
+  hotel_name: z.string().trim().max(200).optional().nullable().transform((v) => (v ? v : null)),
 });
 export type B2bRegisterInput = z.input<typeof b2bRegisterSchema>;
 
@@ -259,8 +269,12 @@ export async function registerB2bGroup(input: B2bRegisterInput): Promise<ActionR
       notes: parsed.data.notes,
       entry_port: parsed.data.entry_port,
       exit_port: parsed.data.exit_port,
+      package_tier: parsed.data.package_tier,
+      hotel_name: parsed.data.package_tier === "visa_transit_hotel" ? parsed.data.hotel_name : null,
     },
   });
+  // Remember the partner so a logo can be attached to it later.
+  await supabase.from("b2b_partners").upsert({ code: v.partner_code, created_by: profile.id }, { onConflict: "code", ignoreDuplicates: true });
   const row = created as { id?: string; group_code?: string } | null;
   if (error || !row?.id || !row.group_code) return fail(errorMessage(error, "Could not create the group"));
 
@@ -304,4 +318,102 @@ export async function replaceB2bPack(groupId: string, uploadPath: string): Promi
   revalidateTravel();
   revalidatePath("/travel/b2b");
   return ok({ reference });
+}
+
+// ---------------------------------------------------------------------------
+// group visa page
+// ---------------------------------------------------------------------------
+/** File the received visa page under the group; the group becomes "visa received" and its travellers visa_approved. */
+export async function registerGroupVisa(groupId: string, uploadPath: string, originalName: string): Promise<ActionResult<{ file_name: string }>> {
+  const profile = await requireProfile();
+  if (!uploadPath.startsWith("_visa/incoming/")) return fail("Upload the visa PDF first");
+  const supabase = await createClient();
+  const { data: g } = await supabase
+    .from("travel_groups")
+    .select("id, travel_date, travel_end_date, group_code, reference_prefix, source, partner_code, pax_expected, travellers(count)")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (!g) return fail("Group not found");
+  const pax = Array.isArray(g.travellers) ? Number(g.travellers[0]?.count ?? 0) : 0;
+  const reference = groupPackReference(g, pax);
+  const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+  const fileName = `${reference}-VISA.pdf`;
+  const finalPath = `_visa/${g.id}/${stamp}/${fileName}`;
+  const { error: moveError } = await supabase.storage.from(BUCKETS.travelPacks).move(uploadPath, finalPath);
+  if (moveError) return fail(errorMessage(moveError, "Could not file the visa"));
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("travel_groups")
+    .update({ visa_status: "approved", visa_path: finalPath, visa_file_name: fileName, visa_uploaded_at: now, visa_uploaded_by: profile.id })
+    .eq("id", groupId);
+  if (error) return fail(errorMessage(error, "Could not record the visa"));
+  await supabase.from("travel_groups").update({ visa_applied_at: now }).eq("id", groupId).is("visa_applied_at", null);
+  await markGroupVisaApproved(supabase, groupId);
+  revalidateTravel();
+  revalidatePath("/travel/b2b");
+  return ok({ file_name: `${fileName} (from ${originalName})` });
+}
+
+/** Undo a visa upload (wrong file): back to "visa applied"; the file stays in storage. */
+export async function clearGroupVisa(groupId: string): Promise<ActionResult<{ id: string }>> {
+  await requireProfile();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("travel_groups")
+    .update({ visa_status: "applied", visa_path: null, visa_file_name: null, visa_uploaded_at: null, visa_uploaded_by: null })
+    .eq("id", groupId);
+  if (error) return fail(errorMessage(error, "Could not clear the visa"));
+  revalidateTravel();
+  revalidatePath("/travel/b2b");
+  return ok({ id: groupId });
+}
+
+// ---------------------------------------------------------------------------
+// B2B partners (name + logo used on cover pages)
+// ---------------------------------------------------------------------------
+export type PartnerRow = { id: string; code: string; name: string | null; logo_path: string | null; logo_file_name: string | null };
+
+export async function listPartners(): Promise<PartnerRow[]> {
+  await requireProfile();
+  const supabase = await createClient();
+  const { data } = await supabase.from("b2b_partners").select("id, code, name, logo_path, logo_file_name").order("code");
+  return data ?? [];
+}
+
+export async function savePartner(input: { code: string; name?: string | null }): Promise<ActionResult<{ id: string }>> {
+  const profile = await requireProfile();
+  const code = input.code.trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,12}$/.test(code)) return fail("Partner code: 2–12 letters or digits, e.g. EDPT");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("b2b_partners")
+    .upsert({ code, name: input.name?.trim() || null, created_by: profile.id }, { onConflict: "code" })
+    .select("id")
+    .single();
+  if (error || !data) return fail(errorMessage(error, "Could not save partner"));
+  revalidatePath("/travel/b2b");
+  return ok({ id: data.id });
+}
+
+/** Attach an uploaded PNG/JPG (already in the partner-logos bucket) to a partner. */
+export async function setPartnerLogo(code: string, path: string, fileName: string): Promise<ActionResult<{ code: string }>> {
+  const profile = await requireProfile();
+  const upper = code.trim().toUpperCase();
+  if (!path.startsWith(`${upper}/`)) return fail("Upload the logo first");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("b2b_partners")
+    .upsert({ code: upper, logo_path: path, logo_file_name: fileName, created_by: profile.id }, { onConflict: "code" });
+  if (error) return fail(errorMessage(error, "Could not save logo"));
+  revalidatePath("/travel/b2b");
+  return ok({ code: upper });
+}
+
+export async function removePartnerLogo(code: string): Promise<ActionResult<{ code: string }>> {
+  await requireProfile();
+  const supabase = await createClient();
+  const { error } = await supabase.from("b2b_partners").update({ logo_path: null, logo_file_name: null }).eq("code", code.trim().toUpperCase());
+  if (error) return fail(errorMessage(error, "Could not remove logo"));
+  revalidatePath("/travel/b2b");
+  return ok({ code });
 }

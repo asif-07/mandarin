@@ -44,6 +44,7 @@ export function emptyLeadValues(): LeadInput {
     travel_month: "",
     canton_phase: null,
     package_tier: null,
+    hotel_name: null,
     quoted_amount: "",
     quoted_currency: "USD",
     assigned_to: null,
@@ -78,6 +79,7 @@ export function LeadForm({ mode, leadId, defaultValues, profiles, currentUserId,
   const isVisa = enquiryType === "144hr_visa" || enquiryType === "china_business_visa";
   const isCanton = enquiryType === "canton_fair_package";
   const isPackage = enquiryType === "package";
+  const packageTier = useWatch({ control, name: "package_tier" });
 
   function onSubmit(values: LeadValues) {
     startTransition(async () => {
@@ -198,6 +200,12 @@ export function LeadForm({ mode, leadId, defaultValues, profiles, currentUserId,
                   )}
                 />
                 <FieldError message={errors.package_tier?.message} />
+              </div>
+            )}
+            {isPackage && packageTier === "visa_transit_hotel" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="hotel_name">Hotel name</Label>
+                <Input id="hotel_name" placeholder="e.g. Guangzhou Marriott Tianhe" {...register("hotel_name")} />
               </div>
             )}
             {isVisa && (

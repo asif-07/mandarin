@@ -23,6 +23,15 @@ export type GroupCoverData = {
   group_code: string;
   label: string | null;
   guide_name: string | null;
+  /** Shown top-left instead of the logo when assets.logoSrc is empty (partner name, or nothing). */
+  brand_name?: string | null;
+  partner_code?: string | null;
+  pax_expected?: number | null;
+  package_label?: string | null;
+  hotel_name?: string | null;
+  visa_label?: string | null;
+  /** Extra sections listed on the cover before the traveller table (e.g. the visa page, the partner's pack). */
+  attachments?: { label: string; pages: number }[];
   entry_port: string | null;
   exit_port: string | null;
   travel_start_date: string;
@@ -36,13 +45,30 @@ export function renderGroupCoverHtml(data: GroupCoverData, assets: Pick<Template
   const rows: [string, string][] = [
     ["Reference", data.reference],
     ["Group", `${data.group_code}${data.label ? ` · ${data.label}` : ""}`],
+    ...(data.partner_code ? ([["Partner", data.partner_code]] as [string, string][]) : []),
     ["Travel Dates", `${formatDate(data.travel_start_date)} – ${formatDate(data.travel_end_date)}`],
     ["Entry Port", data.entry_port ?? "—"],
     ["Exit Port", data.exit_port ?? "—"],
+    ...(data.package_label ? ([["Package", `${data.package_label}${data.hotel_name ? ` · ${data.hotel_name}` : ""}`]] as [string, string][]) : []),
+    ...(data.visa_label ? ([["Visa", data.visa_label]] as [string, string][]) : []),
     ["Guide", data.guide_name ?? "—"],
-    ["Travellers", String(data.travellers.length)],
+    ["Travellers", data.travellers.length ? String(data.travellers.length) : data.pax_expected ? `${data.pax_expected} (per partner)` : "—"],
     ["Generated On", formatDateTime(data.generated_at)],
   ];
+  const attachmentRows = (data.attachments ?? [])
+    .map(
+      (a, i) => `
+      <tr>
+        <td class="idx">${String.fromCharCode(65 + i)}</td>
+        <td><div class="t">${escapeHtml(a.label)}</div></td>
+        <td class="num"></td>
+        <td class="num">${a.pages} page${a.pages === 1 ? "" : "s"}</td>
+      </tr>`,
+    )
+    .join("");
+  const brand = assets.logoSrc
+    ? `<img class="logo" src="${assets.logoSrc}" alt="${escapeHtml(data.brand_name ?? "Mandarin Roots")}" />`
+    : `<div class="brand">${escapeHtml(data.brand_name ?? "")}</div>`;
   const list = data.travellers
     .map(
       (t, i) => `
@@ -70,7 +96,8 @@ ${assets.fontCss}
   .page { width: 210mm; height: 297mm; padding: 36px 40px 30px 40px; position: relative; overflow: hidden; display: flex; flex-direction: column; }
   .micro { font-size: 5.76pt; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #9A9A9A; line-height: 1.2; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; }
-  .header img.logo { width: 168px; height: auto; display: block; }
+  .header img.logo { width: 168px; max-height: 64px; height: auto; display: block; object-fit: contain; object-position: left top; }
+  .header .brand { font-size: 14pt; font-weight: 700; letter-spacing: 0.5px; padding-top: 6px; min-height: 24px; }
   .title { text-align: right; padding-top: 5px; }
   .title .word { font-size: 16pt; font-weight: 700; letter-spacing: 4.6px; line-height: 1.15; margin-right: -4.6px; }
   .title .ref { font-size: 6.34pt; letter-spacing: 1.85px; color: #8A8A8A; margin-top: 3.5px; margin-right: -1.85px; }
@@ -97,7 +124,7 @@ ${assets.fontCss}
 <div class="page">
   <div class="bar"></div>
   <div class="header">
-    <img class="logo" src="${assets.logoSrc}" alt="Mandarin Roots" />
+    ${brand}
     <div class="title">
       <div class="word">GROUP TRAVEL PACK</div>
       <div class="ref">${escapeHtml(data.reference)}</div>
@@ -109,14 +136,14 @@ ${assets.fontCss}
     ${rows.map(([k, v]) => `<div class="kv"><span class="k">${escapeHtml(k)}</span><span class="v">${escapeHtml(v)}</span></div>`).join("")}
   </div>
   <div class="contents">
-    <div class="micro">Travellers, in document order</div>
+    <div class="micro">${data.travellers.length ? "Contents, in document order" : "Contents"}</div>
     <table>
-      <thead><tr><th>#</th><th>Traveller</th><th class="num">Documents</th><th class="num">Pages</th></tr></thead>
-      <tbody>${list}</tbody>
+      <thead><tr><th>#</th><th>${data.travellers.length ? "Traveller" : "Section"}</th><th class="num">Documents</th><th class="num">Pages</th></tr></thead>
+      <tbody>${attachmentRows}${list}</tbody>
     </table>
   </div>
   <div class="footer">
-    <span>${escapeHtml(COMPANY.name)} · ${escapeHtml(COMPANY.addressLine3)} · ${escapeHtml(COMPANY.phone)}</span>
+    <span>${assets.logoSrc || !data.brand_name ? `${escapeHtml(COMPANY.name)} · ${escapeHtml(COMPANY.addressLine3)} · ${escapeHtml(COMPANY.phone)}` : escapeHtml(data.brand_name)}</span>
     <span>Confidential · contains personal identity documents</span>
   </div>
 </div>

@@ -136,6 +136,16 @@ export type GroupPackInput = {
   travel_start_date: string;
   travel_end_date: string;
   travellers: { traveller: PackTraveller; sources: PackSource[] }[];
+  /** Cover branding: undefined = Mandarin Roots logo; null = no logo (brand_name text only); string = custom logo data URI. */
+  logoSrc?: string | null;
+  brand_name?: string | null;
+  partner_code?: string | null;
+  pax_expected?: number | null;
+  package_label?: string | null;
+  hotel_name?: string | null;
+  visa_label?: string | null;
+  /** Whole PDFs placed straight after the cover, in order (visa page, partner pack). */
+  attachments?: { label: string; bytes: Uint8Array }[];
 };
 
 /**
@@ -154,13 +164,30 @@ export async function buildGroupPackPdf(browser: Browser, input: GroupPackInput)
     sections.push({ traveller: t.traveller, parts: loaded.parts, sources: t.sources });
   }
 
+  const attachments: { label: string; doc: PDFDocument }[] = [];
+  for (const a of input.attachments ?? []) {
+    try {
+      attachments.push({ label: a.label, doc: await PDFDocument.load(a.bytes, { ignoreEncryption: true }) });
+    } catch (e) {
+      warnings.push(`${a.label} skipped: ${e instanceof Error ? e.message : "unreadable"}`);
+    }
+  }
+
   const assets = await loadTemplateAssets();
+  const coverAssets = input.logoSrc === undefined ? assets : { ...assets, logoSrc: input.logoSrc ?? "" };
   const coverHtml = renderGroupCoverHtml(
     {
       reference: input.reference,
       group_code: input.group_code,
       label: input.label,
       guide_name: input.guide_name,
+      brand_name: input.brand_name ?? null,
+      partner_code: input.partner_code ?? null,
+      pax_expected: input.pax_expected ?? null,
+      package_label: input.package_label ?? null,
+      hotel_name: input.hotel_name ?? null,
+      visa_label: input.visa_label ?? null,
+      attachments: attachments.map((a) => ({ label: a.label, pages: a.doc.getPageCount() })),
       entry_port: input.entry_port ?? null,
       exit_port: input.exit_port ?? null,
       travel_start_date: input.travel_start_date,
@@ -178,12 +205,15 @@ export async function buildGroupPackPdf(browser: Browser, input: GroupPackInput)
         };
       }),
     },
-    assets,
+    coverAssets,
   );
   const coverPdf = await PDFDocument.load(await renderPdfWithBrowser(browser, coverHtml));
 
   const merged = await PDFDocument.create();
   for (const page of await merged.copyPages(coverPdf, coverPdf.getPageIndices())) merged.addPage(page);
+  for (const a of attachments) {
+    for (const page of await merged.copyPages(a.doc, a.doc.getPageIndices())) merged.addPage(page);
+  }
   for (const s of sections) {
     for (const p of s.parts) {
       for (const page of await merged.copyPages(p.doc, p.doc.getPageIndices())) merged.addPage(page);

@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getFollowups } from "@/lib/queries/followups";
 import { docCompleteness, groupTitle } from "@/lib/queries/travel";
 import { CompileGroupButton } from "@/components/travel/pack-panel";
+import { VisaStatusPill } from "@/components/travel/group-visa";
 import { ENQUIRY_TYPES, INVOICE_STATUSES, labelFor } from "@/lib/constants";
 import { daysFromToday, formatDate, formatDateRange, formatMoney, formatNumber, todayISO, toISODate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -62,7 +63,7 @@ export default async function DashboardPage() {
     supabase.from("leads").select("enquiry_type").gte("created_at", ago90Ts),
     supabase
       .from("travel_groups")
-      .select("id, travel_date, travel_end_date, group_code, label, guide_name, entry_port, exit_port, source, partner_code, pax_expected, pack_path, travellers(id, status, traveller_documents(doc_type, deleted_at))")
+      .select("id, travel_date, travel_end_date, group_code, label, guide_name, entry_port, exit_port, source, partner_code, pax_expected, pack_path, visa_status, visa_applied_at, visa_uploaded_at, travellers(id, status, traveller_documents(doc_type, deleted_at))")
       .gte("travel_end_date", today)
       .order("travel_date", { ascending: true })
       .order("group_code", { ascending: true })
@@ -163,6 +164,9 @@ export default async function DashboardPage() {
                   {g.entry_port && g.exit_port ? `In: ${g.entry_port} · Out: ${g.exit_port}` : <span className="text-mr-warning">Entry / exit port missing</span>}
                   {g.guide_name ? ` · Guide: ${g.guide_name}` : ""}
                 </p>
+                <div className="mt-2">
+                  <VisaStatusPill group={g} />
+                </div>
                 <div className="mt-3 flex items-center justify-between">
                   <Link href={`/travel?date=${g.travel_date}`} className="text-xs font-medium text-mr-body hover:text-mr-ink hover:underline">
                     Open group

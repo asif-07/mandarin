@@ -200,7 +200,16 @@ export const BUCKETS = {
   travellerDocuments: "traveller-documents",
   travelPacks: "travel-packs",
   invoices: "invoices",
+  partnerLogos: "partner-logos",
 } as const;
+
+/** Group visa lifecycle: pack downloaded = applied; visa page uploaded = approved. */
+export const VISA_STATUSES = [
+  { value: "pending", label: "Visa not applied" },
+  { value: "applied", label: "Visa applied" },
+  { value: "approved", label: "Visa received" },
+] as const satisfies readonly Option[];
+export type VisaStatus = (typeof VISA_STATUSES)[number]["value"];
 
 export function labelFor<T extends string>(options: readonly Option<T>[], value: T | null | undefined) {
   return options.find((o) => o.value === value)?.label ?? value ?? "";

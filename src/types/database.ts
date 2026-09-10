@@ -75,6 +75,50 @@ export type Database = {
           },
         ]
       }
+      b2b_partners: {
+        Row: {
+          code: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          logo_file_name: string | null
+          logo_path: string | null
+          name: string | null
+          notes: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          logo_file_name?: string | null
+          logo_path?: string | null
+          name?: string | null
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          logo_file_name?: string | null
+          logo_path?: string | null
+          name?: string | null
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "b2b_partners_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_accounts: {
         Row: {
           account_number: string | null
@@ -627,6 +671,7 @@ export type Database = {
           enquiry_type: string
           entry_city: string | null
           full_name: string
+          hotel_name: string | null
           id: string
           lead_ref: string
           lost_reason: string | null
@@ -654,6 +699,7 @@ export type Database = {
           enquiry_type: string
           entry_city?: string | null
           full_name: string
+          hotel_name?: string | null
           id?: string
           lead_ref: string
           lost_reason?: string | null
@@ -681,6 +727,7 @@ export type Database = {
           enquiry_type?: string
           entry_city?: string | null
           full_name?: string
+          hotel_name?: string | null
           id?: string
           lead_ref?: string
           lost_reason?: string | null
@@ -910,6 +957,7 @@ export type Database = {
           exit_port: string | null
           group_code: string
           guide_name: string | null
+          hotel_name: string | null
           id: string
           label: string | null
           notes: string | null
@@ -919,11 +967,18 @@ export type Database = {
           pack_uploaded_by: string | null
           partner_code: string | null
           partner_reference: string | null
+          package_tier: string | null
           pax_expected: number | null
           reference_prefix: string
           source: string
           travel_date: string
           travel_end_date: string
+          visa_applied_at: string | null
+          visa_file_name: string | null
+          visa_path: string | null
+          visa_status: string
+          visa_uploaded_at: string | null
+          visa_uploaded_by: string | null
         }
         Insert: {
           created_at?: string | null
@@ -932,6 +987,7 @@ export type Database = {
           exit_port?: string | null
           group_code: string
           guide_name?: string | null
+          hotel_name?: string | null
           id?: string
           label?: string | null
           notes?: string | null
@@ -941,11 +997,18 @@ export type Database = {
           pack_uploaded_by?: string | null
           partner_code?: string | null
           partner_reference?: string | null
+          package_tier?: string | null
           pax_expected?: number | null
           reference_prefix?: string
           source?: string
           travel_date: string
           travel_end_date: string
+          visa_applied_at?: string | null
+          visa_file_name?: string | null
+          visa_path?: string | null
+          visa_status?: string
+          visa_uploaded_at?: string | null
+          visa_uploaded_by?: string | null
         }
         Update: {
           created_at?: string | null
@@ -954,6 +1017,7 @@ export type Database = {
           exit_port?: string | null
           group_code?: string
           guide_name?: string | null
+          hotel_name?: string | null
           id?: string
           label?: string | null
           notes?: string | null
@@ -963,11 +1027,18 @@ export type Database = {
           pack_uploaded_by?: string | null
           partner_code?: string | null
           partner_reference?: string | null
+          package_tier?: string | null
           pax_expected?: number | null
           reference_prefix?: string
           source?: string
           travel_date?: string
           travel_end_date?: string
+          visa_applied_at?: string | null
+          visa_file_name?: string | null
+          visa_path?: string | null
+          visa_status?: string
+          visa_uploaded_at?: string | null
+          visa_uploaded_by?: string | null
         }
         Relationships: [
           {
@@ -1105,6 +1176,7 @@ export type Database = {
           customer_id: string | null
           email: string | null
           full_name: string
+          hotel_name: string | null
           id: string
           invoice_id: string | null
           lead_id: string | null
@@ -1127,6 +1199,7 @@ export type Database = {
           customer_id?: string | null
           email?: string | null
           full_name: string
+          hotel_name?: string | null
           id?: string
           invoice_id?: string | null
           lead_id?: string | null
@@ -1149,6 +1222,7 @@ export type Database = {
           customer_id?: string | null
           email?: string | null
           full_name?: string
+          hotel_name?: string | null
           id?: string
           invoice_id?: string | null
           lead_id?: string | null

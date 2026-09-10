@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { previewB2bCode, registerB2bGroup, replaceB2bPack, type B2bPreview } from "@/lib/actions/travel-groups";
 import { cleanB2bCode, parseB2bCode } from "@/lib/travel/b2b-code";
-import { BUCKETS, CHINA_PORTS } from "@/lib/constants";
+import { BUCKETS, CHINA_PORTS, PACKAGE_TIERS } from "@/lib/constants";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDateRange, todayISO } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +39,8 @@ function acceptPdf(file: File | undefined): file is File {
   return true;
 }
 
-type Form = { code: string; entry_port: string; exit_port: string; label: string; guide_name: string; notes: string };
+type Form = { code: string; entry_port: string; exit_port: string; label: string; guide_name: string; notes: string; package_tier: string | null; hotel_name: string };
+const EMPTY: Form = { code: "", entry_port: "", exit_port: "", label: "", guide_name: "", notes: "", package_tier: null, hotel_name: "" };
 
 /** Upload a partner's compiled pack; the group is created under the next free code for that date. */
 export function B2bUploadButton({ variant = "default" }: { variant?: "default" | "outline" }) {
@@ -46,7 +48,7 @@ export function B2bUploadButton({ variant = "default" }: { variant?: "default" |
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [form, setForm] = useState<Form>({ code: "", entry_port: "", exit_port: "", label: "", guide_name: "", notes: "" });
+  const [form, setForm] = useState<Form>(EMPTY);
   const [preview, setPreview] = useState<B2bPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
@@ -56,7 +58,7 @@ export function B2bUploadButton({ variant = "default" }: { variant?: "default" |
 
   function reset() {
     setFile(null);
-    setForm({ code: "", entry_port: "", exit_port: "", label: "", guide_name: "", notes: "" });
+    setForm(EMPTY);
     setPreview(null);
     setPreviewError(null);
   }
@@ -114,7 +116,7 @@ export function B2bUploadButton({ variant = "default" }: { variant?: "default" |
         return void toast.error(`Upload failed: ${e instanceof Error ? e.message : "unknown error"}`);
       }
       setUploading(false);
-      const res = await registerB2bGroup({ code: form.code, upload_path: path, file_name: file.name, entry_port: form.entry_port, exit_port: form.exit_port, label: form.label, guide_name: form.guide_name, notes: form.notes });
+      const res = await registerB2bGroup({ code: form.code, upload_path: path, file_name: file.name, entry_port: form.entry_port, exit_port: form.exit_port, label: form.label, guide_name: form.guide_name, notes: form.notes, package_tier: form.package_tier, hotel_name: form.hotel_name });
       if (!res.ok) return void toast.error(res.error);
       toast.success(`Filed as ${res.data.reference}`, { description: `Group ${res.data.group_code} created on ${res.data.travel_date}`, duration: 8000 });
       setOpen(false);
@@ -230,6 +232,30 @@ export function B2bUploadButton({ variant = "default" }: { variant?: "default" |
                   <option key={p} value={p} />
                 ))}
               </datalist>
+              <div className="space-y-1.5">
+                <Label htmlFor="b2b_package">Package</Label>
+                <Select value={form.package_tier ?? "none"} onValueChange={(v) => setForm({ ...form, package_tier: v === "none" ? null : v })}>
+                  <SelectTrigger id="b2b_package" className="w-full rounded-lg">
+                    <SelectValue placeholder="No package" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No package</SelectItem>
+                    {PACKAGE_TIERS.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.package_tier === "visa_transit_hotel" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="b2b_hotel">Hotel name</Label>
+                  <Input id="b2b_hotel" value={form.hotel_name} onChange={(e) => setForm({ ...form, hotel_name: e.target.value })} placeholder="Guangzhou Marriott Tianhe" />
+                </div>
+              ) : (
+                <div className="hidden sm:block" />
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="b2b_label">Label</Label>
                 <Input id="b2b_label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder={preview ? `${preview.partner_code} · ${preview.pax} pax` : "Optional"} />

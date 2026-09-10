@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { travellerSchema, type TravellerInput } from "@/lib/validation/travel";
+import { quickTravellerSchema, travellerSchema, type QuickTravellerInput, type TravellerInput } from "@/lib/validation/travel";
 import { errorMessage, fail, ok, type ActionResult } from "@/lib/result";
 import { REQUIRED_DOC_TYPES, TRAVELLER_STATUSES } from "@/lib/constants";
 
@@ -89,4 +89,58 @@ export async function reconcileDocumentStatus(
     return "documents_pending";
   }
   return null;
+}
+
+/** Permanently delete a traveller. Document rows cascade; files stay in storage for the audit trail. */
+export async function deleteTraveller(id: string): Promise<ActionResult<{ id: string; groupDate: string | null }>> {
+  await requireProfile();
+  const supabase = await createClient();
+  const { data: t } = await supabase.from("travellers").select("id, travel_group_id, group:travel_groups(travel_date)").eq("id", id).maybeSingle();
+  if (!t) return fail("Traveller not found");
+  const { error } = await supabase.from("travellers").delete().eq("id", id);
+  if (error) return fail(errorMessage(error, "Could not delete traveller"));
+  await revalidateTraveller();
+  return ok({ id, groupDate: t.group?.travel_date ?? null });
+}
+
+/**
+ * Quick-add travellers to a group from the group dialog: name (+ optional
+ * passport, phone, nationality). Dates and package come from the group.
+ */
+export async function addTravellersToGroup(groupId: string, rows: QuickTravellerInput[]): Promise<ActionResult<{ created: number; failed: { row: number; error: string }[] }>> {
+  await requireProfile();
+  if (!Array.isArray(rows) || rows.length === 0) return ok({ created: 0, failed: [] });
+  if (rows.length > 200) return fail("Add at most 200 travellers at a time");
+  const supabase = await createClient();
+  const { data: g } = await supabase.from("travel_groups").select("id, travel_date, travel_end_date, package_tier, hotel_name").eq("id", groupId).maybeSingle();
+  if (!g) return fail("Group not found");
+  const year = Number(g.travel_date.slice(0, 4));
+  const failed: { row: number; error: string }[] = [];
+  let created = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const parsed = quickTravellerSchema.safeParse(rows[i]);
+    if (!parsed.success) {
+      failed.push({ row: i + 1, error: Object.values(z.flattenError(parsed.error).fieldErrors).flat()[0] ?? "Invalid row" });
+      continue;
+    }
+    const { error } = await supabase.rpc("create_traveller", {
+      p_year: year,
+      p_traveller: {
+        full_name: parsed.data.full_name,
+        passport_number: parsed.data.passport_number,
+        phone: parsed.data.phone,
+        nationality: parsed.data.nationality,
+        travel_start_date: g.travel_date,
+        travel_end_date: g.travel_end_date,
+        travel_group_id: g.id,
+        package_tier: g.package_tier,
+        hotel_name: g.hotel_name,
+        status: "documents_pending",
+      },
+    });
+    if (error) failed.push({ row: i + 1, error: errorMessage(error, "Could not create traveller") });
+    else created++;
+  }
+  await revalidateTraveller();
+  return ok({ created, failed });
 }

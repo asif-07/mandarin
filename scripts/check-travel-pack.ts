@@ -113,6 +113,31 @@ async function main() {
     assert(gdoc.getTitle() === `${reference} - Group Travel Pack`, `group metadata title (${gdoc.getTitle()})`);
     await writeFile(path.join(OUT_DIR, `${reference}.pdf`), groupBuilt.bytes);
     console.log(`wrote ${path.join(OUT_DIR, `${reference}.pdf`)}`);
+
+    // B2B-style bundle: partner branding (no Mandarin Roots logo), visa page attached after the cover, then the partner's pack.
+    const bundle = await buildGroupPackPdf(browser, {
+      reference: "MR144-EDPT-AUG25-AUG30-100PX-G02",
+      group_code: "G02",
+      label: "EDPT · 100 pax",
+      guide_name: null,
+      travel_start_date: group.travel_date,
+      travel_end_date: group.travel_end_date,
+      travellers: [],
+      logoSrc: null,
+      brand_name: "Edapt Travel",
+      partner_code: "EDPT",
+      pax_expected: 100,
+      package_label: "Visa + Transit + Hotel",
+      hotel_name: "Guangzhou Marriott Tianhe",
+      visa_label: "Received, attached",
+      attachments: [
+        { label: "Group visa", bytes: new Uint8Array(parPdf) },
+        { label: "EDPT pack (100 pax)", bytes: new Uint8Array(parPdf) },
+      ],
+    });
+    assert(bundle.pageCount === 3, `b2b bundle = cover + visa + pack = 3 pages (got ${bundle.pageCount})`);
+    await writeFile(path.join(OUT_DIR, "b2b-bundle-check.pdf"), bundle.bytes);
+    console.log(`wrote ${path.join(OUT_DIR, "b2b-bundle-check.pdf")}`);
   } finally {
     await browser.close();
   }

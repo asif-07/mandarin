@@ -34,6 +34,7 @@ export function emptyTravellerValues(): TravellerInput {
     visa_reference: "",
     status: "documents_pending",
     package_tier: null,
+    hotel_name: null,
     notes: "",
     lead_id: null,
     invoice_id: null,
@@ -60,6 +61,7 @@ export function TravellerForm({ mode, travellerId, defaultValues, initialGroup, 
   });
   const { register, control, handleSubmit, setValue, formState } = form;
   const { errors, isDirty } = formState;
+  const packageTier = form.watch("package_tier");
 
   function onSubmit(values: TravellerValues) {
     startTransition(async () => {
@@ -220,6 +222,12 @@ export function TravellerForm({ mode, travellerId, defaultValues, initialGroup, 
                 )}
               />
             </div>
+            {packageTier === "visa_transit_hotel" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="t_hotel">Hotel name</Label>
+                <Input id="t_hotel" placeholder="e.g. Guangzhou Marriott Tianhe" {...register("hotel_name")} />
+              </div>
+            )}
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="t_notes">Notes</Label>
               <Textarea id="t_notes" rows={3} {...register("notes")} />

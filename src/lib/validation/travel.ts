@@ -30,6 +30,34 @@ const referencePrefix = z
 
 const port = z.string().trim().min(1, "Required for the group visa").max(120);
 
+const packageTier = z
+  .enum(PACKAGE_TIERS.map((t) => t.value) as [string, ...string[]])
+  .optional()
+  .nullable()
+  .transform((v) => (v ? v : null));
+
+/** Quick traveller rows entered inside the group dialog. */
+export const quickTravellerSchema = z.object({
+  full_name: z.string().trim().min(1, "Name is required").max(200),
+  passport_number: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .max(30)
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null)),
+  phone: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null))
+    .refine((v) => !v || isValidPhoneNumber(v), "Enter a valid phone number with country code"),
+  nationality: optionalText,
+});
+export type QuickTravellerInput = z.input<typeof quickTravellerSchema>;
+
 export const groupSchema = z
   .object({
     travel_date: dateStr,
@@ -42,6 +70,8 @@ export const groupSchema = z
     reference_prefix: referencePrefix,
     entry_port: port,
     exit_port: port,
+    package_tier: packageTier,
+    hotel_name: optionalText,
     label: optionalText,
     guide_name: optionalText,
     notes: optionalText,
@@ -61,6 +91,8 @@ export const bulkGroupSchema = z
     reference_prefix: referencePrefix,
     entry_port: port,
     exit_port: port,
+    package_tier: packageTier,
+    hotel_name: optionalText,
     label: optionalText,
     guide_name: optionalText,
   })
@@ -106,6 +138,7 @@ export const travellerSchema = z
       .optional()
       .nullable()
       .transform((v) => (v ? v : null)),
+    hotel_name: optionalText,
     notes: optionalText,
     lead_id: optionalUuid,
     invoice_id: optionalUuid,
@@ -114,7 +147,8 @@ export const travellerSchema = z
   .refine((v) => v.travel_end_date >= v.travel_start_date, {
     message: "End date must be on or after the start date",
     path: ["travel_end_date"],
-  });
+  })
+  .transform((v) => ({ ...v, hotel_name: v.package_tier === "visa_transit_hotel" ? v.hotel_name : null }));
 export type TravellerInput = z.input<typeof travellerSchema>;
 export type TravellerValues = z.output<typeof travellerSchema>;
 

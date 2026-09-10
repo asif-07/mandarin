@@ -7,6 +7,7 @@ import { StatusPill, TRAVELLER_TONES } from "@/components/shared/status-pill";
 import { PACKAGE_TIERS, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { DeleteTravellerButton } from "@/components/travel/delete-traveller-button";
 
 export type TravellerRow = {
   id: string;
@@ -94,9 +95,12 @@ const columns: ColumnDef<TravellerRow>[] = [
     id: "actions",
     header: () => <span className="sr-only">Actions</span>,
     cell: ({ row }) => (
-      <Link href={`/travel/travellers/${row.original.id}`} className="text-xs font-medium text-mr-ink hover:underline">
-        Open
-      </Link>
+      <span className="flex items-center justify-end gap-1">
+        <Link href={`/travel/travellers/${row.original.id}`} className="text-xs font-medium text-mr-ink hover:underline">
+          Open
+        </Link>
+        <DeleteTravellerButton travellerId={row.original.id} travellerName={row.original.full_name} variant="ghost" iconOnly />
+      </span>
     ),
   },
 ];

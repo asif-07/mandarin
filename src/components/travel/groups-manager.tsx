@@ -3,7 +3,10 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Layers, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Layers, Loader2, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { addTravellersToGroup } from "@/lib/actions/travellers";
+import { PACKAGE_TIERS } from "@/lib/constants";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -27,6 +30,8 @@ export type GroupRow = {
   reference_prefix: string;
   entry_port: string | null;
   exit_port: string | null;
+  package_tier?: string | null;
+  hotel_name?: string | null;
   source?: string | null;
   partner_code?: string | null;
   pax_expected?: number | null;
@@ -43,12 +48,46 @@ type Editing = {
   reference_prefix: string;
   entry_port: string;
   exit_port: string;
+  package_tier: string | null;
+  hotel_name: string;
   label: string;
   guide_name: string;
   notes: string;
+  travellers: QuickRow[];
 };
 
-type Bulk = { travel_date: string; travel_end_date: string; count: string; reference_prefix: string; entry_port: string; exit_port: string; label: string; guide_name: string };
+type QuickRow = { full_name: string; passport_number: string; phone: string; nationality: string };
+const emptyRow = (): QuickRow => ({ full_name: "", passport_number: "", phone: "", nationality: "" });
+
+function PackageSelect({ value, onChange, id }: { value: string | null; onChange: (v: string | null) => void; id?: string }) {
+  return (
+    <Select value={value ?? "none"} onValueChange={(v) => onChange(v === "none" ? null : v)}>
+      <SelectTrigger id={id} className="w-full rounded-lg">
+        <SelectValue placeholder="No package" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">No package</SelectItem>
+        {PACKAGE_TIERS.map((t) => (
+          <SelectItem key={t.value} value={t.value}>
+            {t.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/** Save quick-add rows after the group exists; reports per-row failures. */
+async function saveQuickRows(groupId: string, rows: QuickRow[]) {
+  const filled = rows.filter((r) => r.full_name.trim());
+  if (filled.length === 0) return;
+  const res = await addTravellersToGroup(groupId, filled);
+  if (!res.ok) return void toast.error(res.error);
+  if (res.data.created) toast.success(`${res.data.created} traveller${res.data.created === 1 ? "" : "s"} added`);
+  res.data.failed.forEach((f) => toast.error(`Traveller row ${f.row}: ${f.error}`, { duration: 8000 }));
+}
+
+type Bulk = { travel_date: string; travel_end_date: string; count: string; reference_prefix: string; entry_port: string; exit_port: string; package_tier: string | null; hotel_name: string; label: string; guide_name: string };
 
 /** Entry / exit port input with common China ports as suggestions. */
 function PortInput({ id, value, onChange, placeholder }: { id: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
@@ -78,6 +117,7 @@ export function GroupsToolbar() {
       const result = single.id ? await updateGroup(single.id, single) : await createGroup(single);
       if (!result.ok) return void toast.error(result.error);
       toast.success(single.id ? "Group updated" : `${single.group_code.toUpperCase()} created`);
+      await saveQuickRows(result.data.id, single.travellers);
       setSingle(null);
       router.refresh();
     });
@@ -102,13 +142,13 @@ export function GroupsToolbar() {
     <>
       <Button
         variant="outline"
-        onClick={() => setBulk({ travel_date: today, travel_end_date: today, count: "10", reference_prefix: "MR144", entry_port: "", exit_port: "", label: "", guide_name: "" })}
+        onClick={() => setBulk({ travel_date: today, travel_end_date: today, count: "10", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", label: "", guide_name: "" })}
       >
         <Layers /> Bulk create
       </Button>
       <Button
         onClick={() =>
-          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", label: "", guide_name: "", notes: "" })
+          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", label: "", guide_name: "", notes: "", travellers: [] })
         }
       >
         <Plus /> New group
@@ -151,6 +191,16 @@ export function GroupsToolbar() {
                 <Label htmlFor="bulk_exit">Exit port</Label>
                 <PortInput id="bulk_exit" value={bulk.exit_port} onChange={(v) => setBulk({ ...bulk, exit_port: v })} placeholder="Shenzhen Bay Port" />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bulk_package">Package</Label>
+                <PackageSelect id="bulk_package" value={bulk.package_tier} onChange={(v) => setBulk({ ...bulk, package_tier: v })} />
+              </div>
+              {bulk.package_tier === "visa_transit_hotel" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="bulk_hotel">Hotel name</Label>
+                  <Input id="bulk_hotel" value={bulk.hotel_name} onChange={(e) => setBulk({ ...bulk, hotel_name: e.target.value })} placeholder="Guangzhou Marriott Tianhe" />
+                </div>
+              )}
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="bulk_label">Label (optional, applied to all)</Label>
                 <Input id="bulk_label" placeholder="Canton Phase 2" value={bulk.label} onChange={(e) => setBulk({ ...bulk, label: e.target.value })} />
@@ -196,7 +246,7 @@ function GroupDialog({
 
   return (
     <Dialog open={!!value} onOpenChange={(o) => !o && onChange(null)}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{value?.id ? "Edit group" : "New group"}</DialogTitle>
           <DialogDescription>Group codes are unique per travel start date. Entry and exit ports are required for the group visa.</DialogDescription>
@@ -230,6 +280,16 @@ function GroupDialog({
               <Label htmlFor="g_exit">Exit port</Label>
               <PortInput id="g_exit" value={value.exit_port} onChange={(v) => onChange({ ...value, exit_port: v })} placeholder="Shenzhen Bay Port" />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="g_package">Package</Label>
+              <PackageSelect id="g_package" value={value.package_tier} onChange={(v) => onChange({ ...value, package_tier: v })} />
+            </div>
+            {value.package_tier === "visa_transit_hotel" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="g_hotel">Hotel name</Label>
+                <Input id="g_hotel" value={value.hotel_name} onChange={(e) => onChange({ ...value, hotel_name: e.target.value })} placeholder="Guangzhou Marriott Tianhe" />
+              </div>
+            )}
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="g_label">Label</Label>
               <Input id="g_label" placeholder="Canton Phase 2 - Morning" value={value.label} onChange={(e) => onChange({ ...value, label: e.target.value })} />
@@ -241,6 +301,40 @@ function GroupDialog({
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="g_notes">Notes</Label>
               <Input id="g_notes" value={value.notes} onChange={(e) => onChange({ ...value, notes: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <Label>{value.id ? "Add travellers to this group" : "Travellers"}</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => onChange({ ...value, travellers: [...value.travellers, emptyRow()] })}>
+                  <UserPlus /> Add traveller
+                </Button>
+              </div>
+              {value.travellers.length > 0 && (
+                <div className="mt-2 space-y-2">
+                  <div className="hidden grid-cols-[1fr_110px_140px_100px_28px] gap-2 text-[11px] uppercase tracking-wide text-mr-muted sm:grid">
+                    <span>Full name</span>
+                    <span>Passport</span>
+                    <span>Phone</span>
+                    <span>Nationality</span>
+                    <span />
+                  </div>
+                  {value.travellers.map((row, i) => {
+                    const set = (patch: Partial<QuickRow>) => onChange({ ...value, travellers: value.travellers.map((r, j) => (j === i ? { ...r, ...patch } : r)) });
+                    return (
+                      <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_110px_140px_100px_28px]">
+                        <Input value={row.full_name} onChange={(e) => set({ full_name: e.target.value })} placeholder="Full name" className="col-span-2 sm:col-span-1" />
+                        <Input value={row.passport_number} onChange={(e) => set({ passport_number: e.target.value.toUpperCase() })} placeholder="Passport" />
+                        <Input value={row.phone} onChange={(e) => set({ phone: e.target.value })} placeholder="+971…" />
+                        <Input value={row.nationality} onChange={(e) => set({ nationality: e.target.value })} placeholder="Nationality" />
+                        <Button type="button" variant="ghost" size="icon-sm" aria-label="Remove row" onClick={() => onChange({ ...value, travellers: value.travellers.filter((_, j) => j !== i) })}>
+                          <X />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  <p className="text-xs text-mr-muted">Dates{value.package_tier ? ", package" : ""} come from the group. Documents are added on each traveller&rsquo;s page afterwards.</p>
+                </div>
+              )}
             </div>
             {preview && (
               <p className="text-xs text-mr-muted sm:col-span-2">
@@ -277,6 +371,7 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
       const result = await updateGroup(editing.id!, editing);
       if (!result.ok) return void toast.error(result.error);
       toast.success("Group updated");
+      await saveQuickRows(editing.id!, editing.travellers);
       setEditing(null);
       router.refresh();
     });
@@ -311,9 +406,12 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
             reference_prefix: group.reference_prefix,
             entry_port: group.entry_port ?? "",
             exit_port: group.exit_port ?? "",
+            package_tier: group.package_tier ?? null,
+            hotel_name: group.hotel_name ?? "",
             label: group.label ?? "",
             guide_name: group.guide_name ?? "",
             notes: group.notes ?? "",
+            travellers: [],
           })
         }
       >
