@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
 import { clearGroupVisa, registerGroupVisa } from "@/lib/actions/travel-groups";
 import { BUCKETS, VISA_STATUSES, labelFor } from "@/lib/constants";
+import { checkUploadFile, ACCEPTED_EXT } from "@/lib/validation/travel";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -35,15 +36,22 @@ export function VisaStatusPill({ group, className }: { group: Pick<GroupVisaInfo
   return <StatusPill label={`${labelFor(VISA_STATUSES, group.visa_status)}${when ? ` · ${formatDate(when)}` : ""}`} tone={tone} className={className} />;
 }
 
-async function uploadIncomingVisa(file: File): Promise<string> {
+/**
+ * PDFs go straight to the travel-packs bucket; photos go to the
+ * traveller-documents bucket (travel-packs is PDF-only) and the server turns
+ * them into a one-page PDF when filing.
+ */
+async function uploadIncomingVisa(file: File, mime: string): Promise<string> {
   const supabase = createClient();
-  const path = `_visa/incoming/${crypto.randomUUID()}.pdf`;
-  const { error } = await supabase.storage.from(BUCKETS.travelPacks).upload(path, file, { contentType: "application/pdf", upsert: false });
+  const isPdf = mime === "application/pdf";
+  const ext = isPdf ? "pdf" : (file.name.toLowerCase().match(/\.(jpe?g|png|heic|heif)$/)?.[1] ?? "jpg");
+  const path = `_visa/incoming/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from(isPdf ? BUCKETS.travelPacks : BUCKETS.travellerDocuments).upload(path, file, { contentType: mime, upsert: false });
   if (error) throw new Error(error.message);
   return path;
 }
 
-/** Upload the received visa page (PDF) for a group. */
+/** Upload the received visa page (PDF or photo) for a group. */
 export function UploadVisaButton({ groupId, replace = false, size = "sm" }: { groupId: string; replace?: boolean; size?: "sm" | "default" }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -51,11 +59,12 @@ export function UploadVisaButton({ groupId, replace = false, size = "sm" }: { gr
 
   async function onFile(f: File | undefined) {
     if (!f) return;
-    if (f.type !== "application/pdf" && !/\.pdf$/i.test(f.name)) return void toast.error("The visa must be a PDF");
+    const check = checkUploadFile(f);
+    if (!check.ok) return void toast.error(check.error);
     setBusy(true);
     try {
-      const path = await uploadIncomingVisa(f);
-      const res = await registerGroupVisa(groupId, path, f.name);
+      const path = await uploadIncomingVisa(f, check.mime);
+      const res = await registerGroupVisa(groupId, path, f.name, check.mime);
       if (!res.ok) throw new Error(res.error);
       toast.success(`Visa filed as ${res.data.file_name}`, { duration: 6000 });
       router.refresh();
@@ -71,14 +80,14 @@ export function UploadVisaButton({ groupId, replace = false, size = "sm" }: { gr
       <input
         ref={ref}
         type="file"
-        accept="application/pdf,.pdf"
+        accept={ACCEPTED_EXT.join(",")}
         className="hidden"
         onChange={(e) => {
           onFile(e.target.files?.[0]);
           e.target.value = "";
         }}
       />
-      <Button variant={replace ? "outline" : "default"} size={size} disabled={busy} onClick={() => ref.current?.click()}>
+      <Button variant={replace ? "outline" : "default"} size={size} disabled={busy} title="PDF or a photo (JPG, PNG, HEIC); photos are filed as a one-page PDF" onClick={() => ref.current?.click()}>
         {busy ? <Loader2 className="animate-spin" /> : replace ? <Upload /> : <Stamp />} {replace ? "Replace visa" : "Upload visa"}
       </Button>
     </>

@@ -11,6 +11,8 @@ import { BUCKETS, PACKAGE_TIERS } from "@/lib/constants";
 import { markGroupVisaApproved } from "@/lib/travel/visa";
 import { b2bReference, parseB2bCode } from "@/lib/travel/b2b-code";
 import { groupPackReference } from "@/lib/queries/travel";
+import { PDFDocument } from "pdf-lib";
+import { imageToPdfPage } from "@/lib/pdf/travel-pack";
 
 function revalidateTravel() {
   revalidatePath("/travel");
@@ -324,9 +326,16 @@ export async function replaceB2bPack(groupId: string, uploadPath: string): Promi
 // group visa page
 // ---------------------------------------------------------------------------
 /** File the received visa page under the group; the group becomes "visa received" and its travellers visa_approved. */
-export async function registerGroupVisa(groupId: string, uploadPath: string, originalName: string): Promise<ActionResult<{ file_name: string }>> {
+/**
+ * File the received visa page under the group. PDFs are moved into place as
+ * they are; a photo (JPG / PNG / HEIC, uploaded to the traveller-documents
+ * bucket because travel-packs is PDF-only) is converted to a one-page A4 PDF
+ * so the visa can be merged and downloaded like any other.
+ */
+export async function registerGroupVisa(groupId: string, uploadPath: string, originalName: string, mimeType: string = "application/pdf"): Promise<ActionResult<{ file_name: string }>> {
   const profile = await requireProfile();
-  if (!uploadPath.startsWith("_visa/incoming/")) return fail("Upload the visa PDF first");
+  if (!uploadPath.startsWith("_visa/incoming/")) return fail("Upload the visa file first");
+  const isImage = mimeType.startsWith("image/");
   const supabase = await createClient();
   const { data: g } = await supabase
     .from("travel_groups")
@@ -339,8 +348,29 @@ export async function registerGroupVisa(groupId: string, uploadPath: string, ori
   const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
   const fileName = `${reference}-VISA.pdf`;
   const finalPath = `_visa/${g.id}/${stamp}/${fileName}`;
-  const { error: moveError } = await supabase.storage.from(BUCKETS.travelPacks).move(uploadPath, finalPath);
-  if (moveError) return fail(errorMessage(moveError, "Could not file the visa"));
+  if (isImage) {
+    try {
+      const { data: blob, error: dlError } = await supabase.storage.from(BUCKETS.travellerDocuments).download(uploadPath);
+      if (dlError || !blob) throw dlError ?? new Error("Download failed");
+      let bytes = new Uint8Array(await blob.arrayBuffer());
+      if (mimeType === "image/heic" || mimeType === "image/heif") {
+        const convert = (await import("heic-convert")).default;
+        bytes = new Uint8Array(await convert({ buffer: bytes, format: "JPEG", quality: 0.9 }));
+      }
+      const doc = await PDFDocument.create();
+      await imageToPdfPage(doc, bytes);
+      doc.setTitle(`${reference} - Visa`);
+      const pdf = await doc.save();
+      const { error: upError } = await supabase.storage.from(BUCKETS.travelPacks).upload(finalPath, Buffer.from(pdf), { contentType: "application/pdf", upsert: false });
+      if (upError) throw upError;
+      await supabase.storage.from(BUCKETS.travellerDocuments).remove([uploadPath]);
+    } catch (e) {
+      return fail(`Could not convert the visa photo to PDF: ${errorMessage(e)}`);
+    }
+  } else {
+    const { error: moveError } = await supabase.storage.from(BUCKETS.travelPacks).move(uploadPath, finalPath);
+    if (moveError) return fail(errorMessage(moveError, "Could not file the visa"));
+  }
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("travel_groups")
