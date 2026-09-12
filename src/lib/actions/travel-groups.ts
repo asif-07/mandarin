@@ -278,7 +278,8 @@ export async function registerB2bGroup(input: B2bRegisterInput): Promise<ActionR
     },
   });
   // Remember the partner so a logo can be attached to it later.
-  await supabase.from("b2b_partners").upsert({ code: v.partner_code, created_by: profile.id }, { onConflict: "code", ignoreDuplicates: true });
+  const { error: partnerError } = await supabase.from("b2b_partners").upsert({ code: v.partner_code, created_by: profile.id }, { onConflict: "code", ignoreDuplicates: true });
+  if (partnerError) console.error("partner upsert failed", partnerError.message);
   const row = created as { id?: string; group_code?: string } | null;
   if (error || !row?.id || !row.group_code) return fail(errorMessage(error, "Could not create the group"));
 

@@ -20,7 +20,7 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
 
   let query = supabase
     .from("travel_groups")
-    .select("id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, created_at, travellers(count), creator:profiles!travel_groups_created_by_fkey(display_name)", { count: "exact" })
+    .select("id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, package_tier, hotel_name, hotel_stars, transit_location, source, partner_code, pax_expected, created_at, travellers(count), creator:profiles!travel_groups_created_by_fkey(display_name)", { count: "exact" })
     .order("travel_date", { ascending: false })
     .order("group_code", { ascending: true })
     .range(from, to);
@@ -46,6 +46,10 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
     reference_prefix: g.reference_prefix,
     entry_port: g.entry_port,
     exit_port: g.exit_port,
+    package_tier: g.package_tier,
+    hotel_name: g.hotel_name,
+    hotel_stars: g.hotel_stars,
+    transit_location: g.transit_location,
     source: g.source,
     partner_code: g.partner_code,
     pax_expected: g.pax_expected,

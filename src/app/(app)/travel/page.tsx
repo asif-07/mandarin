@@ -122,6 +122,8 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                         exit_port: g.exit_port,
                         package_tier: g.package_tier,
                         hotel_name: g.hotel_name,
+                        hotel_stars: g.hotel_stars,
+                        transit_location: g.transit_location,
                         source: g.source,
                         partner_code: g.partner_code,
                         pax_expected: g.pax_expected,
