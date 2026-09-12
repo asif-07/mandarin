@@ -116,7 +116,7 @@ export async function addTravellersToGroup(groupId: string, rows: QuickTraveller
   if (!Array.isArray(rows) || rows.length === 0) return ok({ created: 0, failed: [] });
   if (rows.length > 200) return fail("Add at most 200 travellers at a time");
   const supabase = await createClient();
-  const { data: g } = await supabase.from("travel_groups").select("id, travel_date, travel_end_date, package_tier, hotel_name").eq("id", groupId).maybeSingle();
+  const { data: g } = await supabase.from("travel_groups").select("id, travel_date, travel_end_date, package_tier, hotel_name, hotel_stars").eq("id", groupId).maybeSingle();
   if (!g) return fail("Group not found");
   const year = Number(g.travel_date.slice(0, 4));
   const failed: { row: number; error: string }[] = [];
@@ -139,6 +139,7 @@ export async function addTravellersToGroup(groupId: string, rows: QuickTraveller
         travel_group_id: g.id,
         package_tier: g.package_tier,
         hotel_name: g.hotel_name,
+        hotel_stars: g.hotel_stars,
         status: "documents_pending",
       },
     });

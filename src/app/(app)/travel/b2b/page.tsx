@@ -10,7 +10,7 @@ import { GroupRowActions } from "@/components/travel/groups-manager";
 import { GroupVisaPanel } from "@/components/travel/group-visa";
 import { GroupDocuments } from "@/components/travel/group-documents";
 import { PartnerLogosCard } from "@/components/travel/partner-logos";
-import { BUCKETS, PACKAGE_TIERS, labelFor } from "@/lib/constants";
+import { BUCKETS, packageDetail } from "@/lib/constants";
 import { SearchParamInput } from "@/components/shared/url-filters";
 import { createClient } from "@/lib/supabase/server";
 import { groupPackReference } from "@/lib/queries/travel";
@@ -24,7 +24,7 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
   let query = supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, partner_reference, pax_expected, pack_path, pack_file_name, pack_uploaded_at, package_tier, hotel_name, visa_status, visa_applied_at, visa_uploaded_at, visa_path, uploader:profiles!travel_groups_pack_uploaded_by_fkey(display_name), travellers(count), group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at)",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, partner_reference, pax_expected, pack_path, pack_file_name, pack_uploaded_at, package_tier, hotel_name, hotel_stars, visa_status, visa_applied_at, visa_uploaded_at, visa_path, uploader:profiles!travel_groups_pack_uploaded_by_fkey(display_name), travellers(count), group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at)",
     )
     .eq("source", "b2b")
     .order("travel_date", { ascending: false })
@@ -100,6 +100,7 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
                       exit_port: g.exit_port,
                       package_tier: g.package_tier,
                       hotel_name: g.hotel_name,
+                      hotel_stars: g.hotel_stars,
                       source: g.source,
                       partner_code: g.partner_code,
                       pax_expected: g.pax_expected,
@@ -122,7 +123,7 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
                 <p className="mt-3 break-all border-t border-mr-line pt-3 font-mono text-xs text-mr-ink">{reference}.pdf</p>
                 <p className="mt-1 truncate text-xs text-mr-muted">
                   {g.entry_port && g.exit_port ? `In: ${g.entry_port} · Out: ${g.exit_port}` : <span className="text-mr-warning">Entry / exit port missing</span>}
-                  {g.package_tier ? ` · ${labelFor(PACKAGE_TIERS, g.package_tier)}${g.hotel_name ? ` (${g.hotel_name})` : ""}` : ""}
+                  {g.package_tier ? ` · ${packageDetail(g.package_tier, g.hotel_stars, g.hotel_name)}` : ""}
                   {g.pack_uploaded_at ? ` · uploaded ${formatDateTime(g.pack_uploaded_at)}${g.uploader?.display_name ? ` by ${g.uploader.display_name}` : ""}` : ""}
                 </p>
                 <div className="mt-3 flex items-center justify-between gap-2">

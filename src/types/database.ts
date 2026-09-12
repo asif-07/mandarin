@@ -736,6 +736,7 @@ export type Database = {
           entry_city: string | null
           full_name: string
           hotel_name: string | null
+          hotel_stars: number | null
           id: string
           lead_ref: string
           lost_reason: string | null
@@ -764,6 +765,7 @@ export type Database = {
           entry_city?: string | null
           full_name: string
           hotel_name?: string | null
+          hotel_stars?: number | null
           id?: string
           lead_ref: string
           lost_reason?: string | null
@@ -792,6 +794,7 @@ export type Database = {
           entry_city?: string | null
           full_name?: string
           hotel_name?: string | null
+          hotel_stars?: number | null
           id?: string
           lead_ref?: string
           lost_reason?: string | null
@@ -1022,6 +1025,7 @@ export type Database = {
           group_code: string
           guide_name: string | null
           hotel_name: string | null
+          hotel_stars: number | null
           id: string
           label: string | null
           notes: string | null
@@ -1052,6 +1056,7 @@ export type Database = {
           group_code: string
           guide_name?: string | null
           hotel_name?: string | null
+          hotel_stars?: number | null
           id?: string
           label?: string | null
           notes?: string | null
@@ -1082,6 +1087,7 @@ export type Database = {
           group_code?: string
           guide_name?: string | null
           hotel_name?: string | null
+          hotel_stars?: number | null
           id?: string
           label?: string | null
           notes?: string | null
@@ -1241,6 +1247,7 @@ export type Database = {
           email: string | null
           full_name: string
           hotel_name: string | null
+          hotel_stars: number | null
           id: string
           invoice_id: string | null
           lead_id: string | null
@@ -1264,6 +1271,7 @@ export type Database = {
           email?: string | null
           full_name: string
           hotel_name?: string | null
+          hotel_stars?: number | null
           id?: string
           invoice_id?: string | null
           lead_id?: string | null
@@ -1287,6 +1295,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           hotel_name?: string | null
+          hotel_stars?: number | null
           id?: string
           invoice_id?: string | null
           lead_id?: string | null

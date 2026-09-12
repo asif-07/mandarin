@@ -10,7 +10,9 @@ import {
   LEAD_STATUSES,
   LOST_REASONS,
   PACKAGE_TIERS,
+  tierNeedsStars,
 } from "@/lib/constants";
+import { hotelFields, hotelStars } from "@/lib/validation/travel";
 
 const values = <T extends readonly { value: string }[]>(opts: T) => opts.map((o) => o.value) as [string, ...string[]];
 
@@ -69,6 +71,7 @@ export const leadSchema = z
     .nullable()
     .transform((v) => (v ? v : null)),
   hotel_name: optionalText,
+  hotel_stars: hotelStars,
   quoted_amount: z
     .union([z.coerce.number().min(0).max(99_999_999), z.literal(""), z.null(), z.undefined()])
     .transform((v) => (v === "" || v === undefined || v === null ? null : v)),
@@ -86,9 +89,13 @@ export const leadSchema = z
     message: "Choose the package tier",
     path: ["package_tier"],
   })
+  .refine((v) => v.enquiry_type !== "package" || !tierNeedsStars(v.package_tier) || !!v.hotel_stars, {
+    message: "Choose 3, 4 or 5 star",
+    path: ["hotel_stars"],
+  })
   .transform((v) => {
     const package_tier = v.enquiry_type === "package" ? v.package_tier : null;
-    return { ...v, package_tier, hotel_name: package_tier === "visa_transit_hotel" ? v.hotel_name : null };
+    return { ...v, package_tier, ...hotelFields({ package_tier, hotel_name: v.hotel_name, hotel_stars: v.hotel_stars }) };
   });
 
 export type LeadInput = z.input<typeof leadSchema>;

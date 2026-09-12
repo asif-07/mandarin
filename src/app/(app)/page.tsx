@@ -1,20 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Download, Plane } from "lucide-react";
+import { AlertTriangle, ArrowRight, Download, Plane, Users } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { addDays, parseISO, subDays } from "date-fns";
+import { addDays, parseISO } from "date-fns";
 import { PageHeader } from "@/components/shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatusPill, INVOICE_TONES } from "@/components/shared/status-pill";
-import { FollowupItem } from "@/components/leads/followup-list";
-import { DocsBadge } from "@/components/travel/traveller-table";
+import { StatusPill, INVOICE_TONES, TRAVELLER_TONES } from "@/components/shared/status-pill";
+import { DocsBadge, PackageBadge } from "@/components/travel/traveller-table";
 import { createClient } from "@/lib/supabase/server";
-import { getFollowups } from "@/lib/queries/followups";
 import { docCompleteness, groupTitle } from "@/lib/queries/travel";
 import { CompileGroupButton } from "@/components/travel/pack-panel";
 import { VisaStatusPill } from "@/components/travel/group-visa";
-import { ENQUIRY_TYPES, INVOICE_STATUSES, labelFor } from "@/lib/constants";
+import { INVOICE_STATUSES, TRAVELLER_STATUSES, labelFor, packageDetail } from "@/lib/constants";
 import { daysFromToday, formatDate, formatDateRange, formatMoney, formatNumber, todayISO, toISODate } from "@/lib/format";
+import { endOfMonth, format as formatDf } from "date-fns";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -23,23 +22,29 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const today = todayISO();
   const monthStart = `${today.slice(0, 7)}-01`;
-  const monthStartTs = `${monthStart}T00:00:00+04:00`;
   const in7 = toISODate(addDays(parseISO(today), 7));
-  const ago90Ts = `${toISODate(subDays(parseISO(today), 90))}T00:00:00+04:00`;
+  const monthEnd = toISODate(endOfMonth(parseISO(today)));
+  const monthLabel = formatDf(parseISO(today), "MMMM yyyy");
 
   const [
-    { count: leadsThisMonth },
-    { data: closed },
+    { data: monthTravellers },
+    { count: groupsThisMonth },
     { data: invoicedRows },
     { count: travellersNext7 },
-    followups,
     { data: urgentRows },
     { data: recentInvoices },
-    { data: leadTypes },
     { data: groupRows },
   ] = await Promise.all([
-    supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", monthStartTs),
-    supabase.from("leads").select("status").in("status", ["won", "lost"]).gte("updated_at", ago90Ts),
+    supabase
+      .from("travellers")
+      .select("id, traveller_ref, full_name, phone, nationality, passport_number, travel_start_date, travel_end_date, status, package_tier, hotel_name, hotel_stars, group:travel_groups(id, travel_date, travel_end_date, group_code, label, group_documents(doc_type, deleted_at)), traveller_documents(doc_type, deleted_at)")
+      .gte("travel_start_date", monthStart)
+      .lte("travel_start_date", monthEnd)
+      .neq("status", "cancelled")
+      .order("travel_start_date")
+      .order("full_name")
+      .limit(300),
+    supabase.from("travel_groups").select("id", { count: "exact", head: true }).gte("travel_date", monthStart).lte("travel_date", monthEnd),
     supabase.from("invoices").select("total").eq("currency", "USD").in("status", ["issued", "paid"]).gte("issue_date", monthStart),
     supabase
       .from("travellers")
@@ -47,7 +52,6 @@ export default async function DashboardPage() {
       .gte("travel_start_date", today)
       .lte("travel_start_date", in7)
       .neq("status", "cancelled"),
-    getFollowups(supabase, 0),
     supabase
       .from("travellers")
       .select("id, full_name, travel_start_date, status, group:travel_groups(travel_date, group_code, label, group_documents(doc_type, deleted_at)), traveller_documents(doc_type, deleted_at)")
@@ -60,7 +64,6 @@ export default async function DashboardPage() {
       .select("id, invoice_number, bill_to_name, issue_date, total, currency, status")
       .order("sequence_number", { ascending: false })
       .limit(6),
-    supabase.from("leads").select("enquiry_type").gte("created_at", ago90Ts),
     supabase
       .from("travel_groups")
       .select("id, travel_date, travel_end_date, group_code, label, guide_name, entry_port, exit_port, source, partner_code, pax_expected, pack_path, visa_status, visa_applied_at, visa_uploaded_at, group_documents(doc_type, deleted_at), travellers(id, status, traveller_documents(doc_type, deleted_at))")
@@ -78,36 +81,29 @@ export default async function DashboardPage() {
     return { ...g, b2b, pax: b2b && g.pax_expected ? g.pax_expected : active.length, complete, days, travelling: days <= 0 };
   });
 
-  const won = (closed ?? []).filter((l) => l.status === "won").length;
-  const closedCount = closed?.length ?? 0;
-  const conversion = closedCount ? Math.round((won / closedCount) * 100) : null;
   const invoiced = (invoicedRows ?? []).reduce((s, r) => s + Number(r.total), 0);
-  const due = [...followups.overdue, ...followups.dueToday];
+  const travellersThisMonth = (monthTravellers ?? []).map((t) => ({ ...t, docs: docCompleteness(t.traveller_documents, t.group?.group_documents), days: daysFromToday(t.travel_start_date) ?? 0 }));
+  const monthComplete = travellersThisMonth.filter((t) => t.docs.complete).length;
+  const monthTravelledOrTravelling = travellersThisMonth.filter((t) => t.days <= 0).length;
 
   const urgent = (urgentRows ?? [])
     .map((t) => ({ ...t, docs: docCompleteness(t.traveller_documents, t.group?.group_documents) }))
     .filter((t) => !t.docs.complete);
-
-  const typeCounts = ENQUIRY_TYPES.map((t) => ({
-    ...t,
-    count: (leadTypes ?? []).filter((l) => l.enquiry_type === t.value).length,
-  }));
-  const maxCount = Math.max(1, ...typeCounts.map((t) => t.count));
 
   return (
     <>
       <PageHeader title="Dashboard" description={formatDate(today)} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Leads this month" value={String(leadsThisMonth ?? 0)} hint={`since ${formatDate(monthStart)}`} href="/leads" />
         <Stat
-          label="Conversion rate"
-          value={conversion === null ? "—" : `${conversion}%`}
-          hint={closedCount ? `${won} won of ${closedCount} closed, last 90 days` : "no closed leads in the last 90 days"}
-          href="/leads?view=table"
+          label="Travellers this month"
+          value={String(travellersThisMonth.length)}
+          hint={`${monthLabel} · ${monthTravelledOrTravelling} already departed · ${monthComplete} with all documents`}
+          href="/travel/travellers"
         />
-        <Stat label="Invoiced this month" value={`USD ${formatNumber(invoiced)}`} hint="issued and paid, USD invoices" href="/invoices" />
         <Stat label="Travelling in 7 days" value={String(travellersNext7 ?? 0)} hint={`${formatDate(today)} to ${formatDate(in7)}`} href="/travel/travellers" />
+        <Stat label="Groups this month" value={String(groupsThisMonth ?? 0)} hint={`departing in ${monthLabel}`} href="/travel/groups" />
+        <Stat label="Invoiced this month" value={`USD ${formatNumber(invoiced)}`} hint="issued and paid, USD invoices" href="/invoices" />
       </div>
 
       <section className="mt-6" aria-labelledby="upcoming-groups">
@@ -224,28 +220,46 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="xl:order-2">
+        <Card className="xl:order-2 xl:row-span-2">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Follow-ups due today</span>
-              <Link href="/leads/followups" className="inline-flex items-center gap-1 text-xs font-medium text-mr-body hover:text-mr-ink">
-                All follow-ups <ArrowRight className="size-3" />
+              <span className="flex items-center gap-2">
+                <Users className="size-4 text-mr-red" /> Traveller details, {monthLabel}
+              </span>
+              <Link href="/travel/travellers" className="inline-flex items-center gap-1 text-xs font-medium text-mr-body hover:text-mr-ink">
+                All travellers <ArrowRight className="size-3" />
               </Link>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {due.length === 0 ? (
-              <p className="text-sm text-mr-muted">Nothing due today.</p>
+            {travellersThisMonth.length === 0 ? (
+              <p className="text-sm text-mr-muted">No travellers departing in {monthLabel}.</p>
             ) : (
               <ul className="divide-y divide-mr-line">
-                {due.slice(0, 8).map((l) => (
-                  <FollowupItem key={l.id} lead={l} compact />
+                {travellersThisMonth.slice(0, 40).map((t) => (
+                  <li key={t.id} className="flex items-center gap-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/travel/travellers/${t.id}`} className="block truncate text-sm font-medium text-mr-ink hover:underline">
+                        {t.full_name} <span className="font-mono text-xs font-normal text-mr-muted">{t.traveller_ref}</span>
+                      </Link>
+                      <p className="truncate text-xs text-mr-body">
+                        {formatDateRange(t.travel_start_date, t.travel_end_date)}
+                        {t.group ? ` · ${groupTitle(t.group)}` : " · no group"}
+                        {t.passport_number ? ` · ${t.passport_number}` : ""}
+                        {t.nationality ? ` · ${t.nationality}` : ""}
+                        {t.package_tier ? ` · ${packageDetail(t.package_tier, t.hotel_stars, t.hotel_name)}` : ""}
+                      </p>
+                    </div>
+                    <PackageBadge tier={t.package_tier} />
+                    <StatusPill label={labelFor(TRAVELLER_STATUSES, t.status)} tone={TRAVELLER_TONES[t.status]} className="hidden sm:inline-flex" />
+                    <DocsBadge count={t.docs.count} total={t.docs.total} />
+                  </li>
                 ))}
               </ul>
             )}
-            {due.length > 8 && (
+            {travellersThisMonth.length > 40 && (
               <p className="mt-2 text-xs text-mr-muted">
-                {due.length - 8} more in <Link href="/leads/followups" className="underline">follow-ups</Link>.
+                {travellersThisMonth.length - 40} more in <Link href="/travel/travellers" className="underline">travellers</Link>.
               </p>
             )}
           </CardContent>
@@ -278,26 +292,6 @@ export default async function DashboardPage() {
                 ))}
               </ul>
             )}
-          </CardContent>
-        </Card>
-
-        <Card className="xl:order-4">
-          <CardHeader>
-            <CardTitle>Leads by enquiry type</CardTitle>
-            <p className="text-xs text-mr-muted">Leads created in the last 90 days</p>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3" role="list" aria-label="Leads by enquiry type">
-              {typeCounts.map((t) => (
-                <li key={t.value} className="grid grid-cols-[130px_1fr_32px] items-center gap-3 text-sm" title={`${t.label}: ${t.count}`}>
-                  <span className="truncate text-mr-body">{t.short}</span>
-                  <span className="h-2.5 overflow-hidden rounded-r-sm bg-mr-surface">
-                    <span className="block h-full rounded-r-sm bg-mr-ink" style={{ width: `${(t.count / maxCount) * 100}%` }} />
-                  </span>
-                  <span className="tnum text-right font-medium text-mr-ink">{t.count}</span>
-                </li>
-              ))}
-            </ul>
           </CardContent>
         </Card>
       </div>

@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { Layers, Loader2, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addTravellersToGroup } from "@/lib/actions/travellers";
-import { PACKAGE_TIERS } from "@/lib/constants";
+import { PACKAGE_TIERS, tierHasHotel, tierNeedsStars } from "@/lib/constants";
+import { HotelStarsSelect } from "@/components/travel/hotel-stars-select";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -32,6 +33,7 @@ export type GroupRow = {
   exit_port: string | null;
   package_tier?: string | null;
   hotel_name?: string | null;
+  hotel_stars?: number | null;
   source?: string | null;
   partner_code?: string | null;
   pax_expected?: number | null;
@@ -50,6 +52,7 @@ type Editing = {
   exit_port: string;
   package_tier: string | null;
   hotel_name: string;
+  hotel_stars: number | null;
   label: string;
   guide_name: string;
   notes: string;
@@ -87,7 +90,7 @@ async function saveQuickRows(groupId: string, rows: QuickRow[]) {
   res.data.failed.forEach((f) => toast.error(`Traveller row ${f.row}: ${f.error}`, { duration: 8000 }));
 }
 
-type Bulk = { travel_date: string; travel_end_date: string; count: string; reference_prefix: string; entry_port: string; exit_port: string; package_tier: string | null; hotel_name: string; label: string; guide_name: string };
+type Bulk = { travel_date: string; travel_end_date: string; count: string; reference_prefix: string; entry_port: string; exit_port: string; package_tier: string | null; hotel_name: string; hotel_stars: number | null; label: string; guide_name: string };
 
 /** Entry / exit port input with common China ports as suggestions. */
 function PortInput({ id, value, onChange, placeholder }: { id: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
@@ -142,13 +145,13 @@ export function GroupsToolbar() {
     <>
       <Button
         variant="outline"
-        onClick={() => setBulk({ travel_date: today, travel_end_date: today, count: "10", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", label: "", guide_name: "" })}
+        onClick={() => setBulk({ travel_date: today, travel_end_date: today, count: "10", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, label: "", guide_name: "" })}
       >
         <Layers /> Bulk create
       </Button>
       <Button
         onClick={() =>
-          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", label: "", guide_name: "", notes: "", travellers: [] })
+          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, label: "", guide_name: "", notes: "", travellers: [] })
         }
       >
         <Plus /> New group
@@ -195,9 +198,17 @@ export function GroupsToolbar() {
                 <Label htmlFor="bulk_package">Package</Label>
                 <PackageSelect id="bulk_package" value={bulk.package_tier} onChange={(v) => setBulk({ ...bulk, package_tier: v })} />
               </div>
-              {bulk.package_tier === "visa_transit_hotel" && (
+              {tierNeedsStars(bulk.package_tier) && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="bulk_hotel">Hotel name</Label>
+                  <Label htmlFor="bulk_stars">
+                    Hotel class <span className="text-mr-red">*</span>
+                  </Label>
+                  <HotelStarsSelect id="bulk_stars" value={bulk.hotel_stars} onChange={(v) => setBulk({ ...bulk, hotel_stars: v })} />
+                </div>
+              )}
+              {tierHasHotel(bulk.package_tier) && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="bulk_hotel">Hotel name{tierNeedsStars(bulk.package_tier) ? " (optional)" : ""}</Label>
                   <Input id="bulk_hotel" value={bulk.hotel_name} onChange={(e) => setBulk({ ...bulk, hotel_name: e.target.value })} placeholder="Guangzhou Marriott Tianhe" />
                 </div>
               )}
@@ -284,9 +295,17 @@ function GroupDialog({
               <Label htmlFor="g_package">Package</Label>
               <PackageSelect id="g_package" value={value.package_tier} onChange={(v) => onChange({ ...value, package_tier: v })} />
             </div>
-            {value.package_tier === "visa_transit_hotel" && (
+            {tierNeedsStars(value.package_tier) && (
               <div className="space-y-1.5">
-                <Label htmlFor="g_hotel">Hotel name</Label>
+                <Label htmlFor="g_stars">
+                  Hotel class <span className="text-mr-red">*</span>
+                </Label>
+                <HotelStarsSelect id="g_stars" value={value.hotel_stars} onChange={(v) => onChange({ ...value, hotel_stars: v })} />
+              </div>
+            )}
+            {tierHasHotel(value.package_tier) && (
+              <div className="space-y-1.5">
+                <Label htmlFor="g_hotel">Hotel name{tierNeedsStars(value.package_tier) ? " (optional)" : ""}</Label>
                 <Input id="g_hotel" value={value.hotel_name} onChange={(e) => onChange({ ...value, hotel_name: e.target.value })} placeholder="Guangzhou Marriott Tianhe" />
               </div>
             )}
@@ -408,6 +427,7 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
             exit_port: group.exit_port ?? "",
             package_tier: group.package_tier ?? null,
             hotel_name: group.hotel_name ?? "",
+            hotel_stars: group.hotel_stars ?? null,
             label: group.label ?? "",
             guide_name: group.guide_name ?? "",
             notes: group.notes ?? "",

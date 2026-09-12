@@ -79,6 +79,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
     status: t.status,
     package_tier: t.package_tier,
     hotel_name: t.hotel_name,
+    hotel_stars: t.hotel_stars,
     notes: t.notes ?? "",
     lead_id: t.lead_id,
     invoice_id: t.invoice_id,

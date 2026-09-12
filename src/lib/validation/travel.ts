@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
-import { ACCEPTED_UPLOAD_TYPES, DOC_TYPES, MAX_UPLOAD_BYTES, PACKAGE_TIERS, TRAVELLER_STATUSES } from "@/lib/constants";
+import { ACCEPTED_UPLOAD_TYPES, DOC_TYPES, MAX_UPLOAD_BYTES, PACKAGE_TIERS, TRAVELLER_STATUSES, tierHasHotel, tierNeedsStars } from "@/lib/constants";
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date");
 
@@ -29,6 +29,22 @@ const referencePrefix = z
   .transform((v) => (v ? v : "MR144"));
 
 const port = z.string().trim().min(1, "Required for the group visa").max(120);
+
+/** 3 / 4 / 5 star hotel class; "" or null from a select means unset. */
+export const hotelStars = z
+  .union([z.number(), z.string(), z.null()])
+  .optional()
+  .transform((v) => (v === "" || v === null || v === undefined ? null : Number(v)))
+  .refine((v) => v === null || v === 3 || v === 4 || v === 5, "Choose 3, 4 or 5 star");
+
+/** Keep hotel name / stars only when the package has a hotel. */
+export function hotelFields(v: { package_tier: string | null; hotel_name?: string | null; hotel_stars?: number | null }) {
+  return {
+    hotel_name: tierHasHotel(v.package_tier) ? (v.hotel_name ?? null) : null,
+    hotel_stars: tierNeedsStars(v.package_tier) ? (v.hotel_stars ?? null) : null,
+  };
+}
+
 
 const packageTier = z
   .enum(PACKAGE_TIERS.map((t) => t.value) as [string, ...string[]])
@@ -72,6 +88,7 @@ export const groupSchema = z
     exit_port: port,
     package_tier: packageTier,
     hotel_name: optionalText,
+    hotel_stars: hotelStars,
     label: optionalText,
     guide_name: optionalText,
     notes: optionalText,
@@ -79,7 +96,9 @@ export const groupSchema = z
   .refine((v) => v.travel_end_date >= v.travel_date, {
     message: "End date must be on or after the start date",
     path: ["travel_end_date"],
-  });
+  })
+  .refine((v) => !tierNeedsStars(v.package_tier) || !!v.hotel_stars, { message: "Choose 3, 4 or 5 star", path: ["hotel_stars"] })
+  .transform((v) => ({ ...v, ...hotelFields(v) }));
 export type GroupInput = z.input<typeof groupSchema>;
 export type GroupValues = z.output<typeof groupSchema>;
 
@@ -93,13 +112,16 @@ export const bulkGroupSchema = z
     exit_port: port,
     package_tier: packageTier,
     hotel_name: optionalText,
+    hotel_stars: hotelStars,
     label: optionalText,
     guide_name: optionalText,
   })
   .refine((v) => v.travel_end_date >= v.travel_date, {
     message: "End date must be on or after the start date",
     path: ["travel_end_date"],
-  });
+  })
+  .refine((v) => !tierNeedsStars(v.package_tier) || !!v.hotel_stars, { message: "Choose 3, 4 or 5 star", path: ["hotel_stars"] })
+  .transform((v) => ({ ...v, ...hotelFields(v) }));
 export type BulkGroupInput = z.input<typeof bulkGroupSchema>;
 
 export const travellerSchema = z
@@ -139,6 +161,7 @@ export const travellerSchema = z
       .nullable()
       .transform((v) => (v ? v : null)),
     hotel_name: optionalText,
+    hotel_stars: hotelStars,
     notes: optionalText,
     lead_id: optionalUuid,
     invoice_id: optionalUuid,
@@ -148,7 +171,8 @@ export const travellerSchema = z
     message: "End date must be on or after the start date",
     path: ["travel_end_date"],
   })
-  .transform((v) => ({ ...v, hotel_name: v.package_tier === "visa_transit_hotel" ? v.hotel_name : null }));
+  .refine((v) => !tierNeedsStars(v.package_tier) || !!v.hotel_stars, { message: "Choose 3, 4 or 5 star", path: ["hotel_stars"] })
+  .transform((v) => ({ ...v, ...hotelFields(v) }));
 export type TravellerInput = z.input<typeof travellerSchema>;
 export type TravellerValues = z.output<typeof travellerSchema>;
 

@@ -24,7 +24,8 @@ export const LEAD_CSV_COLUMNS = [
   { key: "city", label: "City", required: false, example: "Dubai" },
   { key: "entry_city", label: "Entry city", required: false, example: "Guangzhou" },
   { key: "enquiry_type", label: "Enquiry type", required: true, example: "144hr Visa", hint: ENQUIRY_TYPES.map((t) => t.short).join(" / ") },
-  { key: "package_tier", label: "Package tier", required: false, example: "", hint: "Visa Only / Visa + PAR / Visa + PAR + Transit / Visa + Transit / Visa + Transit + Hotel (package enquiries only)" },
+  { key: "package_tier", label: "Package tier", required: false, example: "", hint: "Visa Only / Visa + PAR / Visa + PAR + Transit / Visa + Transit / Visa + Transit + Hotel / Visa + PAR + Hotel + Transport (package enquiries only)" },
+  { key: "hotel_stars", label: "Hotel class", required: false, example: "", hint: "3 / 4 / 5 (Visa + PAR + Hotel + Transport only)" },
   { key: "source", label: "Source", required: false, example: "WhatsApp", hint: LEAD_SOURCES.map((s) => s.label).join(" / ") },
   { key: "status", label: "Status", required: false, example: "New", hint: LEAD_STATUSES.map((s) => s.label).join(" / ") },
   { key: "pax_count", label: "Pax", required: false, example: "2" },
@@ -128,6 +129,9 @@ const HEADER_ALIASES: Record<string, LeadCsvKey> = {
   type: "enquiry_type",
   service: "enquiry_type",
   "package tier": "package_tier",
+  "hotel class": "hotel_stars",
+  "hotel stars": "hotel_stars",
+  stars: "hotel_stars",
   tier: "package_tier",
   package: "package_tier",
   source: "source",
@@ -205,6 +209,7 @@ const ENQUIRY_ALIASES: Record<string, string> = {
 function matchPackage(raw: string): PackageTier | null {
   const n = norm(raw);
   if (!n) return null;
+  if (/hotel/.test(n) && /transport/.test(n)) return "visa_par_hotel_transport";
   if (/hotel/.test(n)) return "visa_transit_hotel";
   if (/\bpar\b/.test(n) && /transit/.test(n)) return "visa_par_transit";
   if (/\bpar\b/.test(n)) return "visa_par";
@@ -262,6 +267,7 @@ export function normaliseRow(cells: string[], keys: (LeadCsvKey | null)[], profi
       entry_city: get("entry_city") || null,
       enquiry_type: enquiry,
       package_tier: tier,
+      hotel_stars: /^[345]$/.test(get("hotel_stars").replace(/[^0-9]/g, "").slice(0, 1)) ? Number(get("hotel_stars").replace(/[^0-9]/g, "").slice(0, 1)) : null,
       source: matchOption(LEAD_SOURCES, get("source")) ?? (get("source") ? get("source") : "other"),
       status: matchOption(LEAD_STATUSES, get("status")) ?? (get("status") ? get("status") : "new"),
       pax_count: get("pax_count") ? Number(get("pax_count")) : 1,

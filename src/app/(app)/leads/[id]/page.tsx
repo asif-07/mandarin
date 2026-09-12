@@ -53,6 +53,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     canton_phase: lead.canton_phase,
     package_tier: lead.package_tier,
     hotel_name: lead.hotel_name,
+    hotel_stars: lead.hotel_stars,
     quoted_amount: lead.quoted_amount == null ? "" : Number(lead.quoted_amount),
     quoted_currency: lead.quoted_currency ?? "USD",
     assigned_to: lead.assigned_to,

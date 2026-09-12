@@ -18,7 +18,8 @@ import { GroupCombobox } from "@/components/travel/group-combobox";
 import type { GroupOption } from "@/lib/actions/travel-groups";
 import { createTraveller, updateTraveller } from "@/lib/actions/travellers";
 import { travellerSchema, type TravellerInput, type TravellerValues } from "@/lib/validation/travel";
-import { PACKAGE_TIERS, TRAVELLER_STATUSES } from "@/lib/constants";
+import { PACKAGE_TIERS, TRAVELLER_STATUSES, tierHasHotel, tierNeedsStars } from "@/lib/constants";
+import { HotelStarsSelect } from "@/components/travel/hotel-stars-select";
 import { formatDate, todayISO } from "@/lib/format";
 
 export function emptyTravellerValues(): TravellerInput {
@@ -35,6 +36,7 @@ export function emptyTravellerValues(): TravellerInput {
     status: "documents_pending",
     package_tier: null,
     hotel_name: null,
+    hotel_stars: null,
     notes: "",
     lead_id: null,
     invoice_id: null,
@@ -222,9 +224,18 @@ export function TravellerForm({ mode, travellerId, defaultValues, initialGroup, 
                 )}
               />
             </div>
-            {packageTier === "visa_transit_hotel" && (
+            {tierNeedsStars(packageTier) && (
               <div className="space-y-1.5">
-                <Label htmlFor="t_hotel">Hotel name</Label>
+                <Label htmlFor="t_stars">
+                  Hotel class <span className="text-mr-red">*</span>
+                </Label>
+                <Controller control={control} name="hotel_stars" render={({ field }) => <HotelStarsSelect id="t_stars" value={field.value} onChange={field.onChange} invalid={!!errors.hotel_stars} />} />
+                <FieldError message={errors.hotel_stars?.message} />
+              </div>
+            )}
+            {tierHasHotel(packageTier) && (
+              <div className="space-y-1.5">
+                <Label htmlFor="t_hotel">Hotel name{tierNeedsStars(packageTier) ? " (optional)" : ""}</Label>
                 <Input id="t_hotel" placeholder="e.g. Guangzhou Marriott Tianhe" {...register("hotel_name")} />
               </div>
             )}

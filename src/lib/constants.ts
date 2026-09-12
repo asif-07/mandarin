@@ -38,7 +38,28 @@ export const PACKAGE_TIERS = [
   { value: "visa_par_transit", label: "Visa + PAR + Transit", short: "Visa+PAR+Transit" },
   { value: "visa_transit", label: "Visa + Transit", short: "Visa+Transit" },
   { value: "visa_transit_hotel", label: "Visa + Transit + Hotel", short: "Visa+Transit+Hotel" },
+  { value: "visa_par_hotel_transport", label: "Visa + PAR + Hotel + Transport", short: "Visa+PAR+Hotel+Transport" },
 ] as const satisfies readonly Option[];
+
+/** Packages that include a hotel (hotel name can be recorded). */
+export const HOTEL_TIERS = ["visa_transit_hotel", "visa_par_hotel_transport"] as const;
+export function tierHasHotel(tier: string | null | undefined): boolean {
+  return !!tier && (HOTEL_TIERS as readonly string[]).includes(tier);
+}
+/** Packages that must say which hotel class (3, 4 or 5 star). */
+export function tierNeedsStars(tier: string | null | undefined): boolean {
+  return tier === "visa_par_hotel_transport";
+}
+export const HOTEL_STARS = [3, 4, 5] as const;
+export type HotelStars = (typeof HOTEL_STARS)[number];
+/** "Visa + PAR + Hotel + Transport · 4-star · Marriott" style label for a package with its hotel details. */
+export function packageDetail(tier: string | null | undefined, hotel_stars?: number | null, hotel_name?: string | null): string {
+  if (!tier) return "";
+  const parts = [labelFor(PACKAGE_TIERS, tier)];
+  if (hotel_stars) parts.push(`${hotel_stars}-star`);
+  if (hotel_name) parts.push(hotel_name);
+  return parts.join(" · ");
+}
 
 /** Documents that can be uploaded once for a whole group instead of per traveller. */
 export const GROUP_DOC_TYPES = [

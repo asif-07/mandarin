@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { bulkGroupSchema, groupSchema, type BulkGroupInput, type GroupInput } from "@/lib/validation/travel";
+import { bulkGroupSchema, groupSchema, hotelFields, hotelStars, type BulkGroupInput, type GroupInput } from "@/lib/validation/travel";
 import { errorMessage, fail, ok, type ActionResult } from "@/lib/result";
 import { formatDate, todayISO } from "@/lib/format";
 import { BUCKETS, PACKAGE_TIERS } from "@/lib/constants";
@@ -95,7 +95,8 @@ export async function bulkCreateGroups(input: BulkGroupInput): Promise<ActionRes
       entry_port: parsed.data.entry_port,
       exit_port: parsed.data.exit_port,
       package_tier: parsed.data.package_tier,
-      hotel_name: parsed.data.package_tier === "visa_transit_hotel" ? parsed.data.hotel_name : null,
+      hotel_name: parsed.data.hotel_name,
+      hotel_stars: parsed.data.hotel_stars,
       label: parsed.data.label,
       guide_name: parsed.data.guide_name,
       created_by: profile.id,
@@ -240,6 +241,7 @@ const b2bRegisterSchema = z.object({
     .nullable()
     .transform((v) => (v ? v : null)),
   hotel_name: z.string().trim().max(200).optional().nullable().transform((v) => (v ? v : null)),
+  hotel_stars: hotelStars,
 });
 export type B2bRegisterInput = z.input<typeof b2bRegisterSchema>;
 
@@ -272,7 +274,7 @@ export async function registerB2bGroup(input: B2bRegisterInput): Promise<ActionR
       entry_port: parsed.data.entry_port,
       exit_port: parsed.data.exit_port,
       package_tier: parsed.data.package_tier,
-      hotel_name: parsed.data.package_tier === "visa_transit_hotel" ? parsed.data.hotel_name : null,
+      ...hotelFields(parsed.data),
     },
   });
   // Remember the partner so a logo can be attached to it later.
