@@ -28,9 +28,10 @@ export default async function DashboardPage() {
 
   const [
     { data: monthTravellers },
-    { count: groupsThisMonth },
+    { data: monthGroups },
     { data: invoicedRows },
-    { count: travellersNext7 },
+    { count: travellerRowsNext7 },
+    { data: b2bGroupsNext7 },
     { data: urgentRows },
     { data: recentInvoices },
     { data: groupRows },
@@ -44,7 +45,8 @@ export default async function DashboardPage() {
       .order("travel_start_date")
       .order("full_name")
       .limit(300),
-    supabase.from("travel_groups").select("id", { count: "exact", head: true }).gte("travel_date", monthStart).lte("travel_date", monthEnd),
+    // Partner (B2B) groups carry a pax count instead of traveller records, so they are counted from the group.
+    supabase.from("travel_groups").select("id, source, pax_expected, travel_date, travellers(id, status)").gte("travel_date", monthStart).lte("travel_date", monthEnd),
     supabase.from("invoices").select("total").eq("currency", "USD").in("status", ["issued", "paid"]).gte("issue_date", monthStart),
     supabase
       .from("travellers")
@@ -52,6 +54,7 @@ export default async function DashboardPage() {
       .gte("travel_start_date", today)
       .lte("travel_start_date", in7)
       .neq("status", "cancelled"),
+    supabase.from("travel_groups").select("id, pax_expected, travellers(id, status)").eq("source", "b2b").gte("travel_date", today).lte("travel_date", in7),
     supabase
       .from("travellers")
       .select("id, full_name, travel_start_date, status, group:travel_groups(travel_date, group_code, label, group_documents(doc_type, deleted_at)), traveller_documents(doc_type, deleted_at)")
@@ -85,6 +88,14 @@ export default async function DashboardPage() {
   const travellersThisMonth = (monthTravellers ?? []).map((t) => ({ ...t, docs: docCompleteness(t.traveller_documents, t.group?.group_documents), days: daysFromToday(t.travel_start_date) ?? 0 }));
   const monthComplete = travellersThisMonth.filter((t) => t.docs.complete).length;
   const monthTravelledOrTravelling = travellersThisMonth.filter((t) => t.days <= 0).length;
+  // A partner group's pax counts only where it has no traveller records of its own (they would already be in the list above).
+  const partnerPax = (groups: { source?: string; pax_expected: number | null; travellers: { status: string }[] }[]) =>
+    groups.filter((g) => (g.source ?? "b2b") === "b2b" && !g.travellers.some((t) => t.status !== "cancelled")).reduce((n, g) => n + (g.pax_expected ?? 0), 0);
+  const monthPartnerPax = partnerPax(monthGroups ?? []);
+  const monthPartnerDeparted = (monthGroups ?? []).filter((g) => g.source === "b2b" && !g.travellers.some((t) => t.status !== "cancelled") && (daysFromToday(g.travel_date) ?? 0) <= 0).reduce((n, g) => n + (g.pax_expected ?? 0), 0);
+  const totalThisMonth = travellersThisMonth.length + monthPartnerPax;
+  const groupsThisMonth = monthGroups?.length ?? 0;
+  const travellersNext7 = (travellerRowsNext7 ?? 0) + partnerPax(b2bGroupsNext7 ?? []);
 
   const urgent = (urgentRows ?? [])
     .map((t) => ({ ...t, docs: docCompleteness(t.traveller_documents, t.group?.group_documents) }))
@@ -97,12 +108,12 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat
           label="Travellers this month"
-          value={String(travellersThisMonth.length)}
-          hint={`${monthLabel} · ${monthTravelledOrTravelling} already departed · ${monthComplete} with all documents`}
+          value={String(totalThisMonth)}
+          hint={`${monthLabel} · ${monthTravelledOrTravelling + monthPartnerDeparted} already departed · ${monthPartnerPax} in partner packs · ${monthComplete} of ours with all documents`}
           href="/travel/travellers"
         />
-        <Stat label="Travelling in 7 days" value={String(travellersNext7 ?? 0)} hint={`${formatDate(today)} to ${formatDate(in7)}`} href="/travel/travellers" />
-        <Stat label="Groups this month" value={String(groupsThisMonth ?? 0)} hint={`departing in ${monthLabel}`} href="/travel/groups" />
+        <Stat label="Travelling in 7 days" value={String(travellersNext7)} hint={`${formatDate(today)} to ${formatDate(in7)}, partner packs included`} href="/travel/travellers" />
+        <Stat label="Groups this month" value={String(groupsThisMonth)} hint={`departing in ${monthLabel}`} href="/travel/groups" />
         <Stat label="Invoiced this month" value={`USD ${formatNumber(invoiced)}`} hint="issued and paid, USD invoices" href="/invoices" />
       </div>
 
