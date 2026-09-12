@@ -189,7 +189,7 @@ export function B2bUploadButton({ variant = "default" }: { variant?: "default" |
             <div className="space-y-1.5">
               <Label htmlFor="b2b_code">Partner&rsquo;s code</Label>
               <Input id="b2b_code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="MR144-EDPT-OCT15-OCT20-100PX-G01" className="font-mono" autoComplete="off" />
-              <p className="text-xs text-mr-muted">Prefix · partner · entry date · exit date · pax · their group number. Filled from the file name when it matches.</p>
+              <p className="text-xs text-mr-muted">Prefix · partner · entry date · exit date · pax · their group number (optional). Filled from the file name.</p>
             </div>
 
             {previewError && form.code && (

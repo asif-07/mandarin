@@ -42,6 +42,7 @@ async function main() {
     "MR144\u2013GKHR\u2013SEP22\u2013SEP27\u201303PX\u2013G01",
     "mr144 gkhr sep22 sep27 3px g1 (1).pdf",
     "MR144_EDPT_OCT15_OCT20_100PX_G01",
+    "MR144-GKHR-SEP22-SEP27-03PX.pdf",
   ];
   for (const c of good) {
     const r = parseB2bCode(c, today);
@@ -49,7 +50,7 @@ async function main() {
     if (r.ok && c.includes("GKHR")) assert(r.value.pax === 3 && r.value.partner_group === "G01" && r.value.travel_date === "2026-09-22" && r.value.travel_end_date === "2026-09-27", `b2b code values: ${c}`);
   }
   const bad: [string, RegExp][] = [
-    ["MR144-GKHR-SEP22-SEP27-03PX", /6 parts/],
+    ["MR144-GKHR-SEP22-SEP27", /5 or 6 parts/],
     ["MR144-GKHR-SEPT22-SEP27-03PX-G01", /Entry date/],
     ["MR144-GKHR-SEP22-SEP27-ABC-G01", /Pax/],
     ["MR144-GKHR-SEP22-SEP27-03PX-GA", /Group/],

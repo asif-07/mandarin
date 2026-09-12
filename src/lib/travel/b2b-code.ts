@@ -2,7 +2,7 @@
  * B2B partner pack codes, e.g. MR144-EDPT-OCT15-OCT20-100PX-G01
  *   MR144  our prefix          EDPT  partner code
  *   OCT15  entry date          OCT20 exit date       (no year: inferred)
- *   100PX  number of pax       G01   the partner's own group number
+ *   100PX  number of pax       G01   the partner's own group number (optional; G01 when absent)
  *
  * Shared by the browser (live preview) and the server (validation), so it
  * has no server-only imports.
@@ -64,10 +64,11 @@ export function parseB2bCode(raw: string, todayISO: string): { ok: true; value: 
   const code = cleanB2bCode(raw);
   if (!code) return { ok: false, error: `Expected a code like ${EXAMPLE}` };
   const parts = code.split("-");
-  if (parts.length !== 6) {
-    return { ok: false, error: `The code needs 6 parts separated by dashes (prefix, partner, entry date, exit date, pax, group), found ${parts.length}. Example: ${EXAMPLE}` };
+  if (parts.length < 5 || parts.length > 6) {
+    return { ok: false, error: `The code needs 5 or 6 parts separated by dashes (prefix, partner, entry date, exit date, pax, and optionally their group number), found ${parts.length}. Example: ${EXAMPLE}` };
   }
-  const [prefix, partner, d1Raw, d2Raw, paxRaw, gRaw] = parts as [string, string, string, string, string, string];
+  // The partner's own group number is optional: a code without one is their first (or only) group.
+  const [prefix, partner, d1Raw, d2Raw, paxRaw, gRaw = "G01"] = parts as [string, string, string, string, string, string?];
   if (!/^[A-Z0-9]{2,12}$/.test(prefix)) return { ok: false, error: `Prefix "${prefix}" should be 2 to 12 letters or digits, e.g. MR144` };
   if (!/^[A-Z0-9]{2,12}$/.test(partner)) return { ok: false, error: `Partner code "${partner}" should be 2 to 12 letters or digits, e.g. EDPT` };
 
