@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { StatusPill } from "@/components/shared/status-pill";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
-import { clearGroupVisa, registerGroupVisa } from "@/lib/actions/travel-groups";
+import { clearGroupVisa } from "@/lib/actions/travel-groups";
 import { BUCKETS, VISA_STATUSES, labelFor } from "@/lib/constants";
 import { checkUploadFile, ACCEPTED_EXT } from "@/lib/validation/travel";
 import { formatDate } from "@/lib/format";
@@ -64,9 +64,10 @@ export function UploadVisaButton({ groupId, replace = false, size = "sm" }: { gr
     setBusy(true);
     try {
       const path = await uploadIncomingVisa(f, check.mime);
-      const res = await registerGroupVisa(groupId, path, f.name, check.mime);
-      if (!res.ok) throw new Error(res.error);
-      toast.success(`Visa filed as ${res.data.file_name}`, { duration: 6000 });
+      const r = await fetch(`/api/groups/${groupId}/visa`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ upload_path: path, original_name: f.name, mime_type: check.mime }) });
+      const data = (await r.json().catch(() => ({}))) as { file_name?: string; error?: string };
+      if (!r.ok) throw new Error(data.error ?? `Upload failed (${r.status})`);
+      toast.success(`Visa filed as ${data.file_name ?? f.name}`, { duration: 6000 });
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not upload the visa");
