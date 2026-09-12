@@ -67,9 +67,10 @@ export function B2bUploadButton({ variant = "default" }: { variant?: "default" |
   function pick(f: File | undefined) {
     if (!acceptPdf(f)) return;
     setFile(f);
-    // The partner's code is usually the file name.
+    // The partner's code is usually the file name. Fill it in when it looks
+    // like a code, even if a part is off, so the error says what to fix.
     const fromName = cleanB2bCode(f.name);
-    if (parseB2bCode(fromName, todayISO()).ok) setForm((x) => ({ ...x, code: fromName }));
+    if (parseB2bCode(fromName, todayISO()).ok || (fromName.split("-").length >= 4 && !form.code)) setForm((x) => ({ ...x, code: fromName }));
   }
 
   // Live preview of dates and the G-code we will assign.
@@ -88,16 +89,25 @@ export function B2bUploadButton({ variant = "default" }: { variant?: "default" |
       setPreviewError(local.error);
       return;
     }
+    // The code reads fine locally: drop any message left over from earlier
+    // keystrokes while the server confirms the date and the next G-number.
+    setPreviewError(null);
     setChecking(true);
     timer.current = setTimeout(async () => {
-      const res = await previewB2bCode(code);
-      setChecking(false);
-      if (!res.ok) {
+      try {
+        const res = await previewB2bCode(code);
+        if (!res.ok) {
+          setPreview(null);
+          setPreviewError(res.error);
+        } else {
+          setPreview(res.data);
+          setPreviewError(null);
+        }
+      } catch (e) {
         setPreview(null);
-        setPreviewError(res.error);
-      } else {
-        setPreview(res.data);
-        setPreviewError(null);
+        setPreviewError(`Could not check the code with the server (${e instanceof Error ? e.message : "network error"}). Reload the page and try again.`);
+      } finally {
+        setChecking(false);
       }
     }, 350);
     return () => {

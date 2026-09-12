@@ -14,6 +14,7 @@ import { config } from "dotenv";
 import { launchBrowser, htmlToPdf } from "../src/lib/pdf/browser";
 import { buildGroupPackPdf, buildTravelPackPdf } from "../src/lib/pdf/travel-pack";
 import { groupPackReference } from "../src/lib/queries/travel";
+import { parseB2bCode } from "../src/lib/travel/b2b-code";
 import { renderInvoiceHtml } from "../src/lib/pdf/invoice-template";
 import { loadTemplateAssets } from "../src/lib/pdf/assets";
 import { REFERENCE_INVOICE } from "./check-invoice-pdf";
@@ -29,6 +30,36 @@ function assert(cond: unknown, msg: string) {
 }
 
 async function main() {
+  // B2B partner code parsing: what partners actually send (PAX, leading zeros,
+  // letter O for zero, unicode dashes, file names) must all parse; bad parts
+  // must be named in the error.
+  const today = "2026-09-12";
+  const good = [
+    "MR144-GKHR-SEP22-SEP27-03PX-G01",
+    "MR144-GKHR-SEP22-SEP27-003PX-G01",
+    "MR144-GKHR-SEP22-SEP27-03PAX-G01.pdf",
+    "MR144-GKHR-SEP22-SEP27-O3PX-GO1",
+    "MR144\u2013GKHR\u2013SEP22\u2013SEP27\u201303PX\u2013G01",
+    "mr144 gkhr sep22 sep27 3px g1 (1).pdf",
+    "MR144_EDPT_OCT15_OCT20_100PX_G01",
+  ];
+  for (const c of good) {
+    const r = parseB2bCode(c, today);
+    assert(r.ok, `b2b code parses: ${JSON.stringify(c)}${r.ok ? "" : ` -> ${r.error}`}`);
+    if (r.ok && c.includes("GKHR")) assert(r.value.pax === 3 && r.value.partner_group === "G01" && r.value.travel_date === "2026-09-22" && r.value.travel_end_date === "2026-09-27", `b2b code values: ${c}`);
+  }
+  const bad: [string, RegExp][] = [
+    ["MR144-GKHR-SEP22-SEP27-03PX", /6 parts/],
+    ["MR144-GKHR-SEPT22-SEP27-03PX-G01", /Entry date/],
+    ["MR144-GKHR-SEP22-SEP27-ABC-G01", /Pax/],
+    ["MR144-GKHR-SEP22-SEP27-03PX-GA", /Group/],
+    ["MR144-GKHR-SEP31-OCT02-03PX-G01", /not a valid date/],
+  ];
+  for (const [c, re] of bad) {
+    const r = parseB2bCode(c, today);
+    assert(!r.ok && re.test(r.error), `b2b code error names the part: ${c} -> ${r.ok ? "parsed?!" : r.error}`);
+  }
+
   const passportJpg = await sharp({ create: { width: 1200, height: 1700, channels: 3, background: "#d9c9a3" } })
     .jpeg()
     .toBuffer();
