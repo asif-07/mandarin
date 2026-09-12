@@ -77,7 +77,7 @@ Database changes live in `supabase/migrations/` (numbered SQL files, already app
 - **Atomic numbering:** `create_invoice`, `update_invoice`, `create_lead` and `create_traveller` Postgres functions claim the counter and insert in one transaction.
 - **PDF thumbnails** in the document slots show a PDF icon rather than a rendered first page; image uploads show real thumbnails via signed URLs.
 - **Conversion rate** is defined as won ÷ (won + lost) over the last 90 days. "Invoiced this month" sums USD invoices only (other currencies are excluded rather than converted).
-- **Company phone** on the invoice is `+819587408840`. Edit `COMPANY` in `src/lib/constants.ts` if that is wrong.
+- **Company phone** on the invoice is `+8619587408840`. Edit `COMPANY` in `src/lib/constants.ts` if that is wrong.
 - **Vercel Hobby limits:** route handlers run for at most 60 seconds. Compiling a whole group's packs launches one Chromium and renders one cover per traveller; groups larger than roughly 15 travellers with heavy scans may need the Pro plan (300 s) or per-traveller compilation.
 
 ## 5. Project layout

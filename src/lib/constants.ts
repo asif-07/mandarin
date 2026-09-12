@@ -7,7 +7,7 @@ export const COMPANY = {
   addressLine1: "广州市越秀区长堤大马路316号",
   addressLine2: "民州金岁大厦2812房",
   addressLine3: "Guangzhou, China",
-  phone: "+819587408840",
+  phone: "+8619587408840",
 } as const;
 
 export const NAV_ITEMS = [
