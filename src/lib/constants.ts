@@ -34,9 +34,18 @@ export type EnquiryType = (typeof ENQUIRY_TYPES)[number]["value"];
 /** Package options, used on leads and travellers with enquiry type "package". */
 export const PACKAGE_TIERS = [
   { value: "visa_only", label: "Visa Only", short: "Visa" },
+  { value: "visa_par", label: "Visa + PAR", short: "Visa+PAR" },
+  { value: "visa_par_transit", label: "Visa + PAR + Transit", short: "Visa+PAR+Transit" },
   { value: "visa_transit", label: "Visa + Transit", short: "Visa+Transit" },
   { value: "visa_transit_hotel", label: "Visa + Transit + Hotel", short: "Visa+Transit+Hotel" },
 ] as const satisfies readonly Option[];
+
+/** Documents that can be uploaded once for a whole group instead of per traveller. */
+export const GROUP_DOC_TYPES = [
+  { value: "flight_ticket", label: "Group flight ticket", covers: "flight_ticket" },
+  { value: "hotel_booking", label: "Group hotel booking", covers: "hotel_booking" },
+] as const;
+export type GroupDocType = (typeof GROUP_DOC_TYPES)[number]["value"];
 
 /** Where a travel group came from. */
 export const GROUP_SOURCES = [

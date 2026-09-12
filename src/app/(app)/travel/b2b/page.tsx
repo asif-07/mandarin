@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { B2bUploadButton, ReplaceB2bPackButton } from "@/components/travel/b2b-upload";
 import { GroupRowActions } from "@/components/travel/groups-manager";
 import { GroupVisaPanel } from "@/components/travel/group-visa";
+import { GroupDocuments } from "@/components/travel/group-documents";
 import { PartnerLogosCard } from "@/components/travel/partner-logos";
 import { BUCKETS, PACKAGE_TIERS, labelFor } from "@/lib/constants";
 import { SearchParamInput } from "@/components/shared/url-filters";
@@ -23,7 +24,7 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
   let query = supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, partner_reference, pax_expected, pack_path, pack_file_name, pack_uploaded_at, package_tier, hotel_name, visa_status, visa_applied_at, visa_uploaded_at, visa_path, uploader:profiles!travel_groups_pack_uploaded_by_fkey(display_name), travellers(count)",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, partner_reference, pax_expected, pack_path, pack_file_name, pack_uploaded_at, package_tier, hotel_name, visa_status, visa_applied_at, visa_uploaded_at, visa_path, uploader:profiles!travel_groups_pack_uploaded_by_fkey(display_name), travellers(count), group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at)",
     )
     .eq("source", "b2b")
     .order("travel_date", { ascending: false })
@@ -133,6 +134,9 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
                     <span className="text-xs text-mr-warning">No pack file</span>
                   )}
                   <ReplaceB2bPackButton groupId={g.id} label={g.pack_path ? "Replace" : "Upload pack"} />
+                </div>
+                <div className="mt-3 border-t border-mr-line pt-3">
+                  <GroupDocuments groupId={g.id} documents={(g.group_documents ?? []).filter((d) => !d.deleted_at)} />
                 </div>
                 <div className="mt-3 border-t border-mr-line pt-3">
                   <GroupVisaPanel

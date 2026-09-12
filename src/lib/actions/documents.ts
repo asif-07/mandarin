@@ -6,7 +6,7 @@ import { requireProfile } from "@/lib/auth";
 import { registerDocumentSchema, type RegisterDocumentInput } from "@/lib/validation/travel";
 import { reconcileDocumentStatus, revalidateTraveller } from "@/lib/actions/travellers";
 import { errorMessage, fail, ok, type ActionResult } from "@/lib/result";
-import { BUCKETS, DOC_TYPES } from "@/lib/constants";
+import { BUCKETS, DOC_TYPES, GROUP_DOC_TYPES } from "@/lib/constants";
 
 export type RegisteredDocument = {
   id: string;
@@ -132,4 +132,89 @@ export async function getDocumentUrl(docId: string, download = false): Promise<A
     .createSignedUrl(doc.storage_path, 300, download ? { download: doc.file_name } : undefined);
   if (error || !data) return fail("Could not create link");
   return ok({ url: data.signedUrl });
+}
+
+// ---------------------------------------------------------------------------
+// group-level documents (one flight ticket / hotel booking for the whole group)
+// ---------------------------------------------------------------------------
+export type GroupDocument = {
+  id: string;
+  doc_type: string;
+  file_name: string;
+  storage_path: string;
+  mime_type: string;
+  file_size: number | null;
+  uploaded_at: string | null;
+  uploaded_by_name: string | null;
+};
+
+async function reconcileGroupTravellers(supabase: Awaited<ReturnType<typeof createClient>>, groupId: string) {
+  const { data: travellers } = await supabase.from("travellers").select("id").eq("travel_group_id", groupId).in("status", ["documents_pending", "documents_complete"]);
+  for (const t of travellers ?? []) await reconcileDocumentStatus(supabase, t.id);
+}
+
+/**
+ * Register a file the browser uploaded to `_groups/{groupId}/...` in the
+ * traveller-documents bucket as the group's shared document. Replaces the
+ * previous one in the same slot (soft delete) and re-checks every traveller's
+ * document status, since the group file now counts for all of them.
+ */
+export async function registerGroupDocument(groupId: string, input: RegisterDocumentInput): Promise<ActionResult<{ document: GroupDocument }>> {
+  const profile = await requireProfile();
+  const parsed = registerDocumentSchema.safeParse(input);
+  if (!parsed.success) return fail("Please fix the highlighted fields", z.flattenError(parsed.error).fieldErrors);
+  if (!GROUP_DOC_TYPES.some((d) => d.value === parsed.data.doc_type)) return fail("Only flight ticket and hotel booking can be group documents");
+  const supabase = await createClient();
+  const { data: group } = await supabase.from("travel_groups").select("id").eq("id", groupId).maybeSingle();
+  if (!group) return fail("Group not found");
+  if (!parsed.data.storage_path.startsWith(`_groups/${groupId}/`)) return fail("Invalid storage path");
+
+  let { storage_path, mime_type, file_name, file_size } = parsed.data;
+  if (mime_type === "image/heic" || mime_type === "image/heif") {
+    try {
+      const { data: blob, error: dlError } = await supabase.storage.from(BUCKETS.travellerDocuments).download(storage_path);
+      if (dlError || !blob) throw dlError ?? new Error("Download failed");
+      const convert = (await import("heic-convert")).default;
+      const jpeg = Buffer.from(await convert({ buffer: new Uint8Array(await blob.arrayBuffer()), format: "JPEG", quality: 0.9 }));
+      const jpegPath = storage_path.replace(/\.(heic|heif)$/i, "") + ".jpg";
+      const { error: upError } = await supabase.storage.from(BUCKETS.travellerDocuments).upload(jpegPath, jpeg, { contentType: "image/jpeg", upsert: false });
+      if (upError) throw upError;
+      storage_path = jpegPath;
+      mime_type = "image/jpeg";
+      file_name = file_name.replace(/\.(heic|heif)$/i, "") + ".jpg";
+      file_size = jpeg.byteLength;
+    } catch (e) {
+      return fail(`HEIC conversion failed: ${errorMessage(e)}`);
+    }
+  }
+
+  await supabase
+    .from("group_documents")
+    .update({ deleted_at: new Date().toISOString(), deleted_by: profile.id })
+    .eq("group_id", groupId)
+    .eq("doc_type", parsed.data.doc_type)
+    .is("deleted_at", null);
+
+  const { data: row, error } = await supabase
+    .from("group_documents")
+    .insert({ group_id: groupId, doc_type: parsed.data.doc_type, file_name, storage_path, mime_type, file_size, uploaded_by: profile.id })
+    .select("id, doc_type, file_name, storage_path, mime_type, file_size, uploaded_at")
+    .single();
+  if (error || !row) return fail(errorMessage(error, "Could not save document"));
+
+  await reconcileGroupTravellers(supabase, groupId);
+  await revalidateTraveller();
+  return ok({ document: { ...row, uploaded_by_name: profile.display_name } });
+}
+
+export async function deleteGroupDocument(docId: string): Promise<ActionResult<{ id: string }>> {
+  const profile = await requireProfile();
+  const supabase = await createClient();
+  const { data: doc } = await supabase.from("group_documents").select("id, group_id").eq("id", docId).maybeSingle();
+  if (!doc) return fail("Document not found");
+  const { error } = await supabase.from("group_documents").update({ deleted_at: new Date().toISOString(), deleted_by: profile.id }).eq("id", docId);
+  if (error) return fail(errorMessage(error, "Could not remove document"));
+  await reconcileGroupTravellers(supabase, doc.group_id);
+  await revalidateTraveller();
+  return ok({ id: docId });
 }

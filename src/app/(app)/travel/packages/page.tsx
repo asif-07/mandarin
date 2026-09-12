@@ -28,7 +28,7 @@ export default async function PackagesPage({ searchParams }: { searchParams: Pro
   let query = supabase
     .from("travellers")
     .select(
-      "id, traveller_ref, full_name, phone, travel_start_date, travel_end_date, status, package_tier, group:travel_groups(travel_date, travel_end_date, group_code, label), traveller_documents(doc_type, deleted_at)",
+      "id, traveller_ref, full_name, phone, travel_start_date, travel_end_date, status, package_tier, group:travel_groups(travel_date, travel_end_date, group_code, label, group_documents(doc_type, deleted_at)), traveller_documents(doc_type, deleted_at)",
     )
     .not("package_tier", "is", null)
     .neq("status", "cancelled")
@@ -76,7 +76,7 @@ export default async function PackagesPage({ searchParams }: { searchParams: Pro
         <div className="grid gap-4 xl:grid-cols-3">
           {PACKAGE_TIERS.map((tier) => {
             const list = byTier.get(tier.value) ?? [];
-            const complete = list.filter((t) => docCompleteness(t.traveller_documents).complete).length;
+            const complete = list.filter((t) => docCompleteness(t.traveller_documents, t.group?.group_documents).complete).length;
             return (
               <section key={tier.value} className="rounded-lg border border-mr-line bg-white">
                 <header className="flex items-center justify-between border-b border-mr-line px-4 py-3">
@@ -90,7 +90,7 @@ export default async function PackagesPage({ searchParams }: { searchParams: Pro
                 ) : (
                   <ul className="divide-y divide-mr-line">
                     {list.map((t) => {
-                      const c = docCompleteness(t.traveller_documents);
+                      const c = docCompleteness(t.traveller_documents, t.group?.group_documents);
                       return (
                         <li key={t.id} className="flex items-center gap-3 px-4 py-2.5">
                           <div className="min-w-0 flex-1">

@@ -24,7 +24,7 @@ export const LEAD_CSV_COLUMNS = [
   { key: "city", label: "City", required: false, example: "Dubai" },
   { key: "entry_city", label: "Entry city", required: false, example: "Guangzhou" },
   { key: "enquiry_type", label: "Enquiry type", required: true, example: "144hr Visa", hint: ENQUIRY_TYPES.map((t) => t.short).join(" / ") },
-  { key: "package_tier", label: "Package tier", required: false, example: "", hint: "Visa Only / Visa + Transit / Visa + Transit + Hotel (package enquiries only)" },
+  { key: "package_tier", label: "Package tier", required: false, example: "", hint: "Visa Only / Visa + PAR / Visa + PAR + Transit / Visa + Transit / Visa + Transit + Hotel (package enquiries only)" },
   { key: "source", label: "Source", required: false, example: "WhatsApp", hint: LEAD_SOURCES.map((s) => s.label).join(" / ") },
   { key: "status", label: "Status", required: false, example: "New", hint: LEAD_STATUSES.map((s) => s.label).join(" / ") },
   { key: "pax_count", label: "Pax", required: false, example: "2" },
@@ -206,6 +206,8 @@ function matchPackage(raw: string): PackageTier | null {
   const n = norm(raw);
   if (!n) return null;
   if (/hotel/.test(n)) return "visa_transit_hotel";
+  if (/\bpar\b/.test(n) && /transit/.test(n)) return "visa_par_transit";
+  if (/\bpar\b/.test(n)) return "visa_par";
   if (/transit/.test(n)) return "visa_transit";
   if (/visa/.test(n)) return "visa_only";
   return null;

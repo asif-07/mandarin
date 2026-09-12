@@ -144,8 +144,8 @@ export type GroupPackInput = {
   package_label?: string | null;
   hotel_name?: string | null;
   visa_label?: string | null;
-  /** Whole PDFs placed straight after the cover, in order (visa page, partner pack). */
-  attachments?: { label: string; bytes: Uint8Array }[];
+  /** Files placed straight after the cover, in order (visa page, group flight/hotel, partner pack). Images become one A4 page. */
+  attachments?: { label: string; bytes: Uint8Array; mimeType?: string; coverOnly?: boolean }[];
 };
 
 /**
@@ -164,10 +164,19 @@ export async function buildGroupPackPdf(browser: Browser, input: GroupPackInput)
     sections.push({ traveller: t.traveller, parts: loaded.parts, sources: t.sources });
   }
 
-  const attachments: { label: string; doc: PDFDocument }[] = [];
+  const attachments: { label: string; doc: PDFDocument; coverOnly?: boolean }[] = [];
   for (const a of input.attachments ?? []) {
     try {
-      attachments.push({ label: a.label, doc: await PDFDocument.load(a.bytes, { ignoreEncryption: true }) });
+      if (a.coverOnly) {
+        // Listed on the cover only; the caller merges the file itself (large partner packs).
+        attachments.push({ label: a.label, doc: await PDFDocument.load(a.bytes, { ignoreEncryption: true, updateMetadata: false }), coverOnly: true });
+      } else if (a.mimeType && a.mimeType !== "application/pdf") {
+        const doc = await PDFDocument.create();
+        await imageToPdfPage(doc, a.bytes);
+        attachments.push({ label: a.label, doc });
+      } else {
+        attachments.push({ label: a.label, doc: await PDFDocument.load(a.bytes, { ignoreEncryption: true }) });
+      }
     } catch (e) {
       warnings.push(`${a.label} skipped: ${e instanceof Error ? e.message : "unreadable"}`);
     }
@@ -212,6 +221,7 @@ export async function buildGroupPackPdf(browser: Browser, input: GroupPackInput)
   const merged = await PDFDocument.create();
   for (const page of await merged.copyPages(coverPdf, coverPdf.getPageIndices())) merged.addPage(page);
   for (const a of attachments) {
+    if (a.coverOnly) continue;
     for (const page of await merged.copyPages(a.doc, a.doc.getPageIndices())) merged.addPage(page);
   }
   for (const s of sections) {

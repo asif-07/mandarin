@@ -26,7 +26,7 @@ export default async function TravellersPage({ searchParams }: { searchParams: P
   let query = supabase
     .from("travellers")
     .select(
-      "id, traveller_ref, full_name, travel_start_date, travel_end_date, status, package_tier, visa_reference, group:travel_groups(travel_date, travel_end_date, group_code, label), traveller_documents(doc_type, deleted_at)",
+      "id, traveller_ref, full_name, travel_start_date, travel_end_date, status, package_tier, visa_reference, group:travel_groups(travel_date, travel_end_date, group_code, label, group_documents(doc_type, deleted_at)), traveller_documents(doc_type, deleted_at)",
       { count: "exact" },
     )
     .order("travel_start_date", { ascending: false })
@@ -43,7 +43,7 @@ export default async function TravellersPage({ searchParams }: { searchParams: P
   const { data, count, error } = await query;
 
   const rows: TravellerRow[] = (data ?? []).map((t) => {
-    const c = docCompleteness(t.traveller_documents);
+    const c = docCompleteness(t.traveller_documents, t.group?.group_documents);
     return {
       id: t.id,
       traveller_ref: t.traveller_ref,

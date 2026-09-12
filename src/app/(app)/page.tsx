@@ -50,7 +50,7 @@ export default async function DashboardPage() {
     getFollowups(supabase, 0),
     supabase
       .from("travellers")
-      .select("id, full_name, travel_start_date, status, group:travel_groups(travel_date, group_code, label), traveller_documents(doc_type, deleted_at)")
+      .select("id, full_name, travel_start_date, status, group:travel_groups(travel_date, group_code, label, group_documents(doc_type, deleted_at)), traveller_documents(doc_type, deleted_at)")
       .gte("travel_start_date", today)
       .lte("travel_start_date", in7)
       .not("status", "in", "(cancelled,travelled)")
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
     supabase.from("leads").select("enquiry_type").gte("created_at", ago90Ts),
     supabase
       .from("travel_groups")
-      .select("id, travel_date, travel_end_date, group_code, label, guide_name, entry_port, exit_port, source, partner_code, pax_expected, pack_path, visa_status, visa_applied_at, visa_uploaded_at, travellers(id, status, traveller_documents(doc_type, deleted_at))")
+      .select("id, travel_date, travel_end_date, group_code, label, guide_name, entry_port, exit_port, source, partner_code, pax_expected, pack_path, visa_status, visa_applied_at, visa_uploaded_at, group_documents(doc_type, deleted_at), travellers(id, status, traveller_documents(doc_type, deleted_at))")
       .gte("travel_end_date", today)
       .order("travel_date", { ascending: true })
       .order("group_code", { ascending: true })
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
 
   const upcomingGroups = (groupRows ?? []).map((g) => {
     const active = g.travellers.filter((t) => t.status !== "cancelled");
-    const complete = active.filter((t) => docCompleteness(t.traveller_documents).complete).length;
+    const complete = active.filter((t) => docCompleteness(t.traveller_documents, g.group_documents).complete).length;
     const days = daysFromToday(g.travel_date) ?? 0;
     const b2b = g.source === "b2b";
     return { ...g, b2b, pax: b2b && g.pax_expected ? g.pax_expected : active.length, complete, days, travelling: days <= 0 };
@@ -85,7 +85,7 @@ export default async function DashboardPage() {
   const due = [...followups.overdue, ...followups.dueToday];
 
   const urgent = (urgentRows ?? [])
-    .map((t) => ({ ...t, docs: docCompleteness(t.traveller_documents) }))
+    .map((t) => ({ ...t, docs: docCompleteness(t.traveller_documents, t.group?.group_documents) }))
     .filter((t) => !t.docs.complete);
 
   const typeCounts = ENQUIRY_TYPES.map((t) => ({

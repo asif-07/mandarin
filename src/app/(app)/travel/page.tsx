@@ -15,7 +15,8 @@ import { StopToggle } from "@/components/shared/stop-toggle";
 import { GroupVisaPanel, VisaStatusPill } from "@/components/travel/group-visa";
 import { PACKAGE_TIERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
-import { docCompleteness, groupPackReference } from "@/lib/queries/travel";
+import { docCompleteness, groupCoverage, groupPackReference } from "@/lib/queries/travel";
+import { GroupDocuments } from "@/components/travel/group-documents";
 import { TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate, formatDateRange, todayISO } from "@/lib/format";
 
@@ -44,7 +45,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const { data: groups, error } = await supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, visa_status, visa_applied_at, visa_uploaded_at, visa_path, travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, visa_status, visa_applied_at, visa_uploaded_at, visa_path, group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at), travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
     )
     .eq("travel_date", date)
     .order("group_code");
@@ -82,7 +83,9 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
         <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {groups.map((g) => {
             const travellers = [...g.travellers].sort((a, b) => a.full_name.localeCompare(b.full_name));
-            const complete = travellers.filter((t) => docCompleteness(t.traveller_documents).complete).length;
+            const groupDocs = (g.group_documents ?? []).filter((d) => !d.deleted_at);
+            const coverage = groupCoverage(groupDocs);
+            const complete = travellers.filter((t) => docCompleteness(t.traveller_documents, coverage).complete).length;
             return (
               <details key={g.id} className="group rounded-lg border border-mr-line bg-white open:border-mr-ink" open={travellers.length > 0 && groups.length <= 4}>
                 <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
@@ -137,7 +140,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                   ) : (
                     <ul className="divide-y divide-mr-line">
                       {travellers.map((t) => {
-                        const c = docCompleteness(t.traveller_documents);
+                        const c = docCompleteness(t.traveller_documents, coverage);
                         return (
                           <li key={t.id} className="flex items-center gap-3 py-2">
                             <div className="min-w-0 flex-1">
@@ -158,6 +161,9 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                       })}
                     </ul>
                   )}
+                  <div className="mt-3 border-t border-mr-line pt-3">
+                    <GroupDocuments groupId={g.id} documents={groupDocs} />
+                  </div>
                   <div className="mt-3 border-t border-mr-line pt-3">
                     <GroupVisaPanel
                       group={{

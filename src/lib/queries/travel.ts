@@ -4,16 +4,29 @@ import { b2bReference } from "@/lib/travel/b2b-code";
 
 export type DocStub = { doc_type: string; deleted_at: string | null };
 
-/** Required-document completeness for a traveller from its (possibly soft-deleted) document rows. */
-export function docCompleteness(docs: DocStub[] | null | undefined) {
+/** Active group-level document types from (possibly soft-deleted) group_documents rows. */
+export function groupCoverage(groupDocs: DocStub[] | null | undefined): Set<string> {
+  return new Set((groupDocs ?? []).filter((d) => !d.deleted_at).map((d) => d.doc_type));
+}
+
+/**
+ * Required-document completeness for a traveller from its (possibly
+ * soft-deleted) document rows. A flight ticket or hotel booking uploaded once
+ * at group level counts for every traveller in that group; PAR and passport
+ * are always per traveller.
+ */
+export function docCompleteness(docs: DocStub[] | null | undefined, groupDocs?: DocStub[] | Set<string> | null) {
   const present = new Set((docs ?? []).filter((d) => !d.deleted_at).map((d) => d.doc_type));
-  const missing = REQUIRED_DOC_TYPES.filter((t) => !present.has(t));
+  const covered = groupDocs instanceof Set ? groupDocs : groupCoverage(groupDocs);
+  const coveredByGroup = REQUIRED_DOC_TYPES.filter((t) => !present.has(t) && covered.has(t));
+  const missing = REQUIRED_DOC_TYPES.filter((t) => !present.has(t) && !covered.has(t));
   return {
     count: REQUIRED_DOC_TYPES.length - missing.length,
     total: REQUIRED_DOC_TYPES.length,
     complete: missing.length === 0,
     missing,
     missingLabels: missing.map((m) => labelFor(DOC_TYPES, m)),
+    coveredByGroup,
   };
 }
 

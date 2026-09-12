@@ -36,7 +36,7 @@ function storagePath(travellerId: string, docType: string, fileName: string) {
   return `${travellerId}/${docType}/${crypto.randomUUID()}-${safe}`;
 }
 
-export function DocumentSlots({ travellerId, documents }: { travellerId: string; documents: DocView[] }) {
+export function DocumentSlots({ travellerId, documents, groupCovered = [] }: { travellerId: string; documents: DocView[]; groupCovered?: string[] }) {
   const router = useRouter();
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [dragOver, setDragOver] = useState(false);
@@ -44,7 +44,7 @@ export function DocumentSlots({ travellerId, documents }: { travellerId: string;
   const [assignBusy, setAssignBusy] = useState(false);
 
   const required = DOC_TYPES.filter((d) => d.required);
-  const filled = required.filter((d) => documents.some((doc) => doc.doc_type === d.value)).length;
+  const filled = required.filter((d) => documents.some((doc) => doc.doc_type === d.value) || groupCovered.includes(d.value)).length;
   const others = documents.filter((d) => d.doc_type === "other");
 
   async function uploadOne(file: File, mime: string, docType: string) {
@@ -139,6 +139,7 @@ export function DocumentSlots({ travellerId, documents }: { travellerId: string;
               key={slot.value}
               label={slot.label}
               doc={doc}
+              coveredByGroup={!doc && groupCovered.includes(slot.value)}
               busy={!!uploading[slot.value]}
               onFiles={(files) => handleFiles(files, slot.value)}
               onDeleted={() => router.refresh()}
@@ -289,12 +290,14 @@ function DocActions({ doc, onDeleted, onReplace }: { doc: DocView; onDeleted: ()
 function SlotCard({
   label,
   doc,
+  coveredByGroup = false,
   busy,
   onFiles,
   onDeleted,
 }: {
   label: string;
   doc?: DocView;
+  coveredByGroup?: boolean;
   busy: boolean;
   onFiles: (files: FileList) => void;
   onDeleted: () => void;
@@ -306,7 +309,7 @@ function SlotCard({
     <div
       className={cn(
         "relative flex flex-col rounded-lg border p-3 transition-colors",
-        doc ? "border-mr-line" : "border-dashed border-mr-line",
+        doc ? "border-mr-line" : coveredByGroup ? "border-mr-success/40 bg-mr-success/5" : "border-dashed border-mr-line",
         over && "border-mr-ink bg-mr-surface",
       )}
       onDragOver={(e) => {
@@ -327,10 +330,13 @@ function SlotCard({
         <span className="text-sm font-medium text-mr-ink">{label}</span>
         {doc ? (
           <CheckCircle2 className="size-4 text-mr-success" aria-label="Uploaded" />
+        ) : coveredByGroup ? (
+          <CheckCircle2 className="size-4 text-mr-success/60" aria-label="Covered by the group document" />
         ) : (
           <span className="size-4 rounded-full border-2 border-mr-line" aria-label="Missing" />
         )}
       </div>
+      {!doc && !busy && coveredByGroup && <p className="mb-1 text-[11px] text-mr-success">Covered by the group upload. Add a personal copy only if it differs.</p>}
 
       {busy ? (
         <div className="flex h-28 items-center justify-center gap-2 text-sm text-mr-body">

@@ -10,7 +10,7 @@ import { TravellerForm } from "@/components/travel/traveller-form";
 import { CompilePackButton, PackHistory } from "@/components/travel/pack-panel";
 import { TravellerStatusSelect } from "@/components/travel/traveller-status-select";
 import { createClient } from "@/lib/supabase/server";
-import { docCompleteness, groupTitle } from "@/lib/queries/travel";
+import { docCompleteness, groupCoverage, groupTitle } from "@/lib/queries/travel";
 import { DeleteTravellerButton } from "@/components/travel/delete-traveller-button";
 import { BUCKETS, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
@@ -25,7 +25,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
   const { data: t } = await supabase
     .from("travellers")
     .select(
-      "*, creator:profiles!travellers_created_by_fkey(display_name), group:travel_groups(id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, travellers(count)), lead:leads(id, lead_ref, full_name), invoice:invoices(id, invoice_number)",
+      "*, creator:profiles!travellers_created_by_fkey(display_name), group:travel_groups(id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, travellers(count), group_documents(doc_type, deleted_at)), lead:leads(id, lead_ref, full_name), invoice:invoices(id, invoice_number)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -63,7 +63,8 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
     uploaded_by_name: d.uploader?.display_name ?? null,
     preview_url: urlByPath.get(d.storage_path) ?? null,
   }));
-  const completeness = docCompleteness((docs ?? []).map((d) => ({ doc_type: d.doc_type, deleted_at: null })));
+  const groupCovered = [...groupCoverage(t.group?.group_documents)];
+  const completeness = docCompleteness((docs ?? []).map((d) => ({ doc_type: d.doc_type, deleted_at: null })), new Set(groupCovered));
 
   const defaults: TravellerInput = {
     full_name: t.full_name,
@@ -119,7 +120,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
 
       <section className="mb-8">
         <h2 className="micro-label mb-3">Documents</h2>
-        <DocumentSlots travellerId={t.id} documents={documents} />
+        <DocumentSlots travellerId={t.id} documents={documents} groupCovered={groupCovered} />
       </section>
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">

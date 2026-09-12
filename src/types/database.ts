@@ -456,6 +456,70 @@ export type Database = {
           },
         ]
       }
+      group_documents: {
+        Row: {
+          deleted_at: string | null
+          deleted_by: string | null
+          doc_type: string
+          file_name: string
+          file_size: number | null
+          group_id: string
+          id: string
+          mime_type: string
+          storage_path: string
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          deleted_at?: string | null
+          deleted_by?: string | null
+          doc_type: string
+          file_name: string
+          file_size?: number | null
+          group_id: string
+          id?: string
+          mime_type: string
+          storage_path: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          deleted_at?: string | null
+          deleted_by?: string | null
+          doc_type?: string
+          file_name?: string
+          file_size?: number | null
+          group_id?: string
+          id?: string
+          mime_type?: string
+          storage_path?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_documents_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_documents_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "travel_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           amount: number

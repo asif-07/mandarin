@@ -1,6 +1,6 @@
 import { COMPANY } from "@/lib/constants";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { CJK_FALLBACK_HREF, FONT_STACK } from "@/lib/pdf/fonts";
+import { FONT_STACK } from "@/lib/pdf/fonts";
 import { escapeHtml, type TemplateAssets } from "@/lib/pdf/invoice-template";
 
 export type CoverData = {
@@ -86,7 +86,6 @@ export function renderGroupCoverHtml(data: GroupCoverData, assets: Pick<Template
 <head>
 <meta charset="utf-8" />
 <title>${escapeHtml(data.reference)}</title>
-<link href="${CJK_FALLBACK_HREF}" rel="stylesheet" />
 <style>
 ${assets.fontCss}
   @page { size: A4; margin: 0; }
@@ -184,7 +183,6 @@ export function renderCoverHtml(data: CoverData, assets: Pick<TemplateAssets, "l
 <head>
 <meta charset="utf-8" />
 <title>${escapeHtml(data.traveller_ref)} - Travel Pack</title>
-<link href="${CJK_FALLBACK_HREF}" rel="stylesheet" />
 <style>
 ${assets.fontCss}
   @page { size: A4; margin: 0; }

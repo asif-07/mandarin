@@ -73,11 +73,15 @@ export async function reconcileDocumentStatus(
   travellerId: string,
 ): Promise<string | null> {
   const [{ data: traveller }, { data: docs }] = await Promise.all([
-    supabase.from("travellers").select("status").eq("id", travellerId).single(),
+    supabase.from("travellers").select("status, travel_group_id").eq("id", travellerId).single(),
     supabase.from("traveller_documents").select("doc_type").eq("traveller_id", travellerId).is("deleted_at", null),
   ]);
   if (!traveller) return null;
   const present = new Set((docs ?? []).map((d) => d.doc_type));
+  if (traveller.travel_group_id) {
+    const { data: groupDocs } = await supabase.from("group_documents").select("doc_type").eq("group_id", traveller.travel_group_id).is("deleted_at", null);
+    (groupDocs ?? []).forEach((d) => present.add(d.doc_type));
+  }
   const complete = REQUIRED_DOC_TYPES.every((t) => present.has(t));
 
   if (traveller.status === "documents_pending" && complete) {
