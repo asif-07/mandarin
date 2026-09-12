@@ -45,7 +45,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const { data: groups, error } = await supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, hotel_stars, visa_status, visa_applied_at, visa_uploaded_at, visa_path, group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at), travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, hotel_stars, transit_location, visa_status, visa_applied_at, visa_uploaded_at, visa_path, group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at), travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
     )
     .eq("travel_date", date)
     .order("group_code");
@@ -99,7 +99,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                     </span>
                     <span className="block truncate text-xs text-mr-muted">
                       {g.entry_port && g.exit_port ? `In: ${g.entry_port} · Out: ${g.exit_port}` : <span className="text-mr-warning">Entry / exit port missing</span>}
-                      {g.package_tier ? ` · ${packageDetail(g.package_tier, g.hotel_stars, g.hotel_name)}` : ""}
+                      {g.package_tier ? ` · ${packageDetail(g.package_tier, g.hotel_stars, g.hotel_name, g.transit_location)}` : ""}
                     </span>
                   </span>
                   <VisaStatusPill group={g} className="hidden lg:inline-flex" />

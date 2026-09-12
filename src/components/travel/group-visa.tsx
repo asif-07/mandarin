@@ -88,7 +88,7 @@ export function UploadVisaButton({ groupId, replace = false, size = "sm" }: { gr
           e.target.value = "";
         }}
       />
-      <Button variant={replace ? "outline" : "default"} size={size} disabled={busy} title="PDF or a photo (JPG, PNG, HEIC); photos are filed as a one-page PDF" onClick={() => ref.current?.click()}>
+      <Button variant={replace ? "outline" : "default"} size={size} disabled={busy} className={replace ? undefined : "bg-amber-500 text-white hover:bg-amber-600 focus-visible:ring-amber-500/40"} title="PDF or a photo (JPG, PNG, HEIC); photos are filed as a one-page PDF" onClick={() => ref.current?.click()}>
         {busy ? <Loader2 className="animate-spin" /> : replace ? <Upload /> : <Stamp />} {replace ? "Replace visa" : "Upload visa"}
       </Button>
     </>

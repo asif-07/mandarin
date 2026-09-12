@@ -37,7 +37,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase
       .from("travellers")
-      .select("id, traveller_ref, full_name, phone, nationality, passport_number, travel_start_date, travel_end_date, status, package_tier, hotel_name, hotel_stars, group:travel_groups(id, travel_date, travel_end_date, group_code, label, group_documents(doc_type, deleted_at)), traveller_documents(doc_type, deleted_at)")
+      .select("id, traveller_ref, full_name, phone, nationality, passport_number, travel_start_date, travel_end_date, status, package_tier, hotel_name, hotel_stars, transit_location, group:travel_groups(id, travel_date, travel_end_date, group_code, label, group_documents(doc_type, deleted_at)), traveller_documents(doc_type, deleted_at)")
       .gte("travel_start_date", monthStart)
       .lte("travel_start_date", monthEnd)
       .neq("status", "cancelled")
@@ -247,7 +247,7 @@ export default async function DashboardPage() {
                         {t.group ? ` · ${groupTitle(t.group)}` : " · no group"}
                         {t.passport_number ? ` · ${t.passport_number}` : ""}
                         {t.nationality ? ` · ${t.nationality}` : ""}
-                        {t.package_tier ? ` · ${packageDetail(t.package_tier, t.hotel_stars, t.hotel_name)}` : ""}
+                        {t.package_tier ? ` · ${packageDetail(t.package_tier, t.hotel_stars, t.hotel_name, t.transit_location)}` : ""}
                       </p>
                     </div>
                     <PackageBadge tier={t.package_tier} />

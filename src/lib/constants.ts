@@ -7,7 +7,7 @@ export const COMPANY = {
   addressLine1: "广州市越秀区长堤大马路316号",
   addressLine2: "民州金岁大厦2812房",
   addressLine3: "Guangzhou, China",
-  phone: "+8519597408840",
+  phone: "+819587408840",
 } as const;
 
 export const NAV_ITEMS = [
@@ -50,14 +50,20 @@ export function tierHasHotel(tier: string | null | undefined): boolean {
 export function tierNeedsStars(tier: string | null | undefined): boolean {
   return tier === "visa_par_hotel_transport";
 }
+/** Packages that include a transit leg (an optional transit location can be recorded). */
+export function tierHasTransit(tier: string | null | undefined): boolean {
+  return tier === "visa_transit" || tier === "visa_transit_hotel" || tier === "visa_par_transit" || tier === "visa_par_hotel_transport";
+}
+export const TRANSIT_LOCATIONS = ["Shenzhen Bay Border", "Guangzhou", "Foshan"] as const;
 export const HOTEL_STARS = [3, 4, 5] as const;
 export type HotelStars = (typeof HOTEL_STARS)[number];
 /** "Visa + PAR + Hotel + Transport · 4-star · Marriott" style label for a package with its hotel details. */
-export function packageDetail(tier: string | null | undefined, hotel_stars?: number | null, hotel_name?: string | null): string {
+export function packageDetail(tier: string | null | undefined, hotel_stars?: number | null, hotel_name?: string | null, transit_location?: string | null): string {
   if (!tier) return "";
   const parts = [labelFor(PACKAGE_TIERS, tier)];
   if (hotel_stars) parts.push(`${hotel_stars}-star`);
   if (hotel_name) parts.push(hotel_name);
+  if (transit_location) parts.push(`via ${transit_location}`);
   return parts.join(" · ");
 }
 

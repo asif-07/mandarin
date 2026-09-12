@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
-import { ACCEPTED_UPLOAD_TYPES, DOC_TYPES, MAX_UPLOAD_BYTES, PACKAGE_TIERS, TRAVELLER_STATUSES, tierHasHotel, tierNeedsStars } from "@/lib/constants";
+import { ACCEPTED_UPLOAD_TYPES, DOC_TYPES, MAX_UPLOAD_BYTES, PACKAGE_TIERS, TRAVELLER_STATUSES, TRANSIT_LOCATIONS, tierHasHotel, tierHasTransit, tierNeedsStars } from "@/lib/constants";
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date");
 
@@ -37,11 +37,19 @@ export const hotelStars = z
   .transform((v) => (v === "" || v === null || v === undefined ? null : Number(v)))
   .refine((v) => v === null || v === 3 || v === 4 || v === 5, "Choose 3, 4 or 5 star");
 
-/** Keep hotel name / stars only when the package has a hotel. */
-export function hotelFields(v: { package_tier: string | null; hotel_name?: string | null; hotel_stars?: number | null }) {
+/** Optional transit location; "" / null from a select means unset. */
+export const transitLocation = z
+  .union([z.string(), z.null()])
+  .optional()
+  .transform((v) => (v ? v : null))
+  .refine((v) => v === null || (TRANSIT_LOCATIONS as readonly string[]).includes(v), "Choose a transit location from the list");
+
+/** Keep hotel name / stars / transit location only when the package has them. */
+export function hotelFields(v: { package_tier: string | null; hotel_name?: string | null; hotel_stars?: number | null; transit_location?: string | null }) {
   return {
     hotel_name: tierHasHotel(v.package_tier) ? (v.hotel_name ?? null) : null,
     hotel_stars: tierNeedsStars(v.package_tier) ? (v.hotel_stars ?? null) : null,
+    transit_location: tierHasTransit(v.package_tier) ? (v.transit_location ?? null) : null,
   };
 }
 
@@ -89,6 +97,7 @@ export const groupSchema = z
     package_tier: packageTier,
     hotel_name: optionalText,
     hotel_stars: hotelStars,
+    transit_location: transitLocation,
     label: optionalText,
     guide_name: optionalText,
     notes: optionalText,
@@ -113,6 +122,7 @@ export const bulkGroupSchema = z
     package_tier: packageTier,
     hotel_name: optionalText,
     hotel_stars: hotelStars,
+    transit_location: transitLocation,
     label: optionalText,
     guide_name: optionalText,
   })
@@ -162,6 +172,7 @@ export const travellerSchema = z
       .transform((v) => (v ? v : null)),
     hotel_name: optionalText,
     hotel_stars: hotelStars,
+    transit_location: transitLocation,
     notes: optionalText,
     lead_id: optionalUuid,
     invoice_id: optionalUuid,

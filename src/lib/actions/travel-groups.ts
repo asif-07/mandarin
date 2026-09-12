@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { bulkGroupSchema, groupSchema, hotelFields, hotelStars, type BulkGroupInput, type GroupInput } from "@/lib/validation/travel";
+import { bulkGroupSchema, groupSchema, hotelFields, hotelStars, transitLocation, type BulkGroupInput, type GroupInput } from "@/lib/validation/travel";
 import { errorMessage, fail, ok, type ActionResult } from "@/lib/result";
 import { formatDate, todayISO } from "@/lib/format";
 import { BUCKETS, PACKAGE_TIERS } from "@/lib/constants";
@@ -95,6 +95,7 @@ export async function bulkCreateGroups(input: BulkGroupInput): Promise<ActionRes
       package_tier: parsed.data.package_tier,
       hotel_name: parsed.data.hotel_name,
       hotel_stars: parsed.data.hotel_stars,
+      transit_location: parsed.data.transit_location,
       label: parsed.data.label,
       guide_name: parsed.data.guide_name,
       created_by: profile.id,
@@ -240,6 +241,7 @@ const b2bRegisterSchema = z.object({
     .transform((v) => (v ? v : null)),
   hotel_name: z.string().trim().max(200).optional().nullable().transform((v) => (v ? v : null)),
   hotel_stars: hotelStars,
+  transit_location: transitLocation,
 });
 export type B2bRegisterInput = z.input<typeof b2bRegisterSchema>;
 

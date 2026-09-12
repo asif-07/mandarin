@@ -17,6 +17,7 @@ import { PhoneInput } from "@/components/shared/phone-input";
 import { createLead, updateLead } from "@/lib/actions/leads";
 import { leadSchema, type LeadInput, type LeadValues } from "@/lib/validation/lead";
 import { HotelStarsSelect } from "@/components/travel/hotel-stars-select";
+import { TransitSelect } from "@/components/travel/transit-select";
 import {
   CANTON_PHASES,
   COUNTRIES,
@@ -26,6 +27,7 @@ import {
   LEAD_STATUSES,
   PACKAGE_TIERS,
   tierHasHotel,
+  tierHasTransit,
   tierNeedsStars,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -49,6 +51,7 @@ export function emptyLeadValues(): LeadInput {
     package_tier: null,
     hotel_name: null,
     hotel_stars: null,
+    transit_location: null,
     quoted_amount: "",
     quoted_currency: "USD",
     assigned_to: null,
@@ -213,6 +216,12 @@ export function LeadForm({ mode, leadId, defaultValues, profiles, currentUserId,
                 </Label>
                 <Controller control={control} name="hotel_stars" render={({ field }) => <HotelStarsSelect id="hotel_stars" value={field.value} onChange={field.onChange} invalid={!!errors.hotel_stars} />} />
                 <FieldError message={errors.hotel_stars?.message} />
+              </div>
+            )}
+            {isPackage && tierHasTransit(packageTier) && (
+              <div className="space-y-1.5">
+                <Label htmlFor="transit_location">Transit location (optional)</Label>
+                <Controller control={control} name="transit_location" render={({ field }) => <TransitSelect id="transit_location" value={field.value} onChange={field.onChange} />} />
               </div>
             )}
             {isPackage && tierHasHotel(packageTier) && (

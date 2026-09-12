@@ -18,8 +18,9 @@ import { GroupCombobox } from "@/components/travel/group-combobox";
 import type { GroupOption } from "@/lib/actions/travel-groups";
 import { createTraveller, updateTraveller } from "@/lib/actions/travellers";
 import { travellerSchema, type TravellerInput, type TravellerValues } from "@/lib/validation/travel";
-import { PACKAGE_TIERS, TRAVELLER_STATUSES, tierHasHotel, tierNeedsStars } from "@/lib/constants";
+import { PACKAGE_TIERS, TRAVELLER_STATUSES, tierHasHotel, tierHasTransit, tierNeedsStars } from "@/lib/constants";
 import { HotelStarsSelect } from "@/components/travel/hotel-stars-select";
+import { TransitSelect } from "@/components/travel/transit-select";
 import { formatDate, todayISO } from "@/lib/format";
 
 export function emptyTravellerValues(): TravellerInput {
@@ -37,6 +38,7 @@ export function emptyTravellerValues(): TravellerInput {
     package_tier: null,
     hotel_name: null,
     hotel_stars: null,
+    transit_location: null,
     notes: "",
     lead_id: null,
     invoice_id: null,
@@ -231,6 +233,12 @@ export function TravellerForm({ mode, travellerId, defaultValues, initialGroup, 
                 </Label>
                 <Controller control={control} name="hotel_stars" render={({ field }) => <HotelStarsSelect id="t_stars" value={field.value} onChange={field.onChange} invalid={!!errors.hotel_stars} />} />
                 <FieldError message={errors.hotel_stars?.message} />
+              </div>
+            )}
+            {tierHasTransit(packageTier) && (
+              <div className="space-y-1.5">
+                <Label htmlFor="t_transit">Transit location (optional)</Label>
+                <Controller control={control} name="transit_location" render={({ field }) => <TransitSelect id="t_transit" value={field.value} onChange={field.onChange} />} />
               </div>
             )}
             {tierHasHotel(packageTier) && (

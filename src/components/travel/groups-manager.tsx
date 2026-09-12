@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { Layers, Loader2, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addTravellersToGroup } from "@/lib/actions/travellers";
-import { PACKAGE_TIERS, tierHasHotel, tierNeedsStars } from "@/lib/constants";
+import { PACKAGE_TIERS, tierHasHotel, tierHasTransit, tierNeedsStars } from "@/lib/constants";
+import { TransitSelect } from "@/components/travel/transit-select";
 import { HotelStarsSelect } from "@/components/travel/hotel-stars-select";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ export type GroupRow = {
   package_tier?: string | null;
   hotel_name?: string | null;
   hotel_stars?: number | null;
+  transit_location?: string | null;
   source?: string | null;
   partner_code?: string | null;
   pax_expected?: number | null;
@@ -53,6 +55,7 @@ type Editing = {
   package_tier: string | null;
   hotel_name: string;
   hotel_stars: number | null;
+  transit_location: string | null;
   label: string;
   guide_name: string;
   notes: string;
@@ -90,7 +93,7 @@ async function saveQuickRows(groupId: string, rows: QuickRow[]) {
   res.data.failed.forEach((f) => toast.error(`Traveller row ${f.row}: ${f.error}`, { duration: 8000 }));
 }
 
-type Bulk = { travel_date: string; travel_end_date: string; count: string; reference_prefix: string; entry_port: string; exit_port: string; package_tier: string | null; hotel_name: string; hotel_stars: number | null; label: string; guide_name: string };
+type Bulk = { travel_date: string; travel_end_date: string; count: string; reference_prefix: string; entry_port: string; exit_port: string; package_tier: string | null; hotel_name: string; hotel_stars: number | null; transit_location: string | null; label: string; guide_name: string };
 
 /** Entry / exit port input with common China ports as suggestions. */
 function PortInput({ id, value, onChange, placeholder }: { id: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
@@ -145,13 +148,13 @@ export function GroupsToolbar() {
     <>
       <Button
         variant="outline"
-        onClick={() => setBulk({ travel_date: today, travel_end_date: today, count: "10", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, label: "", guide_name: "" })}
+        onClick={() => setBulk({ travel_date: today, travel_end_date: today, count: "10", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, transit_location: null, label: "", guide_name: "" })}
       >
         <Layers /> Bulk create
       </Button>
       <Button
         onClick={() =>
-          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, label: "", guide_name: "", notes: "", travellers: [] })
+          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, transit_location: null, label: "", guide_name: "", notes: "", travellers: [] })
         }
       >
         <Plus /> New group
@@ -204,6 +207,12 @@ export function GroupsToolbar() {
                     Hotel class <span className="text-mr-red">*</span>
                   </Label>
                   <HotelStarsSelect id="bulk_stars" value={bulk.hotel_stars} onChange={(v) => setBulk({ ...bulk, hotel_stars: v })} />
+                </div>
+              )}
+              {tierHasTransit(bulk.package_tier) && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="bulk_transit">Transit location (optional)</Label>
+                  <TransitSelect id="bulk_transit" value={bulk.transit_location} onChange={(v) => setBulk({ ...bulk, transit_location: v })} />
                 </div>
               )}
               {tierHasHotel(bulk.package_tier) && (
@@ -301,6 +310,12 @@ function GroupDialog({
                   Hotel class <span className="text-mr-red">*</span>
                 </Label>
                 <HotelStarsSelect id="g_stars" value={value.hotel_stars} onChange={(v) => onChange({ ...value, hotel_stars: v })} />
+              </div>
+            )}
+            {tierHasTransit(value.package_tier) && (
+              <div className="space-y-1.5">
+                <Label htmlFor="g_transit">Transit location (optional)</Label>
+                <TransitSelect id="g_transit" value={value.transit_location} onChange={(v) => onChange({ ...value, transit_location: v })} />
               </div>
             )}
             {tierHasHotel(value.package_tier) && (
@@ -428,6 +443,7 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
             package_tier: group.package_tier ?? null,
             hotel_name: group.hotel_name ?? "",
             hotel_stars: group.hotel_stars ?? null,
+            transit_location: group.transit_location ?? null,
             label: group.label ?? "",
             guide_name: group.guide_name ?? "",
             notes: group.notes ?? "",

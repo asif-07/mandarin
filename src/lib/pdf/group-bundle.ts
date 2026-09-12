@@ -22,7 +22,7 @@ export type GroupBundle = BuiltPack & {
 };
 
 const GROUP_SELECT =
-  "id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, pack_uploaded_at, package_tier, hotel_name, hotel_stars, visa_status, visa_applied_at, visa_path, visa_uploaded_at, group_documents(id, doc_type, file_name, storage_path, mime_type, uploaded_at, deleted_at), travellers(id, traveller_ref, full_name, passport_number, nationality, travel_start_date, travel_end_date, visa_reference, status, updated_at, traveller_documents(id, doc_type, file_name, storage_path, mime_type, merge_order, uploaded_at, deleted_at))";
+  "id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, pack_uploaded_at, package_tier, hotel_name, hotel_stars, transit_location, visa_status, visa_applied_at, visa_path, visa_uploaded_at, group_documents(id, doc_type, file_name, storage_path, mime_type, uploaded_at, deleted_at), travellers(id, traveller_ref, full_name, passport_number, nationality, travel_start_date, travel_end_date, visa_reference, status, updated_at, traveller_documents(id, doc_type, file_name, storage_path, mime_type, merge_order, uploaded_at, deleted_at))";
 
 async function download(supabase: Client, bucket: string, path: string): Promise<Uint8Array | null> {
   const { data, error } = await supabase.storage.from(bucket).download(path);
@@ -71,7 +71,7 @@ function cacheKey(group: GroupRow, logo: BundleLogo, partnerLogoPath: string | n
     .sort();
   const h = createHash("sha1");
   // travel_groups has no updated_at, so the cover's own fields are hashed directly.
-  const cover = [group.group_code, group.label, group.guide_name, group.reference_prefix, group.entry_port, group.exit_port, group.travel_date, group.travel_end_date, group.partner_code, group.pax_expected, group.package_tier, group.hotel_name, group.hotel_stars, group.visa_applied_at];
+  const cover = [group.group_code, group.label, group.guide_name, group.reference_prefix, group.entry_port, group.exit_port, group.travel_date, group.travel_end_date, group.partner_code, group.pax_expected, group.package_tier, group.hotel_name, group.hotel_stars, group.transit_location, group.visa_applied_at];
   h.update(JSON.stringify({ v: 2, logo, partnerLogoPath, cover, pack: group.pack_uploaded_at, visa: group.visa_uploaded_at, visa_status: group.visa_status, docs, groupDocs, travellers }));
   return h.digest("hex").slice(0, 20);
 }
@@ -210,7 +210,7 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
     partner_code: isB2b ? group.partner_code : null,
     pax_expected: isB2b ? group.pax_expected : null,
     package_label: group.package_tier ? labelFor(PACKAGE_TIERS, group.package_tier) : null,
-    hotel_name: [group.hotel_stars ? `${group.hotel_stars}-star` : null, group.hotel_name].filter(Boolean).join(" · ") || null,
+    hotel_name: [group.hotel_stars ? `${group.hotel_stars}-star` : null, group.hotel_name, group.transit_location ? `Transit via ${group.transit_location}` : null].filter(Boolean).join(" · ") || null,
     visa_label: visaLabel,
     attachments: isB2b ? [...attachments, { label: `${group.partner_code} pack (${group.pax_expected ?? 0} pax)`, bytes: partnerPackBytes!, mimeType: "application/pdf", coverOnly: true }] : attachments,
   });

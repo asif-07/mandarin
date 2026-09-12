@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { previewB2bCode, registerB2bGroup, replaceB2bPack, type B2bPreview } from "@/lib/actions/travel-groups";
 import { cleanB2bCode, parseB2bCode } from "@/lib/travel/b2b-code";
-import { BUCKETS, CHINA_PORTS, PACKAGE_TIERS, tierHasHotel, tierNeedsStars } from "@/lib/constants";
+import { BUCKETS, CHINA_PORTS, PACKAGE_TIERS, tierHasHotel, tierHasTransit, tierNeedsStars } from "@/lib/constants";
+import { TransitSelect } from "@/components/travel/transit-select";
 import { HotelStarsSelect } from "@/components/travel/hotel-stars-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDateRange, todayISO } from "@/lib/format";
@@ -40,8 +41,8 @@ function acceptPdf(file: File | undefined): file is File {
   return true;
 }
 
-type Form = { code: string; entry_port: string; exit_port: string; label: string; guide_name: string; notes: string; package_tier: string | null; hotel_name: string; hotel_stars: number | null };
-const EMPTY: Form = { code: "", entry_port: "", exit_port: "", label: "", guide_name: "", notes: "", package_tier: null, hotel_name: "", hotel_stars: null };
+type Form = { code: string; entry_port: string; exit_port: string; label: string; guide_name: string; notes: string; package_tier: string | null; hotel_name: string; hotel_stars: number | null; transit_location: string | null };
+const EMPTY: Form = { code: "", entry_port: "", exit_port: "", label: "", guide_name: "", notes: "", package_tier: null, hotel_name: "", hotel_stars: null, transit_location: null };
 
 /** Upload a partner's compiled pack; the group is created under the next free code for that date. */
 export function B2bUploadButton({ variant = "default" }: { variant?: "default" | "outline" }) {
@@ -127,7 +128,7 @@ export function B2bUploadButton({ variant = "default" }: { variant?: "default" |
         return void toast.error(`Upload failed: ${e instanceof Error ? e.message : "unknown error"}`);
       }
       setUploading(false);
-      const res = await registerB2bGroup({ code: form.code, upload_path: path, file_name: file.name, entry_port: form.entry_port, exit_port: form.exit_port, label: form.label, guide_name: form.guide_name, notes: form.notes, package_tier: form.package_tier, hotel_name: form.hotel_name, hotel_stars: form.hotel_stars });
+      const res = await registerB2bGroup({ code: form.code, upload_path: path, file_name: file.name, entry_port: form.entry_port, exit_port: form.exit_port, label: form.label, guide_name: form.guide_name, notes: form.notes, package_tier: form.package_tier, hotel_name: form.hotel_name, hotel_stars: form.hotel_stars, transit_location: form.transit_location });
       if (!res.ok) return void toast.error(res.error);
       toast.success(`Filed as ${res.data.reference}`, { description: `Group ${res.data.group_code} created on ${res.data.travel_date}`, duration: 8000 });
       setOpen(false);
@@ -269,6 +270,12 @@ export function B2bUploadButton({ variant = "default" }: { variant?: "default" |
                     Hotel class <span className="text-mr-red">*</span>
                   </Label>
                   <HotelStarsSelect id="b2b_stars" value={form.hotel_stars} onChange={(v) => setForm({ ...form, hotel_stars: v })} />
+                </div>
+              )}
+              {tierHasTransit(form.package_tier) && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="b2b_transit">Transit location (optional)</Label>
+                  <TransitSelect id="b2b_transit" value={form.transit_location} onChange={(v) => setForm({ ...form, transit_location: v })} />
                 </div>
               )}
               {tierHasHotel(form.package_tier) ? (
