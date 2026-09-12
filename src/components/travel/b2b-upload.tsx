@@ -211,8 +211,12 @@ export function B2bUploadButton({ variant = "default" }: { variant?: "default" |
                   <dd className="font-medium text-mr-ink">{formatDateRange(preview.travel_date, preview.travel_end_date)}</dd>
                   <dt className="text-mr-muted">Pax</dt>
                   <dd className="tnum font-medium text-mr-ink">{preview.pax}</dd>
-                  <dt className="text-mr-muted">Their group</dt>
-                  <dd>{preview.partner_group}</dd>
+                  {preview.partner_group && (
+                    <>
+                      <dt className="text-mr-muted">Their group</dt>
+                      <dd>{preview.partner_group}</dd>
+                    </>
+                  )}
                   <dt className="text-mr-muted">Our group</dt>
                   <dd>
                     <span className="font-semibold text-mr-ink">{preview.our_group_code}</span>
@@ -223,7 +227,7 @@ export function B2bUploadButton({ variant = "default" }: { variant?: "default" |
                 </dl>
                 {preview.duplicate && (
                   <p className="mt-3 flex items-center gap-2 text-xs text-mr-warning">
-                    <AlertTriangle className="size-4" /> This partner code was already uploaded as {preview.duplicate.group_code}. Uploading again creates another group; to replace the file, use the group&rsquo;s menu instead.
+                    <AlertTriangle className="size-4" /> A pack with this code is already filed on this date as {preview.duplicate.group_code}. Uploading creates the next group, {preview.our_group_code}; to replace that file instead, use the group&rsquo;s menu.
                   </p>
                 )}
               </div>

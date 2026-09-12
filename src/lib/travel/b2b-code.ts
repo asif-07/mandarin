@@ -16,7 +16,7 @@ export type ParsedB2bCode = {
   travel_date: string; // yyyy-mm-dd
   travel_end_date: string;
   pax: number;
-  partner_group: string; // G01 as the partner numbered it
+  partner_group: string | null; // G01 as the partner numbered it; null when the code stops at the pax count
   normalised: string; // the code re-assembled in canonical upper-case form
 };
 
@@ -67,8 +67,8 @@ export function parseB2bCode(raw: string, todayISO: string): { ok: true; value: 
   if (parts.length < 5 || parts.length > 6) {
     return { ok: false, error: `The code needs 5 or 6 parts separated by dashes (prefix, partner, entry date, exit date, pax, and optionally their group number), found ${parts.length}. Example: ${EXAMPLE}` };
   }
-  // The partner's own group number is optional: a code without one is their first (or only) group.
-  const [prefix, partner, d1Raw, d2Raw, paxRaw, gRaw = "G01"] = parts as [string, string, string, string, string, string?];
+  // The partner's own group number is optional: most codes stop at the pax count and we number the group ourselves.
+  const [prefix, partner, d1Raw, d2Raw, paxRaw, gRaw] = parts as [string, string, string, string, string, string?];
   if (!/^[A-Z0-9]{2,12}$/.test(prefix)) return { ok: false, error: `Prefix "${prefix}" should be 2 to 12 letters or digits, e.g. MR144` };
   if (!/^[A-Z0-9]{2,12}$/.test(partner)) return { ok: false, error: `Partner code "${partner}" should be 2 to 12 letters or digits, e.g. EDPT` };
 
@@ -88,9 +88,12 @@ export function parseB2bCode(raw: string, todayISO: string): { ok: true; value: 
   const pax = digits(paxM[1]!);
   if (!pax) return { ok: false, error: "Pax count must be at least 1" };
 
-  const gM = gRaw.match(/^G?([0-9O]{1,3})$/);
-  if (!gM) return { ok: false, error: `Group "${gRaw}" should be G followed by a number, e.g. G01` };
-  const gNum = digits(gM[1]!);
+  let partnerGroup: string | null = null;
+  if (gRaw !== undefined) {
+    const gM = gRaw.match(/^G?([0-9O]{1,3})$/);
+    if (!gM) return { ok: false, error: `Group "${gRaw}" should be G followed by a number, e.g. G01 (or leave it off)` };
+    partnerGroup = `G${pad(digits(gM[1]!))}`;
+  }
 
   const todayY = Number(todayISO.slice(0, 4));
   const todayT = Date.UTC(todayY, Number(todayISO.slice(5, 7)) - 1, Number(todayISO.slice(8, 10)));
@@ -108,7 +111,6 @@ export function parseB2bCode(raw: string, todayISO: string): { ok: true; value: 
   const end = new Date(Date.UTC(y2, mi2, day2));
   if (day2 < 1 || end.getUTCMonth() !== mi2) return { ok: false, error: `${m2[1]}${m2[2]} is not a valid date` };
 
-  const partnerGroup = `G${pad(gNum)}`;
   return {
     ok: true,
     value: {
@@ -118,7 +120,7 @@ export function parseB2bCode(raw: string, todayISO: string): { ok: true; value: 
       travel_end_date: `${y2}-${pad(mi2 + 1)}-${pad(day2)}`,
       pax,
       partner_group: partnerGroup,
-      normalised: `${prefix}-${partner}-${m1[1]}${pad(day1)}-${m2[1]}${pad(day2)}-${pax}PX-${partnerGroup}`,
+      normalised: `${prefix}-${partner}-${m1[1]}${pad(day1)}-${m2[1]}${pad(day2)}-${pax}PX${partnerGroup ? `-${partnerGroup}` : ""}`,
     },
   };
 }

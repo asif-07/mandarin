@@ -47,7 +47,7 @@ async function main() {
   for (const c of good) {
     const r = parseB2bCode(c, today);
     assert(r.ok, `b2b code parses: ${JSON.stringify(c)}${r.ok ? "" : ` -> ${r.error}`}`);
-    if (r.ok && c.includes("GKHR")) assert(r.value.pax === 3 && r.value.partner_group === "G01" && r.value.travel_date === "2026-09-22" && r.value.travel_end_date === "2026-09-27", `b2b code values: ${c}`);
+    if (r.ok && c.includes("GKHR")) assert(r.value.pax === 3 && (r.value.partner_group === "G01" || (r.value.partner_group === null && !/G0?1/.test(c))) && r.value.travel_date === "2026-09-22" && r.value.travel_end_date === "2026-09-27", `b2b code values: ${c}`);
   }
   const bad: [string, RegExp][] = [
     ["MR144-GKHR-SEP22-SEP27", /5 or 6 parts/],

@@ -191,7 +191,7 @@ export type B2bPreview = {
   travel_date: string;
   travel_end_date: string;
   pax: number;
-  partner_group: string;
+  partner_group: string | null;
   partner_reference: string;
   our_group_code: string;
   our_reference: string;
