@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Download, Plane, Users } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Download, Plane, Users } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { addDays, parseISO } from "date-fns";
+import { addDays, parseISO, subDays } from "date-fns";
 import { PageHeader } from "@/components/shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPill, INVOICE_TONES, TRAVELLER_TONES } from "@/components/shared/status-pill";
@@ -35,6 +35,7 @@ export default async function DashboardPage() {
     { data: urgentRows },
     { data: recentInvoices },
     { data: groupRows },
+    { data: completedRows },
   ] = await Promise.all([
     supabase
       .from("travellers")
@@ -74,7 +75,24 @@ export default async function DashboardPage() {
       .order("travel_date", { ascending: true })
       .order("group_code", { ascending: true })
       .limit(9),
+    // Groups whose exit date has passed (the border crossing is behind them), most recent first.
+    supabase
+      .from("travel_groups")
+      .select("id, travel_date, travel_end_date, group_code, label, exit_port, source, partner_code, pax_expected, visa_status, travellers(id, status)")
+      .lt("travel_end_date", today)
+      .gte("travel_end_date", toISODate(subDays(parseISO(today), 30)))
+      .order("travel_end_date", { ascending: false })
+      .order("group_code", { ascending: true })
+      .limit(12),
   ]);
+
+  const completedGroups = (completedRows ?? []).map((g) => {
+    const active = g.travellers.filter((t) => t.status !== "cancelled");
+    const b2b = g.source === "b2b";
+    const daysAgo = -(daysFromToday(g.travel_end_date) ?? 0);
+    return { ...g, b2b, pax: b2b && g.pax_expected && active.length === 0 ? g.pax_expected : active.length, daysAgo, travelled: active.length > 0 && active.every((t) => t.status === "travelled") };
+  });
+  const completedPax = completedGroups.reduce((n, g) => n + g.pax, 0);
 
   const upcomingGroups = (groupRows ?? []).map((g) => {
     const active = g.travellers.filter((t) => t.status !== "cancelled");
@@ -116,6 +134,53 @@ export default async function DashboardPage() {
         <Stat label="Groups this month" value={String(groupsThisMonth)} hint={`departing in ${monthLabel}`} href="/travel/groups" />
         <Stat label="Invoiced this month" value={`USD ${formatNumber(invoiced)}`} hint="issued and paid, USD invoices" href="/invoices" />
       </div>
+
+      {completedGroups.length > 0 && (
+        <section className="mt-6" aria-labelledby="completed-groups">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 id="completed-groups" className="flex items-center gap-2 text-base font-semibold text-mr-ink">
+              <CheckCircle2 className="size-4 text-mr-success" /> Travel completed
+              <span className="text-sm font-normal text-mr-muted">
+                {completedPax} traveller{completedPax === 1 ? "" : "s"} crossed back in the last 30 days
+              </span>
+            </h2>
+            <Link href="/travel/travellers?status=travelled" className="inline-flex items-center gap-1 text-xs font-medium text-mr-body hover:text-mr-ink">
+              All travelled <ArrowRight className="size-3" />
+            </Link>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {completedGroups.map((g) => (
+              <li key={g.id} className="rounded-lg border border-mr-success/30 bg-mr-success/5 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="tnum text-xs font-medium text-mr-body">{formatDateRange(g.travel_date, g.travel_end_date)}</p>
+                    <Link href={`/travel?date=${g.travel_date}`} className="mt-0.5 block truncate font-heading text-lg font-semibold text-mr-ink hover:underline">
+                      {g.group_code}
+                      {g.b2b && <span className="ml-2 align-middle rounded-md bg-mr-ink px-1.5 py-0.5 font-sans text-[11px] font-medium text-white">B2B {g.partner_code}</span>}
+                      {g.label ? <span className="font-sans text-sm font-normal text-mr-body"> · {g.label}</span> : null}
+                    </Link>
+                  </div>
+                  <span className="shrink-0 rounded-md bg-mr-success/10 px-2 py-1 text-xs font-medium text-mr-success">
+                    {g.daysAgo === 0 ? "Exited today" : g.daysAgo === 1 ? "Exited yesterday" : `Exited ${g.daysAgo} days ago`}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="micro-label">Travellers</p>
+                    <p className="tnum mt-1 font-heading text-2xl font-semibold leading-none text-mr-ink">{g.pax}</p>
+                  </div>
+                  <p className="truncate text-right text-xs text-mr-muted">
+                    {g.exit_port ? `Out: ${g.exit_port}` : ""}
+                    {!g.b2b && g.pax > 0 ? (
+                      <span className={cn("block", g.travelled ? "text-mr-success" : "text-mr-warning")}>{g.travelled ? "Marked travelled" : "Not yet marked travelled"}</span>
+                    ) : null}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-6" aria-labelledby="upcoming-groups">
         <div className="mb-3 flex items-center justify-between">
