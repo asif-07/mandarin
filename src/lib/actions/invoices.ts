@@ -49,7 +49,7 @@ function buildPayload(values: InvoiceValues) {
 export async function peekNextInvoiceNumber(year = yearOf(todayISO())): Promise<string> {
   const supabase = await createClient();
   const { data } = await supabase.from("counters").select("current_value").eq("key", `invoice_${year}`).maybeSingle();
-  return `MR-${year}-${(data?.current_value ?? 0) + 1}`;
+  return `MRINVC-${year}-${(data?.current_value ?? 0) + 1}`;
 }
 
 export async function createInvoice(
