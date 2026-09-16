@@ -11,6 +11,8 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   const { id } = await params;
   const supabase = await createClient();
   const { data: invoice } = await supabase.from("invoices").select("*, invoice_items(*)").eq("id", id).maybeSingle();
+  const { data: groupRow } = invoice?.travel_group_id ? await supabase.from("travel_groups").select("id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, group_ref, travellers(count)").eq("id", invoice.travel_group_id).maybeSingle() : { data: null };
+  const initialGroup = groupRow ? { ...groupRow, traveller_count: Array.isArray(groupRow.travellers) ? Number(groupRow.travellers[0]?.count ?? 0) : 0 } : null;
   if (!invoice) notFound();
 
   const defaults: InvoiceInput = {
@@ -28,6 +30,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
     status: invoice.status,
     lead_id: invoice.lead_id,
     customer_id: invoice.customer_id,
+    travel_group_id: invoice.travel_group_id,
     items: [...invoice.invoice_items]
       .sort((a, b) => a.position - b.position)
       .map((it) => ({
@@ -43,7 +46,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   return (
     <>
       <PageHeader title={`Edit ${invoice.invoice_number}`} description="Saving replaces the stored PDF on next download." />
-      <InvoiceForm mode="edit" invoiceId={invoice.id} invoiceNumber={invoice.invoice_number} defaultValues={defaults} />
+      <InvoiceForm initialGroup={initialGroup} mode="edit" invoiceId={invoice.id} invoiceNumber={invoice.invoice_number} defaultValues={defaults} />
     </>
   );
 }

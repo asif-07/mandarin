@@ -8,7 +8,7 @@ export type InvoiceRow = Tables<"invoices">;
 export type InvoiceItemRow = Tables<"invoice_items">;
 
 /** Saved invoice -> template data. */
-export function invoiceToTemplateData(invoice: InvoiceRow, items: InvoiceItemRow[]): InvoiceTemplateData {
+export function invoiceToTemplateData(invoice: InvoiceRow, items: InvoiceItemRow[], groupRef?: string | null): InvoiceTemplateData {
   return {
     invoice_number: invoice.invoice_number,
     issue_date: invoice.issue_date,
@@ -33,6 +33,7 @@ export function invoiceToTemplateData(invoice: InvoiceRow, items: InvoiceItemRow
     total: Number(invoice.total),
     amount_in_words: invoice.amount_in_words,
     terms: invoice.terms,
+    group_ref: groupRef ?? null,
   };
 }
 

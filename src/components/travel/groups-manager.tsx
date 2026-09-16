@@ -7,6 +7,7 @@ import { Layers, Loader2, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addTravellersToGroup } from "@/lib/actions/travellers";
 import { PACKAGE_TIERS, tierHasHotel, tierHasTransit, tierNeedsStars } from "@/lib/constants";
+import { groupRef } from "@/lib/queries/travel";
 import { TransitSelect } from "@/components/travel/transit-select";
 import { HotelStarsSelect } from "@/components/travel/hotel-stars-select";
 import { toast } from "sonner";
@@ -122,7 +123,7 @@ export function GroupsToolbar() {
     startTransition(async () => {
       const result = single.id ? await updateGroup(single.id, single) : await createGroup(single);
       if (!result.ok) return void toast.error(result.error);
-      toast.success(single.id ? "Group updated" : `${single.group_code.toUpperCase()} created`);
+      toast.success(single.id ? "Group updated" : `${single.group_code.toUpperCase()} created · ID ${groupRef({ ...single, source: "internal" })}`, { description: single.travellers.some((r) => r.full_name.trim()) ? undefined : "Add travellers any time with + Add traveller on the group card." });
       await saveQuickRows(result.data.id, single.travellers);
       setSingle(null);
       router.refresh();
@@ -291,6 +292,9 @@ function GroupDialog({
             <div className="space-y-1.5">
               <Label htmlFor="g_prefix">Reference prefix</Label>
               <Input id="g_prefix" placeholder="MR144" value={value.reference_prefix} onChange={(e) => onChange({ ...value, reference_prefix: e.target.value.toUpperCase() })} />
+              {value.travel_date && value.group_code && (
+                <p className="font-mono text-xs text-mr-muted">Group ID: {groupRef({ reference_prefix: value.reference_prefix, travel_date: value.travel_date, travel_end_date: value.travel_end_date, group_code: value.group_code })}</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="g_entry">Entry port</Label>
@@ -338,7 +342,7 @@ function GroupDialog({
             </div>
             <div className="sm:col-span-2">
               <div className="flex items-center justify-between">
-                <Label>{value.id ? "Add travellers to this group" : "Travellers"}</Label>
+                <Label>{value.id ? "Add travellers to this group" : "Travellers (optional; you can also add them later from the group card)"}</Label>
                 <Button type="button" variant="outline" size="sm" onClick={() => onChange({ ...value, travellers: [...value.travellers, emptyRow()] })}>
                   <UserPlus /> Add traveller
                 </Button>

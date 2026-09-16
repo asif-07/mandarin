@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/shared/date-picker";
 import { A4Preview } from "@/components/shared/a4-preview";
+import { GroupCombobox } from "@/components/travel/group-combobox";
+import type { GroupOption } from "@/lib/actions/travel-groups";
 import { LeadCombobox } from "@/components/invoices/lead-combobox";
 import { createInvoice, duplicateInvoice, updateInvoice } from "@/lib/actions/invoices";
 import { invoiceSchema, computeTotals, round2, type InvoiceInput, type InvoiceValues } from "@/lib/validation/invoice";
@@ -47,13 +49,15 @@ export function emptyInvoiceValues(): InvoiceInput {
     status: "issued",
     lead_id: null,
     customer_id: null,
+    travel_group_id: null,
     items: [{ title: "", description: "", reference: "", quantity: 1, rate: 0 }],
   };
 }
 
-type Props =
+type Props = { initialGroup?: GroupOption | null } & (
   | { mode: "create"; defaultValues?: Partial<InvoiceInput>; nextInvoiceNumber: string }
-  | { mode: "edit"; invoiceId: string; invoiceNumber: string; defaultValues: InvoiceInput };
+  | { mode: "edit"; invoiceId: string; invoiceNumber: string; defaultValues: InvoiceInput }
+);
 
 export function InvoiceForm(props: Props) {
   const router = useRouter();
@@ -263,6 +267,23 @@ export function InvoiceForm(props: Props) {
               <div className="space-y-1.5">
                 <Label htmlFor="bill_to_address">Address</Label>
                 <Input id="bill_to_address" {...register("bill_to_address")} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="travel_group">Travel group</Label>
+                <GroupCombobox
+                  id="travel_group"
+                  value={watched.travel_group_id}
+                  initial={props.initialGroup}
+                  onChange={(g) => {
+                    setValue("travel_group_id", g?.id ?? null, { shouldDirty: true });
+                    // Pull the Group ID into the visa reference (and the chosen line) when none is set yet.
+                    if (g?.group_ref && !getValues("visa_reference")) {
+                      setValue("visa_reference", g.group_ref, { shouldDirty: true });
+                      applyVisaReference(g.group_ref, applyRefTo);
+                    }
+                  }}
+                />
+                <p className="text-xs text-mr-muted">Prints the Group ID on the invoice and links it to the group.</p>
               </div>
             </CardContent>
           </Card>

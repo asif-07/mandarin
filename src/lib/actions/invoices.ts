@@ -41,6 +41,7 @@ function buildPayload(values: InvoiceValues) {
     status: values.status,
     lead_id: values.lead_id,
     customer_id: values.customer_id,
+    travel_group_id: values.travel_group_id,
   };
   return { invoice, items };
 }
@@ -118,6 +119,7 @@ export async function duplicateInvoice(id: string): Promise<ActionResult<{ id: s
     status: "draft",
     lead_id: source.lead_id,
     customer_id: source.customer_id,
+    travel_group_id: source.travel_group_id,
     items: [...source.invoice_items]
       .sort((a, b) => a.position - b.position)
       .map((it) => ({

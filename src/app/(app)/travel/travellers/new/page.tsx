@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { TravellerForm } from "@/components/travel/traveller-form";
 import { createClient } from "@/lib/supabase/server";
 import type { TravellerInput } from "@/lib/validation/travel";
+import type { GroupOption } from "@/lib/actions/travel-groups";
 import { COUNTRIES } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "New traveller" };
@@ -17,11 +18,22 @@ const NATIONALITY_BY_COUNTRY: Record<string, string> = {
   Bahrain: "Bahraini",
 };
 
-export default async function NewTravellerPage({ searchParams }: { searchParams: Promise<{ lead?: string }> }) {
-  const { lead: leadId } = await searchParams;
+export default async function NewTravellerPage({ searchParams }: { searchParams: Promise<{ lead?: string; group?: string }> }) {
+  const { lead: leadId, group: groupId } = await searchParams;
   let defaults: Partial<TravellerInput> | undefined;
   let linkedLead: { lead_ref: string; full_name: string } | null = null;
   let linkedInvoice: { invoice_number: string } | null = null;
+  let initialGroup: GroupOption | null = null;
+
+  // Opened from a group card: preselect the group and take its dates and package.
+  if (groupId) {
+    const supabase = await createClient();
+    const { data: g } = await supabase.from("travel_groups").select("id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, group_ref, package_tier, hotel_name, hotel_stars, transit_location, travellers(count)").eq("id", groupId).maybeSingle();
+    if (g) {
+      initialGroup = { ...g, traveller_count: Array.isArray(g.travellers) ? Number(g.travellers[0]?.count ?? 0) : 0 };
+      defaults = { travel_group_id: g.id, travel_start_date: g.travel_date, travel_end_date: g.travel_end_date, package_tier: g.package_tier, hotel_name: g.hotel_name, hotel_stars: g.hotel_stars, transit_location: g.transit_location };
+    }
+  }
 
   if (leadId) {
     const supabase = await createClient();
@@ -39,6 +51,7 @@ export default async function NewTravellerPage({ searchParams }: { searchParams:
     if (lead) {
       linkedLead = { lead_ref: lead.lead_ref, full_name: lead.full_name };
       defaults = {
+        ...defaults,
         full_name: lead.full_name,
         phone: lead.phone,
         email: lead.email ?? "",
@@ -60,7 +73,7 @@ export default async function NewTravellerPage({ searchParams }: { searchParams:
     <>
       <PageHeader title="New traveller" description="Create the record, then upload the four documents on the next screen." />
       <div className="max-w-3xl">
-        <TravellerForm mode="create" defaultValues={defaults} linkedLead={linkedLead} linkedInvoice={linkedInvoice} />
+        <TravellerForm mode="create" defaultValues={defaults} initialGroup={initialGroup} linkedLead={linkedLead} linkedInvoice={linkedInvoice} />
       </div>
     </>
   );

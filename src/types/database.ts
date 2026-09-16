@@ -588,6 +588,7 @@ export type Database = {
           tax: number
           terms: string | null
           total: number
+          travel_group_id: string | null
           updated_at: string | null
           visa_reference: string | null
         }
@@ -614,6 +615,7 @@ export type Database = {
           tax?: number
           terms?: string | null
           total?: number
+          travel_group_id?: string | null
           updated_at?: string | null
           visa_reference?: string | null
         }
@@ -640,6 +642,7 @@ export type Database = {
           tax?: number
           terms?: string | null
           total?: number
+          travel_group_id?: string | null
           updated_at?: string | null
           visa_reference?: string | null
         }
@@ -670,6 +673,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_travel_group_id_fkey"
+            columns: ["travel_group_id"]
+            isOneToOne: false
+            referencedRelation: "travel_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -1026,6 +1036,7 @@ export type Database = {
           entry_port: string | null
           exit_port: string | null
           group_code: string
+          group_ref: string | null
           guide_name: string | null
           hotel_name: string | null
           hotel_stars: number | null
@@ -1058,6 +1069,7 @@ export type Database = {
           entry_port?: string | null
           exit_port?: string | null
           group_code: string
+          group_ref?: string | null
           guide_name?: string | null
           hotel_name?: string | null
           hotel_stars?: number | null
@@ -1090,6 +1102,7 @@ export type Database = {
           entry_port?: string | null
           exit_port?: string | null
           group_code?: string
+          group_ref?: string | null
           guide_name?: string | null
           hotel_name?: string | null
           hotel_stars?: number | null
@@ -1403,6 +1416,10 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       create_b2b_group: { Args: { p: Json }; Returns: Json }
       next_counter: { Args: { counter_key: string }; Returns: number }
+      invoice_payment_summary: {
+        Args: { p_ids: string[] }
+        Returns: { invoice_id: string; received: number; balance: number; receipt_count: number }[]
+      }
       next_group_code: { Args: { p_date: string }; Returns: string }
       update_invoice: {
         Args: { p_id: string; p_invoice: Json; p_items: Json }

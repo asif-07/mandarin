@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data: invoice, error } = await supabase
     .from("invoices")
-    .select("*, invoice_items(*)")
+    .select("*, invoice_items(*), group:travel_groups!invoices_travel_group_id_fkey(group_ref)")
     .eq("id", id)
     .single();
   if (error || !invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   if (!pdfPath || regenerate) {
     try {
-      const html = renderInvoiceHtml(invoiceToTemplateData(invoice, invoice.invoice_items), await loadTemplateAssets());
+      const html = renderInvoiceHtml(invoiceToTemplateData(invoice, invoice.invoice_items, invoice.group?.group_ref), await loadTemplateAssets());
       const pdf = await htmlToPdf(html);
       const year = invoice.issue_date.slice(0, 4);
       pdfPath = `${year}/${invoice.invoice_number}.pdf`;

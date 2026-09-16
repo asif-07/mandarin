@@ -25,6 +25,8 @@ export type InvoiceTemplateData = {
   total: number;
   amount_in_words: string;
   terms?: string | null;
+  /** Travel group ID, printed under the invoice details when the invoice is linked to a group. */
+  group_ref?: string | null;
 };
 
 export type TemplateAssets = {
@@ -219,6 +221,7 @@ ${assets.fontCss}
       <div class="kv"><span class="k">Issue Date</span><span class="v">${escapeHtml(formatDate(data.issue_date))}</span></div>
       <div class="kv"><span class="k">Due Date</span><span class="v">${escapeHtml(data.due_date_label)}</span></div>
       <div class="kv"><span class="k">Currency</span><span class="v">${escapeHtml(data.currency)}</span></div>
+      ${data.group_ref ? `<div class="kv"><span class="k">Group</span><span class="v">${escapeHtml(data.group_ref)}</span></div>` : ""}
     </div>
   </div>
 

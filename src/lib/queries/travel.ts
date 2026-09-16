@@ -54,6 +54,14 @@ export function groupTitle(g: GroupLike | null | undefined) {
  *   MR144-Aug25-Aug30-05px-G01
  *   prefix - start - end - pax count - group code
  */
+const MON = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+/** Stable Group ID, same rule as the database trigger: PREFIX-[PARTNER-]MONDD-MONDD-Gnn. */
+export function groupRef(g: { reference_prefix?: string | null; partner_code?: string | null; source?: string | null; travel_date: string; travel_end_date?: string | null; group_code: string }): string {
+  const tok = (iso: string) => `${MON[Number(iso.slice(5, 7)) - 1]}${iso.slice(8, 10)}`;
+  const partner = g.source === "b2b" && g.partner_code ? `${g.partner_code.toUpperCase()}-` : "";
+  return `${(g.reference_prefix || "MR144").toUpperCase()}-${partner}${tok(g.travel_date)}-${tok(g.travel_end_date || g.travel_date)}-${g.group_code.toUpperCase()}`;
+}
+
 export function groupPackReference(g: GroupLike, pax: number): string {
   if (g.source === "b2b" && g.partner_code) {
     // Partner groups keep the partner's own code shape: MR144-EDPT-OCT15-OCT20-100PX-G03

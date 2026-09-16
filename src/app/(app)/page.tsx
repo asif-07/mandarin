@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPill, INVOICE_TONES, TRAVELLER_TONES } from "@/components/shared/status-pill";
 import { DocsBadge, PackageBadge } from "@/components/travel/traveller-table";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile, isAdmin } from "@/lib/auth";
+import { RecordReceiptButton } from "@/components/accounts/receipt-dialog";
 import { docCompleteness, groupTitle } from "@/lib/queries/travel";
 import { CompileGroupButton } from "@/components/travel/pack-panel";
 import { VisaStatusPill } from "@/components/travel/group-visa";
@@ -20,6 +22,8 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const supabase = await createClient();
+  const current = await getCurrentProfile();
+  const admin = isAdmin(current?.profile);
   const today = todayISO();
   const monthStart = `${today.slice(0, 7)}-01`;
   const in7 = toISODate(addDays(parseISO(today), 7));
@@ -48,7 +52,7 @@ export default async function DashboardPage() {
       .limit(300),
     // Partner (B2B) groups carry a pax count instead of traveller records, so they are counted from the group.
     supabase.from("travel_groups").select("id, source, pax_expected, travel_date, travellers(id, status)").gte("travel_date", monthStart).lte("travel_date", monthEnd),
-    supabase.from("invoices").select("total").eq("currency", "USD").in("status", ["issued", "paid"]).gte("issue_date", monthStart),
+    supabase.from("invoices").select("id, total").eq("currency", "USD").in("status", ["issued", "paid"]).gte("issue_date", monthStart),
     supabase
       .from("travellers")
       .select("id", { count: "exact", head: true })
@@ -65,9 +69,9 @@ export default async function DashboardPage() {
       .order("travel_start_date"),
     supabase
       .from("invoices")
-      .select("id, invoice_number, bill_to_name, issue_date, total, currency, status")
+      .select("id, invoice_number, bill_to_name, issue_date, total, currency, status, deal_id")
       .order("sequence_number", { ascending: false })
-      .limit(6),
+      .limit(8),
     supabase
       .from("travel_groups")
       .select("id, travel_date, travel_end_date, group_code, label, guide_name, entry_port, exit_port, source, partner_code, pax_expected, pack_path, visa_status, visa_applied_at, visa_uploaded_at, group_documents(doc_type, deleted_at), travellers(id, status, traveller_documents(doc_type, deleted_at))")
@@ -103,6 +107,18 @@ export default async function DashboardPage() {
   });
 
   const invoiced = (invoicedRows ?? []).reduce((s, r) => s + Number(r.total), 0);
+  // Received / balance per invoice, for the month tile and the recent list.
+  const paymentIds = [...new Set([...(invoicedRows ?? []).map((r) => r.id), ...(recentInvoices ?? []).map((r) => r.id)])];
+  const { data: paymentRows } = paymentIds.length ? await supabase.rpc("invoice_payment_summary", { p_ids: paymentIds }) : { data: [] as { invoice_id: string; received: number; balance: number; receipt_count: number }[] };
+  const payments = new Map((paymentRows ?? []).map((r) => [r.invoice_id, { received: Number(r.received), balance: Number(r.balance) }]));
+  const monthReceived = (invoicedRows ?? []).reduce((s, r) => s + (payments.get(r.id)?.received ?? 0), 0);
+  const monthBalance = Math.max(0, Math.round((invoiced - monthReceived) * 100) / 100);
+  const recent = (recentInvoices ?? []).map((inv) => {
+    const p = payments.get(inv.id) ?? { received: 0, balance: Number(inv.total) };
+    const paid = inv.status === "paid" || (p.balance <= 0 && Number(inv.total) > 0);
+    const partial = !paid && p.received > 0;
+    return { ...inv, received: p.received, balance: Math.max(0, p.balance), paid, partial };
+  });
   const travellersThisMonth = (monthTravellers ?? []).map((t) => ({ ...t, docs: docCompleteness(t.traveller_documents, t.group?.group_documents), days: daysFromToday(t.travel_start_date) ?? 0 }));
   const monthComplete = travellersThisMonth.filter((t) => t.docs.complete).length;
   const monthTravelledOrTravelling = travellersThisMonth.filter((t) => t.days <= 0).length;
@@ -132,7 +148,7 @@ export default async function DashboardPage() {
         />
         <Stat label="Travelling in 7 days" value={String(travellersNext7)} hint={`${formatDate(today)} to ${formatDate(in7)}, partner packs included`} href="/travel/travellers" />
         <Stat label="Groups this month" value={String(groupsThisMonth)} hint={`departing in ${monthLabel}`} href="/travel/groups" />
-        <Stat label="Invoiced this month" value={`USD ${formatNumber(invoiced)}`} hint="issued and paid, USD invoices" href="/invoices" />
+        <Stat label="Invoiced this month" value={`USD ${formatNumber(invoiced)}`} hint={`received USD ${formatNumber(monthReceived)} · balance USD ${formatNumber(monthBalance)} · USD invoices`} href={admin ? "/accounts/receivables" : "/invoices"} />
       </div>
 
       {completedGroups.length > 0 && (
@@ -351,19 +367,37 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!recentInvoices || recentInvoices.length === 0 ? (
+            {recent.length === 0 ? (
               <p className="text-sm text-mr-muted">No invoices yet.</p>
             ) : (
               <ul className="divide-y divide-mr-line">
-                {recentInvoices.map((inv) => (
+                {recent.map((inv) => (
                   <li key={inv.id} className="flex items-center gap-3 py-2.5 text-sm">
-                    <Link href={`/invoices/${inv.id}`} className="w-28 shrink-0 font-medium text-mr-ink hover:underline">
-                      {inv.invoice_number}
-                    </Link>
-                    <span className="min-w-0 flex-1 truncate text-mr-body">{inv.bill_to_name}</span>
-                    <span className="tnum hidden text-xs text-mr-muted sm:inline">{formatDate(inv.issue_date)}</span>
-                    <span className="tnum font-medium">{formatMoney(inv.total, inv.currency)}</span>
-                    <StatusPill label={labelFor(INVOICE_STATUSES, inv.status)} tone={INVOICE_TONES[inv.status]} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Link href={`/invoices/${inv.id}`} className="shrink-0 font-medium text-mr-ink hover:underline">
+                          {inv.invoice_number}
+                        </Link>
+                        <span className="min-w-0 truncate text-mr-body">{inv.bill_to_name}</span>
+                      </div>
+                      <p className="tnum truncate text-xs text-mr-muted">
+                        {formatDate(inv.issue_date)} · Total {formatMoney(inv.total, inv.currency)}
+                        {inv.status === "cancelled" ? "" : inv.paid ? " · Received in full" : inv.partial ? ` · Received ${formatMoney(inv.received, inv.currency)} · Balance ${formatMoney(inv.balance, inv.currency)}` : " · Not received"}
+                      </p>
+                    </div>
+                    <span className={cn("tnum font-medium", inv.status !== "cancelled" && !inv.paid && "text-mr-red")}>{inv.status === "cancelled" ? formatMoney(inv.total, inv.currency) : formatMoney(inv.paid ? inv.total : inv.balance, inv.currency)}</span>
+                    <StatusPill
+                      label={inv.status === "cancelled" ? "Cancelled" : inv.status === "draft" ? "Draft" : inv.paid ? "Paid" : inv.partial ? "Partially paid" : "Unpaid"}
+                      tone={inv.status === "cancelled" || inv.status === "draft" ? "neutral" : inv.paid ? "success" : inv.partial ? "warning" : "red"}
+                    />
+                    {admin && inv.status === "issued" && !inv.paid && (
+                      <RecordReceiptButton
+                        size="sm"
+                        variant="outline"
+                        label="Receive"
+                        invoice={{ id: inv.id, invoice_number: inv.invoice_number, bill_to_name: inv.bill_to_name, issue_date: inv.issue_date, total: Number(inv.total), currency: inv.currency, status: inv.status, deal_id: inv.deal_id, received: inv.received, balance: inv.balance }}
+                      />
+                    )}
                   </li>
                 ))}
               </ul>

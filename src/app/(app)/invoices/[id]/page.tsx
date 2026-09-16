@@ -28,7 +28,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const admin = isAdmin(current?.profile);
   const { data: invoice } = await supabase
     .from("invoices")
-    .select("*, invoice_items(*), creator:profiles!invoices_created_by_fkey(display_name), lead:leads(id, lead_ref, full_name), deal:deals(id, deal_ref, title)")
+    .select("*, invoice_items(*), creator:profiles!invoices_created_by_fkey(display_name), lead:leads(id, lead_ref, full_name), deal:deals(id, deal_ref, title), group:travel_groups!invoices_travel_group_id_fkey(id, group_ref, travel_date, label)")
     .eq("id", id)
     .maybeSingle();
   if (!invoice) notFound();
@@ -46,7 +46,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const received = (receipts ?? []).reduce((s, r) => s + Number(r.applied_amount ?? r.amount), 0);
   const balance = Math.round((Number(invoice.total) - received) * 100) / 100;
 
-  const html = renderInvoiceHtml(invoiceToTemplateData(invoice, invoice.invoice_items), previewTemplateAssets());
+  const html = renderInvoiceHtml(invoiceToTemplateData(invoice, invoice.invoice_items, invoice.group?.group_ref), previewTemplateAssets());
 
   return (
     <>
@@ -87,6 +87,14 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                 <span className="text-mr-body">Due</span>
                 <span>{invoice.due_date_label}</span>
               </div>
+              {invoice.group && (
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-mr-body">Group</span>
+                  <Link href={`/travel?date=${invoice.group.travel_date}`} className="truncate font-mono text-xs text-mr-ink hover:underline">
+                    {invoice.group.group_ref ?? invoice.group.label ?? "Open"}
+                  </Link>
+                </div>
+              )}
               {invoice.visa_reference && (
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-mr-body">Visa ref</span>

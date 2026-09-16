@@ -49,6 +49,7 @@ export type GroupOption = {
   source?: string | null;
   partner_code?: string | null;
   pax_expected?: number | null;
+  group_ref?: string | null;
   traveller_count: number;
 };
 
@@ -152,7 +153,7 @@ export async function searchGroups(query: string, limit = 60): Promise<GroupOpti
   const q = query.trim();
   let req = supabase
     .from("travel_groups")
-    .select("id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, travellers(count)")
+    .select("id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, group_ref, travellers(count)")
     .order("travel_date", { ascending: false })
     .order("group_code", { ascending: true })
     .limit(limit);
@@ -161,7 +162,7 @@ export async function searchGroups(query: string, limit = 60): Promise<GroupOpti
     if (range) req = req.gte("travel_date", range[0]).lte("travel_date", range[1]);
     else {
       const like = `%${q.replace(/[%,]/g, "")}%`;
-      req = req.or(`group_code.ilike.${like},label.ilike.${like},guide_name.ilike.${like}`);
+      req = req.or(`group_code.ilike.${like},label.ilike.${like},guide_name.ilike.${like},group_ref.ilike.${like}`);
     }
   }
   const { data } = await req;
@@ -172,6 +173,7 @@ export async function searchGroups(query: string, limit = 60): Promise<GroupOpti
     group_code: g.group_code,
     label: g.label,
     guide_name: g.guide_name,
+    group_ref: g.group_ref,
     reference_prefix: g.reference_prefix,
     entry_port: g.entry_port,
     exit_port: g.exit_port,

@@ -42,6 +42,7 @@ export const invoiceSchema = z.object({
   status: z.enum(statusValues).default("issued"),
   lead_id: z.string().uuid().optional().nullable().transform((v) => (v ? v : null)),
   customer_id: z.string().uuid().optional().nullable().transform((v) => (v ? v : null)),
+  travel_group_id: z.string().uuid().optional().nullable().transform((v) => (v ? v : null)),
   items: z.array(invoiceItemSchema).min(1, "Add at least one line item"),
 });
 

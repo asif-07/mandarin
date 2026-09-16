@@ -15,7 +15,7 @@ import { StopToggle } from "@/components/shared/stop-toggle";
 import { GroupVisaPanel, VisaStatusPill } from "@/components/travel/group-visa";
 import { packageDetail } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
-import { docCompleteness, groupCoverage, groupPackReference } from "@/lib/queries/travel";
+import { docCompleteness, groupCoverage, groupPackReference, groupRef } from "@/lib/queries/travel";
 import { GroupDocuments } from "@/components/travel/group-documents";
 import { TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate, formatDateRange, todayISO } from "@/lib/format";
@@ -45,7 +45,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const { data: groups, error } = await supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, hotel_stars, transit_location, visa_status, visa_applied_at, visa_uploaded_at, visa_path, group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at), travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, hotel_stars, transit_location, visa_status, visa_applied_at, visa_uploaded_at, visa_path, group_ref, group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at), travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
     )
     .eq("travel_date", date)
     .order("group_code");
@@ -95,7 +95,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                     {g.label ?? <span className="text-mr-muted">No label</span>}
                     {g.guide_name ? ` · ${g.guide_name}` : ""}
                     <span className="block truncate text-xs text-mr-muted">
-                      {formatDateRange(g.travel_date, g.travel_end_date)} · {groupPackReference(g, travellers.length)}
+                      {formatDateRange(g.travel_date, g.travel_end_date)} · ID {g.group_ref ?? groupRef(g)} · {groupPackReference(g, travellers.length)}
                     </span>
                     <span className="block truncate text-xs text-mr-muted">
                       {g.entry_port && g.exit_port ? `In: ${g.entry_port} · Out: ${g.exit_port}` : <span className="text-mr-warning">Entry / exit port missing</span>}
@@ -183,7 +183,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                     />
                   </div>
                   <div className="mt-3 flex items-center justify-between">
-                    <Link href={`/travel/travellers/new`} className="text-xs text-mr-body hover:text-mr-ink hover:underline">
+                    <Link href={`/travel/travellers/new?group=${g.id}`} className="text-xs text-mr-body hover:text-mr-ink hover:underline">
                       + Add traveller
                     </Link>
                     {g.source === "b2b" ? (
