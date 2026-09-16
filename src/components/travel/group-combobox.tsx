@@ -11,7 +11,7 @@ import { groupTitle } from "@/lib/queries/travel";
 import { cn } from "@/lib/utils";
 
 export function groupOptionLabel(g: GroupOption) {
-  return `${groupTitle(g)} (${g.traveller_count} traveller${g.traveller_count === 1 ? "" : "s"})`;
+  return `${g.group_ref ? `${g.group_ref} · ` : ""}${groupTitle(g)} (${g.traveller_count} traveller${g.traveller_count === 1 ? "" : "s"})`;
 }
 
 /**
@@ -25,6 +25,7 @@ export function GroupCombobox({
   disabled,
   id,
   allowClear = true,
+  placeholder = "Choose a travel group",
 }: {
   value: string | null | undefined;
   /** The currently selected group, so the trigger can show a label before any search. */
@@ -33,6 +34,7 @@ export function GroupCombobox({
   disabled?: boolean;
   id?: string;
   allowClear?: boolean;
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -84,7 +86,7 @@ export function GroupCombobox({
           disabled={disabled}
           className={cn("h-9 w-full justify-between rounded-lg font-normal", !selected && "text-mr-muted")}
         >
-          <span className="truncate">{selected ? groupOptionLabel(selected) : "Choose a travel group"}</span>
+          <span className="truncate">{selected ? groupOptionLabel(selected) : placeholder}</span>
           <ChevronsUpDown className="text-mr-muted" />
         </Button>
       </PopoverTrigger>
@@ -125,6 +127,7 @@ export function GroupCombobox({
                     }}
                   >
                     <span className="font-medium">{g.group_code}</span>
+                    {g.group_ref && <span className="truncate font-mono text-xs text-mr-body">{g.group_ref}</span>}
                     {g.label && <span className="truncate text-mr-body">· {g.label}</span>}
                     <span className="ml-auto inline-flex items-center gap-1 text-xs text-mr-muted">
                       <Users className="size-3" /> {g.traveller_count}

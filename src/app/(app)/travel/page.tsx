@@ -183,9 +183,14 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                     />
                   </div>
                   <div className="mt-3 flex items-center justify-between">
-                    <Link href={`/travel/travellers/new?group=${g.id}`} className="text-xs text-mr-body hover:text-mr-ink hover:underline">
-                      + Add traveller
-                    </Link>
+                    <span className="flex items-center gap-3">
+                      <Link href={`/travel/travellers/new?group=${g.id}`} className="text-xs text-mr-body hover:text-mr-ink hover:underline">
+                        + Add traveller
+                      </Link>
+                      <Link href={`/invoices/new?group=${g.id}`} className="text-xs text-mr-body hover:text-mr-ink hover:underline">
+                        + Create invoice
+                      </Link>
+                    </span>
                     {g.source === "b2b" ? (
                       g.pack_path ? (
                         <a href={`/api/groups/${g.id}/b2b-pack`} className={buttonVariants({ size: "sm" })}>

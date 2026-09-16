@@ -236,6 +236,24 @@ export function InvoiceForm(props: Props) {
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="travel_group">Travel group (pick from the list of created groups)</Label>
+                <GroupCombobox
+                  id="travel_group"
+                  placeholder="Select an existing group…"
+                  value={watched.travel_group_id}
+                  initial={props.initialGroup}
+                  onChange={(g) => {
+                    setValue("travel_group_id", g?.id ?? null, { shouldDirty: true });
+                    // Pull the Group ID into the visa reference (and the chosen line) when none is set yet.
+                    if (g?.group_ref && !getValues("visa_reference")) {
+                      setValue("visa_reference", g.group_ref, { shouldDirty: true });
+                      applyVisaReference(g.group_ref, applyRefTo);
+                    }
+                  }}
+                />
+                <p className="text-xs text-mr-muted">Newest groups first; type a date, code or Group ID to filter. The Group ID is printed on the invoice and fills the visa reference when empty.</p>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Pull from lead</Label>
                 <LeadCombobox
                   value={watched.lead_id}
@@ -267,23 +285,6 @@ export function InvoiceForm(props: Props) {
               <div className="space-y-1.5">
                 <Label htmlFor="bill_to_address">Address</Label>
                 <Input id="bill_to_address" {...register("bill_to_address")} />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="travel_group">Travel group</Label>
-                <GroupCombobox
-                  id="travel_group"
-                  value={watched.travel_group_id}
-                  initial={props.initialGroup}
-                  onChange={(g) => {
-                    setValue("travel_group_id", g?.id ?? null, { shouldDirty: true });
-                    // Pull the Group ID into the visa reference (and the chosen line) when none is set yet.
-                    if (g?.group_ref && !getValues("visa_reference")) {
-                      setValue("visa_reference", g.group_ref, { shouldDirty: true });
-                      applyVisaReference(g.group_ref, applyRefTo);
-                    }
-                  }}
-                />
-                <p className="text-xs text-mr-muted">Prints the Group ID on the invoice and links it to the group.</p>
               </div>
             </CardContent>
           </Card>
