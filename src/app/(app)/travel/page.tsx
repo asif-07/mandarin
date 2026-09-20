@@ -193,8 +193,8 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                     </span>
                     {g.source === "b2b" ? (
                       g.pack_path ? (
-                        <a href={`/api/groups/${g.id}/b2b-pack`} className={buttonVariants({ size: "sm" })}>
-                          <Download /> Download partner pack
+                        <a href={`/api/groups/${g.id}/bundle`} title="Mandarin Roots cover with the travel details, then the partner's pack; after the visa is received, the partner's own branding" className={buttonVariants({ size: "sm" })}>
+                          <Download /> Download pack
                         </a>
                       ) : (
                         <Link href="/travel/b2b" className="text-xs text-mr-warning hover:underline">

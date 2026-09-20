@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Download, FileCheck2, Loader2, Stamp, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusPill } from "@/components/shared/status-pill";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
@@ -96,63 +95,26 @@ export function UploadVisaButton({ groupId, replace = false, size = "sm" }: { gr
 }
 
 /**
- * "Download visa + documents". Our groups download straight away with the
- * Mandarin Roots cover; B2B groups first ask which logo goes on the cover.
+ * One download per stage. Before the visa: the pack for the visa application,
+ * Mandarin Roots cover. After the visa: partner groups get the partner's logo
+ * on the cover (to forward to the partner), our groups keep our cover (to send
+ * to the client). Branding is decided on the server from the group state.
  */
 export function DownloadBundleButton({ group, size = "sm", variant = "outline" }: { group: GroupVisaInfo; size?: "sm" | "default"; variant?: "default" | "outline" }) {
-  const [open, setOpen] = useState(false);
-  const [logo, setLogo] = useState<"partner" | "none" | "mr">(group.partner_has_logo ? "partner" : "none");
   const isB2b = group.source === "b2b";
   const canBuild = isB2b ? !!group.pack_path : group.traveller_count > 0;
-  const label = group.visa_path ? "Download visa + documents" : "Download documents";
-
   if (!canBuild) return null;
-  if (!isB2b) {
-    return (
-      <a href={`/api/groups/${group.id}/bundle`} className={buttonVariants({ variant, size })}>
-        <Download /> {label}
-      </a>
-    );
-  }
+  const visaIn = group.visa_status === "approved" && !!group.visa_path;
+  const label = visaIn ? (isB2b ? `Download for ${group.partner_code ?? "partner"}` : "Download for client") : "Download for visa application";
+  const hint = visaIn
+    ? isB2b
+      ? `Cover with the ${group.partner_code ?? "partner"} logo${group.partner_has_logo ? "" : " (no logo on file: their name is printed; add one under Partners on the B2B page)"}, then the visa and the pack`
+      : "Mandarin Roots cover with the travel details, then the visa and every document"
+    : "Mandarin Roots cover with entry, exit, pax and dates, then the documents";
   return (
-    <>
-      <Button variant={variant} size={size} onClick={() => setOpen(true)}>
-        <Download /> {label}
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Cover page branding</DialogTitle>
-            <DialogDescription>This is a partner group ({group.partner_code}). Choose what appears on the first page before the {group.visa_path ? "visa and " : ""}documents.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2">
-            {(
-              [
-                { value: "partner", title: `${group.partner_code} logo`, hint: group.partner_has_logo ? "Their logo, no Mandarin Roots branding" : "No logo on file yet: their name is printed instead. Add one under Partners on the B2B page." },
-                { value: "none", title: "No logo", hint: `Plain cover with the partner name ${group.partner_code} only` },
-                { value: "mr", title: "Mandarin Roots logo", hint: "Our standard branded cover" },
-              ] as const
-            ).map((o) => (
-              <label key={o.value} className={cn("flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm", logo === o.value ? "border-mr-ink bg-mr-surface" : "border-mr-line")}>
-                <input type="radio" name="logo" value={o.value} checked={logo === o.value} onChange={() => setLogo(o.value)} className="mt-1" />
-                <span>
-                  <span className="block font-medium text-mr-ink">{o.title}</span>
-                  <span className="block text-xs text-mr-muted">{o.hint}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <a href={`/api/groups/${group.id}/bundle?logo=${logo}`} className={buttonVariants()} onClick={() => setOpen(false)}>
-              <Download /> Download
-            </a>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    <a href={`/api/groups/${group.id}/bundle`} title={hint} className={buttonVariants({ variant, size })}>
+      <Download /> {label}
+    </a>
   );
 }
 

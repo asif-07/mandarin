@@ -261,8 +261,8 @@ export default async function DashboardPage() {
                   </Link>
                   {g.b2b ? (
                     g.pack_path ? (
-                      <a href={`/api/groups/${g.id}/b2b-pack`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                        <Download /> Partner pack
+                      <a href={`/api/groups/${g.id}/bundle`} title="Mandarin Roots cover with the travel details, then the partner's pack; after the visa is received, the partner's own branding" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                        <Download /> Download pack
                       </a>
                     ) : null
                   ) : (

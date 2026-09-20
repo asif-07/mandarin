@@ -129,9 +129,14 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
                 </p>
                 <div className="mt-3 flex items-center justify-between gap-2">
                   {g.pack_path ? (
-                    <a href={`/api/groups/${g.id}/b2b-pack`} className={buttonVariants({ size: "sm" })}>
-                      <Download /> Download pack
-                    </a>
+                    <span className="flex items-center gap-3">
+                      <a href={`/api/groups/${g.id}/bundle`} title={g.visa_status === "approved" && g.visa_path ? `Cover with the ${g.partner_code} logo, then the visa and the pack` : "Mandarin Roots cover with the travel details, then the partner's pack"} className={buttonVariants({ size: "sm" })}>
+                        <Download /> {g.visa_status === "approved" && g.visa_path ? `Download for ${g.partner_code}` : "Download for visa application"}
+                      </a>
+                      <a href={`/api/groups/${g.id}/b2b-pack`} className="text-xs text-mr-muted hover:text-mr-ink hover:underline">
+                        Original file
+                      </a>
+                    </span>
                   ) : (
                     <span className="text-xs text-mr-warning">No pack file</span>
                   )}

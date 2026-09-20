@@ -51,6 +51,17 @@ function mimeFromName(name: string | null | undefined): string {
 
 type GroupRow = NonNullable<Awaited<ReturnType<typeof loadGroup>>>;
 
+/**
+ * Cover branding by stage. Until the visa is received every download is for
+ * the visa application and carries the Mandarin Roots cover (entry, exit,
+ * pax, dates). Once the visa is uploaded, a partner group's download goes to
+ * the partner under their own logo (name only when no logo is on file); our
+ * own groups keep the Mandarin Roots cover for the client.
+ */
+export function defaultBundleLogo(group: { source: string; visa_status: string; visa_path: string | null }): BundleLogo {
+  return group.source === "b2b" && group.visa_status === "approved" && !!group.visa_path ? "partner" : "mr";
+}
+
 async function loadGroup(supabase: Client, groupId: string) {
   const { data } = await supabase.from("travel_groups").select(GROUP_SELECT).eq("id", groupId).maybeSingle();
   return data;
@@ -83,7 +94,7 @@ export async function findCachedBundle(supabase: Client, groupId: string, opts: 
   const group = await loadGroup(supabase, groupId);
   if (!group) return null;
   const isB2b = group.source === "b2b";
-  const logo: BundleLogo = opts.logo ?? (isB2b ? "partner" : "mr");
+  const logo: BundleLogo = opts.logo ?? defaultBundleLogo(group);
   let partnerLogoPath: string | null = null;
   if (isB2b && logo === "partner") {
     const { data: partner } = await supabase.from("b2b_partners").select("logo_path").eq("code", group.partner_code ?? "").maybeSingle();
@@ -118,7 +129,7 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
   const attachments: { label: string; bytes: Uint8Array; mimeType?: string }[] = [];
 
   // Cover branding (fetched in parallel with the files below)
-  const logoChoice: BundleLogo = opts.logo ?? (isB2b ? "partner" : "mr");
+  const logoChoice: BundleLogo = opts.logo ?? defaultBundleLogo(group);
   const partnerPromise = isB2b && logoChoice !== "mr" ? supabase.from("b2b_partners").select("name, logo_path, logo_file_name").eq("code", group.partner_code ?? "").maybeSingle() : null;
 
   // Visa, group documents and the partner pack, downloaded together
