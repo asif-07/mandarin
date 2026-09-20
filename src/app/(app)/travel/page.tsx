@@ -91,12 +91,15 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
             const complete = travellers.filter((t) => docCompleteness(t.traveller_documents, coverage).complete).length;
             return (
               <details key={g.id} className="group rounded-lg border border-mr-line bg-white open:border-mr-ink" open={travellers.length > 0 && (groups?.length ?? 0) <= 4}>
-                <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
-                  <span className="text-base font-semibold text-mr-ink">{g.group_code}</span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-mr-body">
+                <summary className="cursor-pointer list-none px-4 py-3 [&::-webkit-details-marker]:hidden">
+                  <div className="flex items-start gap-3">
+                  <span className="shrink-0 text-base font-semibold leading-6 text-mr-ink">{g.group_code}</span>
+                  <span className="min-w-0 flex-1 text-sm leading-6 text-mr-body">
                     {g.source === "b2b" && <span className="mr-2 rounded-md bg-mr-ink px-1.5 py-0.5 text-[11px] font-medium text-white">B2B {g.partner_code}</span>}
-                    {g.label ?? <span className="text-mr-muted">No label</span>}
-                    {g.guide_name ? ` · ${g.guide_name}` : ""}
+                    <span className="block truncate">
+                      {g.label ?? <span className="text-mr-muted">No label</span>}
+                      {g.guide_name ? ` · ${g.guide_name}` : ""}
+                    </span>
                     <span className="block truncate text-xs text-mr-muted">
                       {formatDateRange(g.travel_date, g.travel_end_date)} · ID {g.group_ref ?? groupRef(g)} · {groupPackReference(g, travellers.length)}
                     </span>
@@ -105,12 +108,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                       {g.package_tier ? ` · ${packageDetail(g.package_tier, g.hotel_stars, g.hotel_name, g.transit_location)}` : ""}
                     </span>
                   </span>
-                  <VisaStatusPill group={g} className="hidden lg:inline-flex" />
-                  <span className="tnum text-xs text-mr-body">
-                    {g.source === "b2b" && g.pax_expected ? `${g.pax_expected} pax` : `${travellers.length} pax`}
-                  </span>
-                  {g.source !== "b2b" && <DocsBadge count={complete} total={travellers.length || 0} />}
-                  <StopToggle>
+                  <StopToggle className="flex shrink-0 items-center gap-1">
                     <GroupRowActions
                       group={{
                         id: g.id,
@@ -136,6 +134,14 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                       }}
                     />
                   </StopToggle>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 sm:pl-12">
+                    <VisaStatusPill group={g} />
+                    <span className="tnum rounded-md bg-mr-surface px-1.5 py-0.5 text-xs text-mr-body">
+                      {g.source === "b2b" && g.pax_expected ? `${g.pax_expected} pax` : `${travellers.length} pax`}
+                    </span>
+                    {g.source !== "b2b" && <DocsBadge count={complete} total={travellers.length || 0} />}
+                  </div>
                 </summary>
                 <div className="border-t border-mr-line px-4 py-3">
                   {travellers.length === 0 ? (
