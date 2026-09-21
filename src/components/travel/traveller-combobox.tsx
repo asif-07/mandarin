@@ -77,7 +77,7 @@ export function TravellerCombobox({ selected, onChange, excludeGroupId, id }: { 
                       <span className="ml-2 font-mono text-xs text-mr-muted">{t.traveller_ref}</span>
                       {t.passport_number && <span className="ml-2 text-xs text-mr-body">{t.passport_number}</span>}
                     </span>
-                    <span className={cn("ml-2 shrink-0 text-xs", t.travel_group_id ? "text-mr-warning" : "text-mr-success")}>{t.travel_group_id ? `in ${t.group_ref ?? "a group"}` : "not in a group"}</span>
+                    <span className={cn("ml-2 shrink-0 text-xs", t.status === "travelled" ? "text-mr-body" : t.travel_group_id ? "text-mr-warning" : "text-mr-success")}>{t.status === "travelled" ? `travelled before${t.group_ref ? ` (${t.group_ref})` : ""}` : t.travel_group_id ? `in ${t.group_ref ?? "a group"}` : "not in a group"}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -90,7 +90,7 @@ export function TravellerCombobox({ selected, onChange, excludeGroupId, id }: { 
           {selected.map((t) => (
             <li key={t.id} className="inline-flex items-center gap-1 rounded-md border border-mr-line bg-mr-surface px-2 py-1 text-xs text-mr-ink">
               {t.full_name} <span className="font-mono text-mr-muted">{t.traveller_ref}</span>
-              {t.travel_group_id && <span className="text-mr-warning">(moves from {t.group_ref ?? "another group"})</span>}
+              {t.status === "travelled" ? <span className="text-mr-body">(repeat customer, new trip)</span> : t.travel_group_id ? <span className="text-mr-warning">(moves from {t.group_ref ?? "another group"})</span> : null}
               <button type="button" aria-label={`Remove ${t.full_name}`} className="ml-1 text-mr-muted hover:text-mr-ink" onClick={() => onChange(selected.filter((x) => x.id !== t.id))}>
                 <X className="size-3" />
               </button>

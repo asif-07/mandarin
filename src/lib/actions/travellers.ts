@@ -162,7 +162,7 @@ export type TravellerPick = {
   group_ref: string | null;
 };
 
-/** Existing travellers to pull into a group: unassigned ones first, cancelled and already-travelled ones left out. */
+/** Existing travellers to pull into a group: unassigned ones first; repeat customers who already travelled are included, only cancelled ones are left out. */
 export async function searchTravellersForGroup(query: string, limit = 40): Promise<TravellerPick[]> {
   await requireProfile();
   const supabase = await createClient();
@@ -170,7 +170,7 @@ export async function searchTravellersForGroup(query: string, limit = 40): Promi
   let req = supabase
     .from("travellers")
     .select("id, traveller_ref, full_name, passport_number, nationality, status, travel_group_id, group:travel_groups(group_ref)")
-    .not("status", "in", "(cancelled,travelled)")
+    .neq("status", "cancelled")
     .order("travel_group_id", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -201,13 +201,15 @@ export async function assignTravellersToGroup(groupId: string, travellerIds: str
   const supabase = await createClient();
   const { data: g } = await supabase.from("travel_groups").select("id, travel_date, travel_end_date, package_tier, hotel_name, hotel_stars, transit_location").eq("id", groupId).maybeSingle();
   if (!g) return fail("Group not found");
-  const { data: rows } = await supabase.from("travellers").select("id, package_tier").in("id", ids);
+  const { data: rows } = await supabase.from("travellers").select("id, package_tier, status").in("id", ids);
   let assigned = 0;
   for (const t of rows ?? []) {
+    // A repeat customer who already travelled starts the new trip from documents pending.
+    const restart = t.status === "travelled" ? { status: "documents_pending" as const } : {};
     const patch = t.package_tier
       ? { travel_group_id: g.id, travel_start_date: g.travel_date, travel_end_date: g.travel_end_date }
       : { travel_group_id: g.id, travel_start_date: g.travel_date, travel_end_date: g.travel_end_date, package_tier: g.package_tier, hotel_name: g.hotel_name, hotel_stars: g.hotel_stars, transit_location: g.transit_location };
-    const { error } = await supabase.from("travellers").update(patch).eq("id", t.id);
+    const { error } = await supabase.from("travellers").update({ ...patch, ...restart }).eq("id", t.id);
     if (error) return fail(errorMessage(error, "Could not add a traveller to the group"));
     await reconcileDocumentStatus(supabase, t.id);
     assigned++;
