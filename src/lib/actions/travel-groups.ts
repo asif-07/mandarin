@@ -138,22 +138,21 @@ export async function searchGroups(query: string, limit = 60): Promise<GroupOpti
   await requireProfile();
   const supabase = await createClient();
   const q = query.trim();
-  let req = supabase
-    .from("travel_groups")
-    .select("id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, group_ref, travellers(count)")
-    .order("travel_date", { ascending: false })
-    .order("group_code", { ascending: true })
-    .limit(limit);
-  if (q) {
+  const today = todayISO();
+  const select = "id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, group_ref, travellers(count)";
+  const applyQuery = <T extends { gte: (c: string, v: string) => T; lte: (c: string, v: string) => T; or: (f: string) => T }>(req: T): T => {
+    if (!q) return req;
     const range = dateRange(q);
-    if (range) req = req.gte("travel_date", range[0]).lte("travel_date", range[1]);
-    else {
-      const like = `%${q.replace(/[%,]/g, "")}%`;
-      req = req.or(`group_code.ilike.${like},label.ilike.${like},guide_name.ilike.${like},group_ref.ilike.${like}`);
-    }
-  }
-  const { data } = await req;
-  return (data ?? []).map((g) => ({
+    if (range) return req.gte("travel_date", range[0]).lte("travel_date", range[1]);
+    const like = `%${q.replace(/[%,()]/g, "")}%`;
+    return req.or(`group_code.ilike.${like},label.ilike.${like},guide_name.ilike.${like},group_ref.ilike.${like}`);
+  };
+  // Soonest departure first: today's and upcoming groups in date order, then past groups most recent first.
+  const [{ data: upcoming }, { data: past }] = await Promise.all([
+    applyQuery(supabase.from("travel_groups").select(select).gte("travel_date", today).order("travel_date", { ascending: true }).order("group_code", { ascending: true }).limit(limit)),
+    applyQuery(supabase.from("travel_groups").select(select).lt("travel_date", today).order("travel_date", { ascending: false }).order("group_code", { ascending: true }).limit(limit)),
+  ]);
+  return [...(upcoming ?? []), ...(past ?? [])].slice(0, limit).map((g) => ({
     id: g.id,
     travel_date: g.travel_date,
     travel_end_date: g.travel_end_date,

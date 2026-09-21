@@ -64,9 +64,10 @@ export function GroupCombobox({
   }, [query, open]);
 
   const grouped = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
     const map = new Map<string, GroupOption[]>();
     results.forEach((g) => {
-      const key = formatDateRange(g.travel_date, g.travel_end_date);
+      const key = `${g.travel_date >= today ? "Upcoming · " : "Past · "}${formatDateRange(g.travel_date, g.travel_end_date)}`;
       const list = map.get(key) ?? [];
       list.push(g);
       map.set(key, list);
