@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Layers, Loader2, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addTravellersToGroup } from "@/lib/actions/travellers";
+import { addTravellersToGroup, assignTravellersToGroup, type TravellerPick } from "@/lib/actions/travellers";
+import { TravellerCombobox } from "@/components/travel/traveller-combobox";
 import { PACKAGE_TIERS, tierHasHotel, tierHasTransit, tierNeedsStars } from "@/lib/constants";
 import { groupRef } from "@/lib/queries/travel";
 import { TransitSelect } from "@/components/travel/transit-select";
@@ -61,6 +62,7 @@ type Editing = {
   guide_name: string;
   notes: string;
   travellers: QuickRow[];
+  existing: TravellerPick[];
 };
 
 type QuickRow = { full_name: string; passport_number: string; phone: string; nationality: string };
@@ -82,6 +84,14 @@ function PackageSelect({ value, onChange, id }: { value: string | null; onChange
       </SelectContent>
     </Select>
   );
+}
+
+/** Pull already-existing travellers into the group after it exists. */
+async function saveExisting(groupId: string, picked: TravellerPick[]) {
+  if (picked.length === 0) return;
+  const res = await assignTravellersToGroup(groupId, picked.map((t) => t.id));
+  if (!res.ok) return void toast.error(res.error);
+  if (res.data.assigned) toast.success(`${res.data.assigned} existing traveller${res.data.assigned === 1 ? "" : "s"} added to the group`);
 }
 
 /** Save quick-add rows after the group exists; reports per-row failures. */
@@ -123,8 +133,9 @@ export function GroupsToolbar() {
     startTransition(async () => {
       const result = single.id ? await updateGroup(single.id, single) : await createGroup(single);
       if (!result.ok) return void toast.error(result.error);
-      toast.success(single.id ? "Group updated" : `${single.group_code.toUpperCase()} created · ID ${groupRef({ ...single, source: "internal" })}`, { description: single.travellers.some((r) => r.full_name.trim()) ? undefined : "Add travellers any time with + Add traveller on the group card." });
+      toast.success(single.id ? "Group updated" : `${single.group_code.toUpperCase()} created · ID ${groupRef({ ...single, source: "internal" })}`, { description: single.travellers.some((r) => r.full_name.trim()) || single.existing.length ? undefined : "Add travellers any time with + Add traveller on the group card." });
       await saveQuickRows(result.data.id, single.travellers);
+      await saveExisting(result.data.id, single.existing);
       setSingle(null);
       router.refresh();
     });
@@ -155,7 +166,7 @@ export function GroupsToolbar() {
       </Button>
       <Button
         onClick={() =>
-          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, transit_location: null, label: "", guide_name: "", notes: "", travellers: [] })
+          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, transit_location: null, label: "", guide_name: "", notes: "", travellers: [], existing: [] })
         }
       >
         <Plus /> New group
@@ -340,11 +351,16 @@ function GroupDialog({
               <Label htmlFor="g_notes">Notes</Label>
               <Input id="g_notes" value={value.notes} onChange={(e) => onChange({ ...value, notes: e.target.value })} />
             </div>
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label htmlFor="g_existing">Pull in existing travellers (optional)</Label>
+              <TravellerCombobox id="g_existing" selected={value.existing} onChange={(next) => onChange({ ...value, existing: next })} excludeGroupId={value.id ?? null} />
+              <p className="text-xs text-mr-muted">Travellers created earlier (from leads or the travellers page). They take this group&rsquo;s dates; a traveller already in another group is moved.</p>
+            </div>
             <div className="sm:col-span-2">
               <div className="flex items-center justify-between">
-                <Label>{value.id ? "Add travellers to this group" : "Travellers (optional; you can also add them later from the group card)"}</Label>
+                <Label>{value.id ? "Or create new travellers in this group" : "Or create new travellers (optional; you can also add them later from the group card)"}</Label>
                 <Button type="button" variant="outline" size="sm" onClick={() => onChange({ ...value, travellers: [...value.travellers, emptyRow()] })}>
-                  <UserPlus /> Add traveller
+                  <UserPlus /> New traveller row
                 </Button>
               </div>
               {value.travellers.length > 0 && (
@@ -410,6 +426,7 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
       if (!result.ok) return void toast.error(result.error);
       toast.success("Group updated");
       await saveQuickRows(editing.id!, editing.travellers);
+      await saveExisting(editing.id!, editing.existing);
       setEditing(null);
       router.refresh();
     });
@@ -452,6 +469,7 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
             guide_name: group.guide_name ?? "",
             notes: group.notes ?? "",
             travellers: [],
+            existing: [],
           })
         }
       >

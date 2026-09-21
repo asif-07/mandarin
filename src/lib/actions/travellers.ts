@@ -150,3 +150,68 @@ export async function addTravellersToGroup(groupId: string, rows: QuickTraveller
   await revalidateTraveller();
   return ok({ created, failed });
 }
+
+export type TravellerPick = {
+  id: string;
+  traveller_ref: string;
+  full_name: string;
+  passport_number: string | null;
+  nationality: string | null;
+  status: string;
+  travel_group_id: string | null;
+  group_ref: string | null;
+};
+
+/** Existing travellers to pull into a group: unassigned ones first, cancelled and already-travelled ones left out. */
+export async function searchTravellersForGroup(query: string, limit = 40): Promise<TravellerPick[]> {
+  await requireProfile();
+  const supabase = await createClient();
+  const q = query.trim().replace(/[%,()]/g, "");
+  let req = supabase
+    .from("travellers")
+    .select("id, traveller_ref, full_name, passport_number, nationality, status, travel_group_id, group:travel_groups(group_ref)")
+    .not("status", "in", "(cancelled,travelled)")
+    .order("travel_group_id", { ascending: true, nullsFirst: true })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (q) req = req.or(`full_name.ilike.%${q}%,traveller_ref.ilike.%${q}%,passport_number.ilike.%${q}%,phone.ilike.%${q}%`);
+  const { data } = await req;
+  return (data ?? []).map((t) => ({
+    id: t.id,
+    traveller_ref: t.traveller_ref,
+    full_name: t.full_name,
+    passport_number: t.passport_number,
+    nationality: t.nationality,
+    status: t.status,
+    travel_group_id: t.travel_group_id,
+    group_ref: t.group?.group_ref ?? null,
+  }));
+}
+
+/**
+ * Move existing travellers into a group: they take the group's dates, and
+ * its package details where they have none of their own. Document status is
+ * recomputed so group-level uploads count for them.
+ */
+export async function assignTravellersToGroup(groupId: string, travellerIds: string[]): Promise<ActionResult<{ assigned: number }>> {
+  await requireProfile();
+  const ids = [...new Set(travellerIds)].filter(Boolean);
+  if (ids.length === 0) return ok({ assigned: 0 });
+  if (ids.length > 200) return fail("Add at most 200 travellers at a time");
+  const supabase = await createClient();
+  const { data: g } = await supabase.from("travel_groups").select("id, travel_date, travel_end_date, package_tier, hotel_name, hotel_stars, transit_location").eq("id", groupId).maybeSingle();
+  if (!g) return fail("Group not found");
+  const { data: rows } = await supabase.from("travellers").select("id, package_tier").in("id", ids);
+  let assigned = 0;
+  for (const t of rows ?? []) {
+    const patch = t.package_tier
+      ? { travel_group_id: g.id, travel_start_date: g.travel_date, travel_end_date: g.travel_end_date }
+      : { travel_group_id: g.id, travel_start_date: g.travel_date, travel_end_date: g.travel_end_date, package_tier: g.package_tier, hotel_name: g.hotel_name, hotel_stars: g.hotel_stars, transit_location: g.transit_location };
+    const { error } = await supabase.from("travellers").update(patch).eq("id", t.id);
+    if (error) return fail(errorMessage(error, "Could not add a traveller to the group"));
+    await reconcileDocumentStatus(supabase, t.id);
+    assigned++;
+  }
+  await revalidateTraveller();
+  return ok({ assigned });
+}
