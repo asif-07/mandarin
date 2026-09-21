@@ -134,7 +134,8 @@ export function GroupsToolbar() {
     startTransition(async () => {
       const result = single.id ? await updateGroup(single.id, single) : await createGroup(single);
       if (!result.ok) return void toast.error(result.error);
-      toast.success(single.id ? "Group updated" : `${"group_code" in result.data ? result.data.group_code : single.group_code} created · ID ${groupRef({ ...single, group_code: "group_code" in result.data ? result.data.group_code : single.group_code, source: "internal" })}`, { description: single.travellers.some((r) => r.full_name.trim()) || single.existing.length ? undefined : "Add travellers any time with + Add traveller on the group card." });
+      const assigned = (result.data as { group_code?: string }).group_code ?? single.group_code;
+      toast.success(single.id ? "Group updated" : `${assigned} created · ID ${groupRef({ ...single, group_code: assigned, source: "internal" })}`, { description: single.travellers.some((r) => r.full_name.trim()) || single.existing.length ? undefined : "Add travellers any time with + Add traveller on the group card." });
       await saveQuickRows(result.data.id, single.travellers);
       await saveExisting(result.data.id, single.existing);
       setSingle(null);
