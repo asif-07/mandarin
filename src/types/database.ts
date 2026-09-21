@@ -1420,6 +1420,7 @@ export type Database = {
         Args: { p_ids: string[] }
         Returns: { invoice_id: string; received: number; balance: number; receipt_count: number }[]
       }
+      create_travel_group: { Args: { p: Json }; Returns: Json }
       next_group_code: { Args: { p_date: string }; Returns: string }
       update_invoice: {
         Args: { p_id: string; p_invoice: Json; p_items: Json }

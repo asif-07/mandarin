@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Layers, Loader2, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addTravellersToGroup, assignTravellersToGroup, type TravellerPick } from "@/lib/actions/travellers";
+import { nextGroupCodeFor } from "@/lib/actions/travel-groups";
 import { TravellerCombobox } from "@/components/travel/traveller-combobox";
 import { PACKAGE_TIERS, tierHasHotel, tierHasTransit, tierNeedsStars } from "@/lib/constants";
 import { groupRef } from "@/lib/queries/travel";
@@ -20,7 +21,7 @@ import { DatePicker } from "@/components/shared/date-picker";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { bulkCreateGroups, createGroup, deleteGroup, updateGroup } from "@/lib/actions/travel-groups";
 import { groupPackReference } from "@/lib/queries/travel";
-import { formatDateRange, todayISO } from "@/lib/format";
+import { formatDate, formatDateRange, todayISO } from "@/lib/format";
 import { CHINA_PORTS } from "@/lib/constants";
 
 export type GroupRow = {
@@ -133,7 +134,7 @@ export function GroupsToolbar() {
     startTransition(async () => {
       const result = single.id ? await updateGroup(single.id, single) : await createGroup(single);
       if (!result.ok) return void toast.error(result.error);
-      toast.success(single.id ? "Group updated" : `${single.group_code.toUpperCase()} created · ID ${groupRef({ ...single, source: "internal" })}`, { description: single.travellers.some((r) => r.full_name.trim()) || single.existing.length ? undefined : "Add travellers any time with + Add traveller on the group card." });
+      toast.success(single.id ? "Group updated" : `${"group_code" in result.data ? result.data.group_code : single.group_code} created · ID ${groupRef({ ...single, group_code: "group_code" in result.data ? result.data.group_code : single.group_code, source: "internal" })}`, { description: single.travellers.some((r) => r.full_name.trim()) || single.existing.length ? undefined : "Add travellers any time with + Add traveller on the group card." });
       await saveQuickRows(result.data.id, single.travellers);
       await saveExisting(result.data.id, single.existing);
       setSingle(null);
@@ -147,7 +148,7 @@ export function GroupsToolbar() {
       const result = await bulkCreateGroups({ ...bulk, count: Number(bulk.count) });
       if (!result.ok) return void toast.error(result.error);
       toast.success(
-        `Created ${result.data.created} group${result.data.created === 1 ? "" : "s"}${result.data.skipped ? `, ${result.data.skipped} already existed` : ""}`,
+        `Created ${result.data.created} group${result.data.created === 1 ? "" : "s"}${result.data.first ? ` (${result.data.first}${result.data.last && result.data.last !== result.data.first ? ` to ${result.data.last}` : ""})` : ""}`,
       );
       setBulk(null);
       router.refresh();
@@ -178,7 +179,7 @@ export function GroupsToolbar() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Bulk create groups</DialogTitle>
-            <DialogDescription>Creates G01 through Gn for one travel window. Existing codes are skipped.</DialogDescription>
+            <DialogDescription>Creates that many groups for one travel window. Codes continue from the last one on that date (G01 on an empty day).</DialogDescription>
           </DialogHeader>
           {bulk && (
             <fieldset disabled={pending} className="grid gap-4 sm:grid-cols-2">
@@ -268,6 +269,24 @@ function GroupDialog({
   onChange: (v: Editing | null) => void;
   onSave: () => void;
 }) {
+  // New groups: the code is assigned by the server (next free on that date); show it and refresh when the date changes.
+  const isNew = !!value && !value.id;
+  const travelDate = value?.travel_date ?? "";
+  const latest = useRef(value);
+  latest.current = value;
+  useEffect(() => {
+    if (!isNew || !travelDate) return;
+    let live = true;
+    nextGroupCodeFor(travelDate).then((code) => {
+      const cur = latest.current;
+      if (live && cur && !cur.id && cur.travel_date === travelDate && cur.group_code !== code) onChange({ ...cur, group_code: code });
+    });
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, travelDate]);
+
   const preview =
     value && value.travel_date && value.travel_end_date && VALID_CODE.test(value.group_code)
       ? groupPackReference(
@@ -281,7 +300,7 @@ function GroupDialog({
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{value?.id ? "Edit group" : "New group"}</DialogTitle>
-          <DialogDescription>Group codes are unique per travel start date. Entry and exit ports are required for the group visa.</DialogDescription>
+          <DialogDescription>The group code is assigned automatically per travel start date (G01 on an empty day, then G02, G03 …). Entry and exit ports are required for the group visa.</DialogDescription>
         </DialogHeader>
         {value && (
           <fieldset disabled={pending} className="grid gap-4 sm:grid-cols-2">
@@ -298,7 +317,14 @@ function GroupDialog({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="g_code">Group code</Label>
-              <Input id="g_code" placeholder="G01" value={value.group_code} onChange={(e) => onChange({ ...value, group_code: e.target.value.toUpperCase() })} />
+              {value.id ? (
+                <Input id="g_code" placeholder="G01" value={value.group_code} onChange={(e) => onChange({ ...value, group_code: e.target.value.toUpperCase() })} />
+              ) : (
+                <>
+                  <Input id="g_code" value={value.group_code} readOnly className="bg-mr-surface font-medium" />
+                  <p className="text-xs text-mr-muted">Assigned automatically: the next free code on {value.travel_date ? formatDate(value.travel_date) : "that date"}.</p>
+                </>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="g_prefix">Reference prefix</Label>

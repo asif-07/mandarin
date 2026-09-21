@@ -53,61 +53,48 @@ export type GroupOption = {
   traveller_count: number;
 };
 
-export async function createGroup(input: GroupInput): Promise<ActionResult<{ id: string }>> {
-  const profile = await requireProfile();
-  const parsed = groupSchema.safeParse(input);
-  if (!parsed.success) return fail("Please fix the highlighted fields", z.flattenError(parsed.error).fieldErrors);
+/** The code the next group created on a date will receive (G01 when the day is empty). */
+export async function nextGroupCodeFor(date: string): Promise<string> {
+  await requireProfile();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "G01";
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("travel_groups")
-    .insert({ ...parsed.data, created_by: profile.id })
-    .select("id")
-    .single();
-  if (error) {
-    if (error.code === "23505") return fail(`${parsed.data.group_code} already exists on ${formatDate(parsed.data.travel_date)}`);
-    return fail(errorMessage(error, "Could not create group"));
-  }
-  revalidateTravel();
-  return ok({ id: data.id });
+  const { data } = await supabase.rpc("next_group_code", { p_date: date });
+  return typeof data === "string" ? data : "G01";
 }
 
-/** Creates G01..Gn for a date, skipping codes that already exist. */
-export async function bulkCreateGroups(input: BulkGroupInput): Promise<ActionResult<{ created: number; skipped: number }>> {
-  const profile = await requireProfile();
+/** Create one of our own groups. The G-code is assigned by the database: the next free one on that date. */
+export async function createGroup(input: GroupInput): Promise<ActionResult<{ id: string; group_code: string }>> {
+  await requireProfile();
+  const parsed = groupSchema.safeParse({ ...input, group_code: "G01" });
+  if (!parsed.success) return fail("Please fix the highlighted fields", z.flattenError(parsed.error).fieldErrors);
+  const supabase = await createClient();
+  const { group_code: _ignored, ...fields } = parsed.data;
+  void _ignored;
+  const { data, error } = await supabase.rpc("create_travel_group", { p: fields });
+  const row = data as { id?: string; group_code?: string } | null;
+  if (error || !row?.id || !row.group_code) return fail(errorMessage(error, "Could not create group"));
+  revalidateTravel();
+  return ok({ id: row.id, group_code: row.group_code });
+}
+
+/** Creates N more groups on a date; each takes the next free code (G03, G04, … after G01 and G02). */
+export async function bulkCreateGroups(input: BulkGroupInput): Promise<ActionResult<{ created: number; skipped: number; first: string | null; last: string | null }>> {
+  await requireProfile();
   const parsed = bulkGroupSchema.safeParse(input);
   if (!parsed.success) return fail("Please fix the highlighted fields", z.flattenError(parsed.error).fieldErrors);
   const supabase = await createClient();
-
-  const { data: existing } = await supabase
-    .from("travel_groups")
-    .select("group_code")
-    .eq("travel_date", parsed.data.travel_date);
-  const have = new Set((existing ?? []).map((g) => g.group_code));
-
-  const rows = Array.from({ length: parsed.data.count }, (_, i) => `G${String(i + 1).padStart(2, "0")}`)
-    .filter((code) => !have.has(code))
-    .map((code) => ({
-      travel_date: parsed.data.travel_date,
-      travel_end_date: parsed.data.travel_end_date,
-      group_code: code,
-      reference_prefix: parsed.data.reference_prefix,
-      entry_port: parsed.data.entry_port,
-      exit_port: parsed.data.exit_port,
-      package_tier: parsed.data.package_tier,
-      hotel_name: parsed.data.hotel_name,
-      hotel_stars: parsed.data.hotel_stars,
-      transit_location: parsed.data.transit_location,
-      label: parsed.data.label,
-      guide_name: parsed.data.guide_name,
-      created_by: profile.id,
-    }));
-
-  if (rows.length > 0) {
-    const { error } = await supabase.from("travel_groups").insert(rows);
-    if (error) return fail(errorMessage(error, "Could not create groups"));
+  const { count, ...fields } = parsed.data;
+  let first: string | null = null;
+  let last: string | null = null;
+  for (let i = 0; i < count; i++) {
+    const { data, error } = await supabase.rpc("create_travel_group", { p: fields });
+    const row = data as { group_code?: string } | null;
+    if (error || !row?.group_code) return fail(errorMessage(error, `Could not create group ${i + 1} of ${count}`));
+    first ??= row.group_code;
+    last = row.group_code;
   }
   revalidateTravel();
-  return ok({ created: rows.length, skipped: parsed.data.count - rows.length });
+  return ok({ created: count, skipped: 0, first, last });
 }
 
 export async function updateGroup(id: string, input: GroupInput): Promise<ActionResult<{ id: string }>> {
