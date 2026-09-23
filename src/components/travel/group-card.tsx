@@ -12,6 +12,7 @@ import { RemoveFromGroupButton } from "@/components/travel/remove-from-group-but
 import { GroupDocuments, type GroupDocView } from "@/components/travel/group-documents";
 import { GroupVisaPanel } from "@/components/travel/group-visa";
 import { MarkPaidButton } from "@/components/invoices/mark-paid-button";
+import { ConnectInvoiceButton } from "@/components/invoices/connect-invoice-button";
 import { INVOICE_STATUSES, TRAVELLER_STATUSES, labelFor, packageDetail } from "@/lib/constants";
 import { docCompleteness, groupCoverage, groupPackReference, groupRef, type DocStub } from "@/lib/queries/travel";
 import { groupInvoiceState, groupIssues, groupPax, groupTiming, type Balance } from "@/lib/queries/group-status";
@@ -168,9 +169,12 @@ export function GroupCard({ g, balances, partnerHasLogo, defaultOpen = false, ex
                   <span className={cn("size-1.5 shrink-0 rounded-full", i.tone === "red" ? "bg-mr-red" : i.tone === "warning" ? "bg-mr-warning" : "bg-mr-muted")} aria-hidden />
                   <span className="text-mr-ink">{i.text}</span>
                   {i.key === "invoice" && (
-                    <Link href={`/invoices/new?group=${g.id}`} className="text-xs font-medium text-mr-body hover:text-mr-ink hover:underline">
-                      Create invoice
-                    </Link>
+                    <>
+                      <Link href={`/invoices/new?group=${g.id}`} className="text-xs font-medium text-mr-body hover:text-mr-ink hover:underline">
+                        Create invoice
+                      </Link>
+                      <ConnectInvoiceButton groupId={g.id} groupRef={g.group_ref ?? groupRef(g)} />
+                    </>
                   )}
                   {i.key === "travellers" && (
                     <Link href={`/travel/travellers/new?group=${g.id}`} className="text-xs font-medium text-mr-body hover:text-mr-ink hover:underline">
@@ -263,11 +267,12 @@ export function GroupCard({ g, balances, partnerHasLogo, defaultOpen = false, ex
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-mr-muted">
-              None yet.{" "}
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-mr-muted">
+              <span>None yet.</span>
               <Link href={`/invoices/new?group=${g.id}`} className="font-medium text-mr-body hover:text-mr-ink hover:underline">
                 Create invoice
               </Link>
+              <ConnectInvoiceButton groupId={g.id} groupRef={g.group_ref ?? groupRef(g)} className="text-sm" />
             </p>
           )}
         </div>
@@ -281,6 +286,7 @@ export function GroupCard({ g, balances, partnerHasLogo, defaultOpen = false, ex
             <Link href={`/invoices/new?group=${g.id}`} className="font-medium text-mr-body hover:text-mr-ink hover:underline">
               + Create invoice
             </Link>
+            <ConnectInvoiceButton groupId={g.id} groupRef={g.group_ref ?? groupRef(g)} />
             <span className="font-mono text-mr-muted">{groupPackReference(g, pax)}.pdf</span>
           </span>
           {isB2b ? (

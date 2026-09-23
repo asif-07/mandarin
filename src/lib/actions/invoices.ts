@@ -188,6 +188,75 @@ export async function recordInvoicePayment(input: PaymentInput): Promise<ActionR
   return ok({ receipt_ref: String(out.receipt_ref ?? ""), received: Number(out.received ?? 0), balance: Number(out.balance ?? 0), paid: !!out.paid });
 }
 
+export type InvoiceLink = {
+  id: string;
+  invoice_number: string;
+  bill_to_name: string;
+  issue_date: string;
+  total: number;
+  currency: string;
+  status: string;
+  travel_group_id: string | null;
+  group_ref: string | null;
+};
+
+/** Invoices that can be connected to a group: newest first, drafts, issued and paid (cancelled left out). Any staff member. */
+export async function searchInvoicesToConnect(query: string): Promise<InvoiceLink[]> {
+  await requireProfile();
+  const supabase = await createClient();
+  const q = query.trim();
+  let req = supabase
+    .from("invoices")
+    .select("id, invoice_number, bill_to_name, issue_date, total, currency, status, travel_group_id, group:travel_groups!invoices_travel_group_id_fkey(group_ref)")
+    .neq("status", "cancelled")
+    .order("sequence_number", { ascending: false })
+    .limit(20);
+  if (q) {
+    const like = `%${q.replace(/[%,()]/g, "")}%`;
+    req = req.or(`invoice_number.ilike.${like},bill_to_name.ilike.${like}`);
+  }
+  const { data } = await req;
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    invoice_number: r.invoice_number,
+    bill_to_name: r.bill_to_name,
+    issue_date: r.issue_date,
+    total: Number(r.total),
+    currency: r.currency,
+    status: r.status,
+    travel_group_id: r.travel_group_id,
+    group_ref: r.group?.group_ref ?? null,
+  }));
+}
+
+/**
+ * Connect an existing invoice to a group (for invoices raised before the group
+ * existed, or filed without one). Moves it if it was on another group. The
+ * invoice's Group reference is filled from the group when it was empty.
+ */
+export async function connectInvoiceToGroup(invoiceId: string, groupId: string): Promise<ActionResult<{ invoice_number: string }>> {
+  await requireProfile();
+  if (!z.string().uuid().safeParse(invoiceId).success || !z.string().uuid().safeParse(groupId).success) return fail("Invalid invoice or group");
+  const supabase = await createClient();
+  const [{ data: group }, { data: invoice }] = await Promise.all([
+    supabase.from("travel_groups").select("id, group_ref").eq("id", groupId).maybeSingle(),
+    supabase.from("invoices").select("id, invoice_number, status, visa_reference").eq("id", invoiceId).maybeSingle(),
+  ]);
+  if (!group) return fail("Group not found");
+  if (!invoice) return fail("Invoice not found");
+  if (invoice.status === "cancelled") return fail("A cancelled invoice cannot be connected");
+  const patch: { travel_group_id: string; visa_reference?: string } = { travel_group_id: group.id };
+  if (!invoice.visa_reference?.trim() && group.group_ref) patch.visa_reference = group.group_ref;
+  const { error } = await supabase.from("invoices").update(patch).eq("id", invoiceId);
+  if (error) return fail(errorMessage(error, "Could not connect the invoice"));
+  revalidatePath("/invoices");
+  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath("/");
+  revalidatePath("/travel");
+  revalidatePath("/travel/b2b");
+  return ok({ invoice_number: invoice.invoice_number });
+}
+
 export type LeadSearchResult = {
   id: string;
   lead_ref: string;
