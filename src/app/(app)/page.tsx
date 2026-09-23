@@ -10,6 +10,7 @@ import { DocsBadge, PackageBadge } from "@/components/travel/traveller-table";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isAdmin } from "@/lib/auth";
 import { RecordReceiptButton } from "@/components/accounts/receipt-dialog";
+import { MarkPaidButton } from "@/components/invoices/mark-paid-button";
 import { docCompleteness, groupTitle } from "@/lib/queries/travel";
 import { CompileGroupButton } from "@/components/travel/pack-panel";
 import { DownloadBundleButton, VisaStatusPill } from "@/components/travel/group-visa";
@@ -400,6 +401,7 @@ export default async function DashboardPage() {
                       label={inv.status === "cancelled" ? "Cancelled" : inv.status === "draft" ? "Draft" : inv.paid ? "Paid" : inv.partial ? "Partially paid" : "Unpaid"}
                       tone={inv.status === "cancelled" || inv.status === "draft" ? "neutral" : inv.paid ? "success" : inv.partial ? "warning" : "red"}
                     />
+                    {inv.status === "issued" && !inv.paid && <MarkPaidButton invoiceId={inv.id} invoiceNumber={inv.invoice_number} size="sm" />}
                     {admin && inv.status === "issued" && !inv.paid && (
                       <RecordReceiptButton
                         size="sm"

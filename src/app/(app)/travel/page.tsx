@@ -17,6 +17,7 @@ import { packageDetail } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { docCompleteness, groupCoverage, groupPackReference, groupRef } from "@/lib/queries/travel";
 import { GroupDocuments } from "@/components/travel/group-documents";
+import { MarkPaidButton } from "@/components/invoices/mark-paid-button";
 import { INVOICE_STATUSES, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate, formatDateRange, formatMoney, todayISO, toISODate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -107,7 +108,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
     const live = g.invoices.filter((i) => i.status !== "cancelled");
     if (live.length === 0) out.push({ text: "No invoice", tone: "warning" });
     else {
-      const due = live.filter((i) => i.status !== "draft" && (balances.get(i.id)?.balance ?? Number(i.total)) > 0);
+      const due = live.filter((i) => i.status === "issued" && (balances.get(i.id)?.balance ?? Number(i.total)) > 0);
       if (due.length) out.push({ text: `Invoice unpaid · ${due.map((i) => formatMoney(balances.get(i.id)?.balance ?? i.total, i.currency)).join(", ")} due`, tone: "warning" });
       if (live.some((i) => i.status === "draft")) out.push({ text: "Invoice still a draft", tone: "neutral" });
     }
@@ -259,9 +260,12 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                         {g.invoices
                           .filter((i) => i.status !== "cancelled")
                           .map((i) => (
-                            <Link key={i.id} href={`/invoices/${i.id}`} className="text-mr-body hover:text-mr-ink hover:underline">
-                              {i.invoice_number} · {formatMoney(i.total, i.currency)} · {labelFor(INVOICE_STATUSES, i.status)}
-                            </Link>
+                            <span key={i.id} className="inline-flex items-center gap-2">
+                              <Link href={`/invoices/${i.id}`} className="text-mr-body hover:text-mr-ink hover:underline">
+                                {i.invoice_number} · {formatMoney(i.total, i.currency)} · {i.status === "paid" ? "Paid" : i.status === "issued" && (balances.get(i.id)?.balance ?? Number(i.total)) <= 0 ? "Paid in full" : labelFor(INVOICE_STATUSES, i.status)}
+                              </Link>
+                              {i.status === "issued" && (balances.get(i.id)?.balance ?? Number(i.total)) > 0 && <MarkPaidButton invoiceId={i.id} invoiceNumber={i.invoice_number} />}
+                            </span>
                           ))}
                       </>
                     ) : (

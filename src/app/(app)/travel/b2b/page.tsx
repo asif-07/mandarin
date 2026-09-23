@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { B2bUploadButton, ReplaceB2bPackButton } from "@/components/travel/b2b-upload";
 import { GroupRowActions } from "@/components/travel/groups-manager";
 import { DownloadBundleButton, GroupVisaPanel } from "@/components/travel/group-visa";
+import { MarkPaidButton } from "@/components/invoices/mark-paid-button";
 import { GroupDocuments } from "@/components/travel/group-documents";
 import { PartnersButton } from "@/components/travel/partner-logos";
 import { BUCKETS, INVOICE_STATUSES, labelFor, packageDetail } from "@/lib/constants";
@@ -155,9 +156,12 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
                       {g.invoices
                         .filter((i) => i.status !== "cancelled")
                         .map((i) => (
-                          <Link key={i.id} href={`/invoices/${i.id}`} className="text-mr-body hover:text-mr-ink hover:underline">
-                            {i.invoice_number} · {formatMoney(i.total, i.currency)} · {labelFor(INVOICE_STATUSES, i.status)}
-                          </Link>
+                          <span key={i.id} className="inline-flex items-center gap-2">
+                            <Link href={`/invoices/${i.id}`} className="text-mr-body hover:text-mr-ink hover:underline">
+                              {i.invoice_number} · {formatMoney(i.total, i.currency)} · {labelFor(INVOICE_STATUSES, i.status)}
+                            </Link>
+                            {i.status === "issued" && <MarkPaidButton invoiceId={i.id} invoiceNumber={i.invoice_number} />}
+                          </span>
                         ))}
                     </>
                   ) : (

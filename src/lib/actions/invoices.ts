@@ -142,6 +142,8 @@ export async function setInvoiceStatus(id: string, status: string): Promise<Acti
   revalidatePath("/invoices");
   revalidatePath(`/invoices/${id}`);
   revalidatePath("/");
+  revalidatePath("/travel");
+  revalidatePath("/travel/b2b");
   return ok({ status });
 }
 
