@@ -48,9 +48,10 @@ export function TravelDateNav({ date, prev, next, nearby }: { date: string; prev
   );
 }
 
-export type RangeView = "day" | "week" | "month" | "quarter";
+export type RangeView = "all" | "day" | "week" | "month" | "quarter";
 
 const VIEWS: { value: RangeView; label: string }[] = [
+  { value: "all", label: "All" },
   { value: "day", label: "Day" },
   { value: "week", label: "Week" },
   { value: "month", label: "Month" },
@@ -66,6 +67,20 @@ export function TravelRangeNav({ view, date, today, prev, next, nearby, rangeLab
   const { set } = useUrlFilters();
   const href = (v: RangeView, d: string) => `/travel?view=${v}&date=${d}`;
   const unit = view === "week" ? "week" : view === "month" ? "month" : view === "quarter" ? "3 months" : "date";
+  if (view === "all") {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-lg border border-mr-line bg-white p-0.5" role="tablist" aria-label="Range">
+          {VIEWS.map((v) => (
+            <Link key={v.value} role="tab" aria-selected={view === v.value} href={href(v.value, date)} className={cn("rounded-md px-3 py-1.5 text-sm", view === v.value ? "bg-mr-ink text-white" : "text-mr-body hover:text-mr-ink")}>
+              {v.label}
+            </Link>
+          ))}
+        </div>
+        <span className="text-sm text-mr-body">{rangeLabel}</span>
+      </div>
+    );
+  }
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">

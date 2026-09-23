@@ -25,7 +25,7 @@ export const metadata: Metadata = { title: "Travel" };
 
 export default async function TravelByGroupPage({ searchParams }: { searchParams: Promise<{ date?: string; view?: string }> }) {
   const sp = await searchParams;
-  const view: RangeView = sp.view === "week" || sp.view === "month" || sp.view === "quarter" ? sp.view : "day";
+  const view: RangeView = sp.view === "all" || sp.view === "week" || sp.view === "month" || sp.view === "quarter" ? sp.view : "day";
   const supabase = await createClient();
   const today = todayISO();
 
@@ -58,7 +58,9 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const rangeEnd = toISODate(range.end);
   const step = (n: number) => toISODate(view === "week" ? addWeeks(range.start, n) : view === "month" ? addMonths(range.start, n) : addMonths(range.start, 3 * n));
   const rangeLabel =
-    view === "week"
+    view === "all"
+      ? "All groups · upcoming first, then past"
+      : view === "week"
       ? `Week of ${formatDate(rangeStart)} to ${formatDate(rangeEnd)}`
       : view === "month"
         ? formatDf(range.start, "MMMM yyyy")
@@ -66,16 +68,17 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
           ? `${formatDf(range.start, "MMM yyyy")} to ${formatDf(range.end, "MMM yyyy")}`
           : formatDate(date);
 
-  const { data: groups, error } = await supabase
+  let groupsQuery = supabase
     .from("travel_groups")
     .select(
       "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, hotel_stars, transit_location, visa_status, visa_applied_at, visa_uploaded_at, visa_path, group_ref, invoices:invoices!invoices_travel_group_id_fkey(id, invoice_number, total, currency, status), group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at), travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
     )
-    .lte("travel_date", view === "day" ? date : rangeEnd)
-    .gte(view === "day" ? "travel_date" : "travel_end_date", view === "day" ? date : rangeStart)
     .order("travel_date")
     .order("group_code")
-    .limit(400);
+    .limit(view === "all" ? 1000 : 400);
+  if (view === "day") groupsQuery = groupsQuery.eq("travel_date", date);
+  else if (view !== "all") groupsQuery = groupsQuery.lte("travel_date", rangeEnd).gte("travel_end_date", rangeStart);
+  const { data: groups, error } = await groupsQuery;
 
   const totalTravellers = (groups ?? []).reduce((n, g) => n + (g.source === "b2b" && g.pax_expected && g.travellers.length === 0 ? g.pax_expected : g.travellers.filter((t) => t.status !== "cancelled").length), 0);
   const partnerCodes = [...new Set((groups ?? []).map((g) => g.partner_code).filter((c): c is string => !!c))];
@@ -83,7 +86,14 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const partnerHasLogo = new Map((partnerRows ?? []).map((p) => [p.code, !!p.logo_path]));
 
   const paxOf = (g: NonNullable<typeof groups>[number]) => (g.source === "b2b" && g.pax_expected && g.travellers.length === 0 ? g.pax_expected : g.travellers.filter((t) => t.status !== "cancelled").length);
-  const byDate = Object.entries((groups ?? []).reduce<Record<string, NonNullable<typeof groups>>>((acc, g) => ((acc[g.travel_date] ??= []).push(g), acc), {})).sort(([a], [b]) => a.localeCompare(b));
+  // Sections per departure date. "All" puts today's and upcoming dates first (soonest at the top), then past dates most recent first.
+  const byDate = Object.entries((groups ?? []).reduce<Record<string, NonNullable<typeof groups>>>((acc, g) => ((acc[g.travel_date] ??= []).push(g), acc), {})).sort(([a], [b]) => {
+    if (view !== "all") return a.localeCompare(b);
+    const aUp = a >= today;
+    const bUp = b >= today;
+    if (aUp !== bUp) return aUp ? -1 : 1;
+    return aUp ? a.localeCompare(b) : b.localeCompare(a);
+  });
   const renderCard = (g: NonNullable<typeof groups>[number]) => {
             const travellers = [...g.travellers].sort((a, b) => a.full_name.localeCompare(b.full_name));
             const groupDocs = (g.group_documents ?? []).filter((d) => !d.deleted_at);
