@@ -14,7 +14,8 @@ import { BUCKETS, packageDetail } from "@/lib/constants";
 import { SearchParamInput } from "@/components/shared/url-filters";
 import { createClient } from "@/lib/supabase/server";
 import { groupPackReference } from "@/lib/queries/travel";
-import { formatDateRange, formatDateTime } from "@/lib/format";
+import { daysFromToday, formatDateRange, formatDateTime, todayISO } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "B2B groups" };
 
@@ -35,7 +36,23 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
     query = query.or(`partner_code.ilike.${like},partner_reference.ilike.${like},group_code.ilike.${like},label.ilike.${like}`);
   }
   const [{ data, error }, { data: partnerRows }] = await Promise.all([query, supabase.from("b2b_partners").select("id, code, name, logo_path, logo_file_name").order("code")]);
-  const groups = data ?? [];
+  // Next departure first: groups still to travel (or travelling) in date order, then finished ones most recent first.
+  const today = todayISO();
+  const groups = [...(data ?? [])].sort((a, b) => {
+    const aOpen = a.travel_end_date >= today;
+    const bOpen = b.travel_end_date >= today;
+    if (aOpen !== bOpen) return aOpen ? -1 : 1;
+    const cmp = aOpen ? a.travel_date.localeCompare(b.travel_date) : b.travel_date.localeCompare(a.travel_date);
+    return cmp || a.group_code.localeCompare(b.group_code);
+  });
+  const timing = (g: { travel_date: string; travel_end_date: string }) => {
+    const start = daysFromToday(g.travel_date) ?? 0;
+    const end = daysFromToday(g.travel_end_date) ?? 0;
+    if (end < 0) return { text: end === -1 ? "Returned yesterday" : `Returned ${-end} days ago`, tone: "past" as const };
+    if (start <= 0) return { text: end === 0 ? "Travelling now · returns today" : `Travelling now · ${end} day${end === 1 ? "" : "s"} left`, tone: "now" as const };
+    if (start === 1) return { text: "Travelling tomorrow", tone: "soon" as const };
+    return { text: `Travelling in ${start} days`, tone: start <= 7 ? ("soon" as const) : ("later" as const) };
+  };
   const logoPaths = (partnerRows ?? []).map((p) => p.logo_path).filter((p): p is string => !!p);
   const { data: signedLogos } = logoPaths.length ? await supabase.storage.from(BUCKETS.partnerLogos).createSignedUrls(logoPaths, 3600) : { data: [] as { path: string | null; signedUrl: string }[] };
   const logoUrl = new Map((signedLogos ?? []).map((s) => [s.path, s.signedUrl]));
@@ -76,11 +93,20 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
           {groups.map((g) => {
             const pax = g.pax_expected ?? 0;
             const reference = groupPackReference(g, pax);
+            const when = timing(g);
             return (
-              <li key={g.id} className="rounded-lg border border-mr-line bg-white p-5">
+              <li key={g.id} className={cn("rounded-lg border bg-white p-5", when.tone === "now" ? "border-mr-ink" : when.tone === "past" ? "border-mr-line opacity-80" : "border-mr-line")}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="tnum text-sm font-medium text-mr-body">{formatDateRange(g.travel_date, g.travel_end_date)}</p>
+                    <span
+                      className={cn(
+                        "mt-1 inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
+                        when.tone === "now" ? "bg-mr-ink text-white" : when.tone === "soon" ? "bg-mr-warning/10 text-mr-warning" : when.tone === "past" ? "bg-mr-surface text-mr-muted" : "bg-mr-surface text-mr-body",
+                      )}
+                    >
+                      {when.text}
+                    </span>
                     <Link href={`/travel?date=${g.travel_date}`} className="mt-0.5 block truncate font-heading text-xl font-semibold text-mr-ink hover:underline">
                       {g.group_code} <span className="font-sans text-base font-normal text-mr-body">· {g.partner_code}</span>
                     </Link>
