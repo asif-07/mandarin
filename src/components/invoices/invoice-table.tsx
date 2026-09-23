@@ -26,7 +26,7 @@ function paymentState(inv: InvoiceListRow): { label: string; tone: Tone | undefi
   if (inv.status !== "issued") return { label: labelFor(INVOICE_STATUSES, inv.status), tone: INVOICE_TONES[inv.status], note: null };
   if (inv.balance <= 0) return { label: "Paid", tone: "success", note: null };
   if (inv.received > 0) return { label: "Partially paid", tone: "warning", note: `${formatMoney(inv.balance, inv.currency)} due` };
-  return { label: "Issued", tone: INVOICE_TONES[inv.status], note: "unpaid" };
+  return { label: "Issued", tone: INVOICE_TONES[inv.status], note: `${formatMoney(inv.balance, inv.currency)} due` };
 }
 
 const columns: ColumnDef<InvoiceListRow>[] = [
@@ -60,7 +60,7 @@ const columns: ColumnDef<InvoiceListRow>[] = [
       return (
         <div className="flex flex-col items-start gap-0.5">
           <StatusPill label={p.label} tone={p.tone} />
-          {p.note && <span className="tnum text-[11px] text-mr-muted">{p.note}</span>}
+          {p.note && <span className="tnum text-[11px] font-medium text-mr-red">{p.note}</span>}
         </div>
       );
     },
@@ -134,7 +134,7 @@ export function InvoiceTable({ rows }: { rows: InvoiceListRow[] }) {
             <div className="mt-2 flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <StatusPill label={paymentState(inv).label} tone={paymentState(inv).tone} />
-                {paymentState(inv).note && <span className="tnum text-[11px] text-mr-muted">{paymentState(inv).note}</span>}
+                {paymentState(inv).note && <span className="tnum text-[11px] font-medium text-mr-red">{paymentState(inv).note}</span>}
               </span>
               <span className="text-xs text-mr-muted">{inv.created_by_name ?? ""}</span>
             </div>
