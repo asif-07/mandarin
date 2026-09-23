@@ -147,6 +147,47 @@ export async function setInvoiceStatus(id: string, status: string): Promise<Acti
   return ok({ status });
 }
 
+const paymentSchema = z.object({
+  invoice_id: z.string().uuid(),
+  amount: z.coerce.number().positive("Enter an amount greater than 0").max(999_999_999),
+  received_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date"),
+  method: z.string().default("bank_transfer"),
+  reference: z.string().trim().max(200).optional().nullable(),
+});
+export type PaymentInput = z.input<typeof paymentSchema>;
+export type PaymentResult = { receipt_ref: string; received: number; balance: number; paid: boolean };
+
+/**
+ * Record a full or part payment against an issued invoice as a receipt, so the
+ * invoice list, group cards, dashboard and Accounts all show the same balance.
+ * The database flips the invoice to paid once receipts cover the total.
+ */
+export async function recordInvoicePayment(input: PaymentInput): Promise<ActionResult<PaymentResult>> {
+  await requireProfile();
+  const parsed = paymentSchema.safeParse(input);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Please check the payment details");
+  const v = parsed.data;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("record_invoice_payment", {
+    p_invoice: v.invoice_id,
+    p_amount: round2(v.amount),
+    p_received_on: v.received_on,
+    p_method: v.method,
+    p_reference: v.reference ?? null,
+  });
+  if (error) return fail(errorMessage(error, "Could not record the payment"));
+  const out = (data ?? {}) as Partial<PaymentResult>;
+  revalidatePath("/invoices");
+  revalidatePath(`/invoices/${v.invoice_id}`);
+  revalidatePath("/");
+  revalidatePath("/travel");
+  revalidatePath("/travel/b2b");
+  revalidatePath("/accounts");
+  revalidatePath("/accounts/receipts");
+  revalidatePath("/accounts/receivables");
+  return ok({ receipt_ref: String(out.receipt_ref ?? ""), received: Number(out.received ?? 0), balance: Number(out.balance ?? 0), paid: !!out.paid });
+}
+
 export type LeadSearchResult = {
   id: string;
   lead_ref: string;

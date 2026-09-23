@@ -359,32 +359,39 @@ export default async function DashboardPage() {
             ) : (
               <ul className="divide-y divide-mr-line">
                 {recent.map((inv) => (
-                  <li key={inv.id} className="flex items-center gap-3 py-2.5 text-sm">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Link href={`/invoices/${inv.id}`} className="shrink-0 font-medium text-mr-ink hover:underline">
+                  <li key={inv.id} className="py-2.5 text-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <Link href={`/invoices/${inv.id}`} className="block truncate font-medium text-mr-ink hover:underline">
                           {inv.invoice_number}
+                          <span className="font-normal text-mr-body"> · {inv.bill_to_name}</span>
                         </Link>
-                        <span className="min-w-0 truncate text-mr-body">{inv.bill_to_name}</span>
+                        <p className="tnum truncate text-xs text-mr-muted">
+                          {formatDate(inv.issue_date)} · Total {formatMoney(inv.total, inv.currency)}
+                          {inv.status === "cancelled" ? "" : inv.paid ? " · Received in full" : inv.partial ? ` · Received ${formatMoney(inv.received, inv.currency)}` : " · Not received"}
+                        </p>
                       </div>
-                      <p className="tnum truncate text-xs text-mr-muted">
-                        {formatDate(inv.issue_date)} · Total {formatMoney(inv.total, inv.currency)}
-                        {inv.status === "cancelled" ? "" : inv.paid ? " · Received in full" : inv.partial ? ` · Received ${formatMoney(inv.received, inv.currency)} · Balance ${formatMoney(inv.balance, inv.currency)}` : " · Not received"}
-                      </p>
+                      <div className="shrink-0 text-right">
+                        <p className={cn("tnum font-medium", inv.status !== "cancelled" && !inv.paid && "text-mr-red")}>{inv.status === "cancelled" ? formatMoney(inv.total, inv.currency) : formatMoney(inv.paid ? inv.total : inv.balance, inv.currency)}</p>
+                        <p className="text-[11px] text-mr-muted">{inv.status === "cancelled" ? "cancelled" : inv.paid ? "paid" : inv.partial ? "balance due" : "due"}</p>
+                      </div>
                     </div>
-                    <span className={cn("tnum font-medium", inv.status !== "cancelled" && !inv.paid && "text-mr-red")}>{inv.status === "cancelled" ? formatMoney(inv.total, inv.currency) : formatMoney(inv.paid ? inv.total : inv.balance, inv.currency)}</span>
-                    <StatusPill
-                      label={inv.status === "cancelled" ? "Cancelled" : inv.status === "draft" ? "Draft" : inv.paid ? "Paid" : inv.partial ? "Partially paid" : "Unpaid"}
-                      tone={inv.status === "cancelled" || inv.status === "draft" ? "neutral" : inv.paid ? "success" : inv.partial ? "warning" : "red"}
-                    />
-                    {inv.status === "issued" && !inv.paid && <MarkPaidButton invoiceId={inv.id} invoiceNumber={inv.invoice_number} size="sm" />}
-                    {admin && inv.status === "issued" && !inv.paid && (
-                      <RecordReceiptButton
-                        size="sm"
-                        variant="outline"
-                        label="Receive"
-                        invoice={{ id: inv.id, invoice_number: inv.invoice_number, bill_to_name: inv.bill_to_name, issue_date: inv.issue_date, total: Number(inv.total), currency: inv.currency, status: inv.status, deal_id: inv.deal_id, received: inv.received, balance: inv.balance }}
-                      />
+                    {inv.status !== "cancelled" && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <StatusPill
+                          label={inv.status === "draft" ? "Draft" : inv.paid ? "Paid" : inv.partial ? "Partially paid" : "Unpaid"}
+                          tone={inv.status === "draft" ? "neutral" : inv.paid ? "success" : inv.partial ? "warning" : "red"}
+                        />
+                        {inv.status === "issued" && !inv.paid && <MarkPaidButton invoiceId={inv.id} invoiceNumber={inv.invoice_number} balance={inv.balance} currency={inv.currency} />}
+                        {admin && inv.status === "issued" && !inv.paid && (
+                          <RecordReceiptButton
+                            size="xs"
+                            variant="ghost"
+                            label="Receive in Accounts"
+                            invoice={{ id: inv.id, invoice_number: inv.invoice_number, bill_to_name: inv.bill_to_name, issue_date: inv.issue_date, total: Number(inv.total), currency: inv.currency, status: inv.status, deal_id: inv.deal_id, received: inv.received, balance: inv.balance }}
+                          />
+                        )}
+                      </div>
                     )}
                   </li>
                 ))}

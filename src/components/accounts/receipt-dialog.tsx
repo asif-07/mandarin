@@ -255,8 +255,8 @@ export function RecordReceiptButton({
   deal?: DealOption | null;
   partyId?: string | null;
   label?: string;
-  variant?: "default" | "outline";
-  size?: "sm" | "default";
+  variant?: "default" | "outline" | "ghost";
+  size?: "xs" | "sm" | "default";
 }) {
   const [editing, setEditing] = useState<ReceiptRecord | null>(null);
   return (

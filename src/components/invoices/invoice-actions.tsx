@@ -14,14 +14,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { PaymentDialog } from "@/components/invoices/mark-paid-button";
 import { duplicateInvoice, setInvoiceStatus } from "@/lib/actions/invoices";
 
-type InvoiceLite = { id: string; invoice_number: string; status: string };
+/** `balance` and `currency` let "Mark paid" open the payment dialog (full or part); without them it falls back to a plain status change. */
+type InvoiceLite = { id: string; invoice_number: string; status: string; currency?: string; balance?: number };
 
 export function InvoiceActionsMenu({ invoice, showView = true }: { invoice: InvoiceLite; showView?: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirm, setConfirm] = useState<"paid" | "cancelled" | null>(null);
+  const hasBalance = invoice.status === "issued" && typeof invoice.balance === "number" && invoice.balance > 0 && !!invoice.currency;
 
   function changeStatus(status: "paid" | "cancelled") {
     startTransition(async () => {
@@ -73,7 +76,7 @@ export function InvoiceActionsMenu({ invoice, showView = true }: { invoice: Invo
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem disabled={invoice.status === "paid" || invoice.status === "cancelled"} onSelect={() => setConfirm("paid")}>
-            <CheckCircle2 /> Mark paid
+            <CheckCircle2 /> {hasBalance ? "Record payment" : "Mark paid"}
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={invoice.status === "cancelled"}
@@ -85,15 +88,19 @@ export function InvoiceActionsMenu({ invoice, showView = true }: { invoice: Invo
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ConfirmDialog
-        open={confirm === "paid"}
-        onOpenChange={(o) => !o && setConfirm(null)}
-        title={`Mark ${invoice.invoice_number} as paid?`}
-        description="The invoice will show as paid in lists and on the dashboard."
-        confirmLabel="Mark paid"
-        pending={pending}
-        onConfirm={() => changeStatus("paid")}
-      />
+      {hasBalance ? (
+        <PaymentDialog open={confirm === "paid"} onOpenChange={(o) => !o && setConfirm(null)} invoiceId={invoice.id} invoiceNumber={invoice.invoice_number} balance={invoice.balance ?? 0} currency={invoice.currency ?? "USD"} />
+      ) : (
+        <ConfirmDialog
+          open={confirm === "paid"}
+          onOpenChange={(o) => !o && setConfirm(null)}
+          title={`Mark ${invoice.invoice_number} as paid?`}
+          description="The invoice will show as paid in lists and on the dashboard."
+          confirmLabel="Mark paid"
+          pending={pending}
+          onConfirm={() => changeStatus("paid")}
+        />
+      )}
       <ConfirmDialog
         open={confirm === "cancelled"}
         onOpenChange={(o) => !o && setConfirm(null)}

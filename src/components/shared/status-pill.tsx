@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type Tone = "neutral" | "ink" | "red" | "success" | "warning";
+export type Tone = "neutral" | "ink" | "red" | "success" | "warning";
 
 const TONE_CLASSES: Record<Tone, string> = {
   neutral: "bg-mr-surface text-mr-body",

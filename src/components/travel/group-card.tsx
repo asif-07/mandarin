@@ -67,6 +67,11 @@ export function GroupCard({ g, balances, partnerHasLogo, defaultOpen = false, ex
   const isB2b = g.source === "b2b";
   const liveInvoices = g.invoices.filter((i) => i.status !== "cancelled");
   const balanceOf = (i: (typeof liveInvoices)[number]) => balances.get(i.id)?.balance ?? Number(i.total);
+  // What to call the group: its label, else the note, else the first traveller (partner packs fall back to partner + pax).
+  const notes = g.notes?.trim() || null;
+  const firstTraveller = travellers[0]?.full_name ?? null;
+  const title = g.label ?? notes ?? (isB2b ? `${g.partner_code} · ${g.pax_expected ?? pax} pax` : firstTraveller ? `${firstTraveller}${travellers.length > 1 ? ` +${travellers.length - 1}` : ""}` : "No label");
+  const subtitle = g.label && notes ? notes : null;
 
   return (
     <details className={cn("group rounded-lg border bg-white shadow-sm open:border-mr-ink", timing.tone === "now" ? "border-mr-ink" : "border-mr-line")} open={defaultOpen}>
@@ -83,8 +88,15 @@ export function GroupCard({ g, balances, partnerHasLogo, defaultOpen = false, ex
                   {isB2b ? "B2B" : "Partner"} {g.partner_code}
                 </Chip>
               )}
-              <span className="truncate text-sm font-medium text-mr-ink">{g.label ?? (isB2b ? `${g.partner_code} · ${g.pax_expected ?? pax} pax` : "No label")}</span>
+              <span className={cn("truncate text-sm font-medium", title === "No label" ? "text-mr-muted" : "text-mr-ink")} title={title}>
+                {title}
+              </span>
               {g.guide_name && <span className="truncate text-xs text-mr-muted">Guide {g.guide_name}</span>}
+              {subtitle && (
+                <span className="w-full truncate text-xs text-mr-body" title={subtitle}>
+                  {subtitle}
+                </span>
+              )}
             </div>
             <p className="tnum mt-0.5 truncate text-xs text-mr-body">
               {formatDateRange(g.travel_date, g.travel_end_date)} · <span className="font-mono">{g.group_ref ?? groupRef(g)}</span>
@@ -246,7 +258,7 @@ export function GroupCard({ g, balances, partnerHasLogo, defaultOpen = false, ex
                   <Chip tone={i.status === "paid" || (i.status === "issued" && balanceOf(i) <= 0) ? "success" : i.status === "issued" ? "warning" : "neutral"}>
                     {i.status === "paid" || (i.status === "issued" && balanceOf(i) <= 0) ? "Paid" : i.status === "issued" ? `Unpaid · ${formatMoney(balanceOf(i), i.currency)} due` : labelFor(INVOICE_STATUSES, i.status)}
                   </Chip>
-                  {i.status === "issued" && balanceOf(i) > 0 && <MarkPaidButton invoiceId={i.id} invoiceNumber={i.invoice_number} />}
+                  {i.status === "issued" && balanceOf(i) > 0 && <MarkPaidButton invoiceId={i.id} invoiceNumber={i.invoice_number} balance={balanceOf(i)} currency={i.currency} />}
                 </li>
               ))}
             </ul>

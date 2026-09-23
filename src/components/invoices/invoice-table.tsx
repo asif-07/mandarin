@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { StatusPill, INVOICE_TONES } from "@/components/shared/status-pill";
+import { StatusPill, INVOICE_TONES, type Tone } from "@/components/shared/status-pill";
 import { InvoiceActionsMenu } from "@/components/invoices/invoice-actions";
 import { INVOICE_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -17,7 +17,17 @@ export type InvoiceListRow = {
   currency: string;
   status: string;
   created_by_name: string | null;
+  /** From receipts: what has come in and what is still due (paid invoices count in full). */
+  received: number;
+  balance: number;
 };
+
+function paymentState(inv: InvoiceListRow): { label: string; tone: Tone | undefined; note: string | null } {
+  if (inv.status !== "issued") return { label: labelFor(INVOICE_STATUSES, inv.status), tone: INVOICE_TONES[inv.status], note: null };
+  if (inv.balance <= 0) return { label: "Paid", tone: "success", note: null };
+  if (inv.received > 0) return { label: "Partially paid", tone: "warning", note: `${formatMoney(inv.balance, inv.currency)} due` };
+  return { label: "Issued", tone: INVOICE_TONES[inv.status], note: "unpaid" };
+}
 
 const columns: ColumnDef<InvoiceListRow>[] = [
   {
@@ -45,9 +55,14 @@ const columns: ColumnDef<InvoiceListRow>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ getValue }) => {
-      const s = getValue<string>();
-      return <StatusPill label={labelFor(INVOICE_STATUSES, s)} tone={INVOICE_TONES[s]} />;
+    cell: ({ row }) => {
+      const p = paymentState(row.original);
+      return (
+        <div className="flex flex-col items-start gap-0.5">
+          <StatusPill label={p.label} tone={p.tone} />
+          {p.note && <span className="tnum text-[11px] text-mr-muted">{p.note}</span>}
+        </div>
+      );
     },
   },
   {
@@ -117,7 +132,10 @@ export function InvoiceTable({ rows }: { rows: InvoiceListRow[] }) {
               <span className="tnum font-medium">{formatMoney(inv.total, inv.currency)}</span>
             </div>
             <div className="mt-2 flex items-center justify-between">
-              <StatusPill label={labelFor(INVOICE_STATUSES, inv.status)} tone={INVOICE_TONES[inv.status]} />
+              <span className="flex items-center gap-2">
+                <StatusPill label={paymentState(inv).label} tone={paymentState(inv).tone} />
+                {paymentState(inv).note && <span className="tnum text-[11px] text-mr-muted">{paymentState(inv).note}</span>}
+              </span>
               <span className="text-xs text-mr-muted">{inv.created_by_name ?? ""}</span>
             </div>
           </li>

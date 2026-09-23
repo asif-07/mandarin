@@ -81,6 +81,8 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
     currency: r.currency,
     status: r.status,
     created_by_name: r.creator?.display_name ?? null,
+    received: r.status === "paid" ? Number(r.total) : Math.min(Number(r.total), payMap.get(r.id)?.received ?? 0),
+    balance: r.status === "paid" ? 0 : Math.max(0, Number(r.total) - (payMap.get(r.id)?.received ?? 0)),
   }));
   const hasFilters = !!(sp.q || sp.status || sp.from || sp.to);
 

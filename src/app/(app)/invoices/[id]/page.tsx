@@ -10,6 +10,7 @@ import { StatusPill, INVOICE_TONES } from "@/components/shared/status-pill";
 import { A4Preview } from "@/components/shared/a4-preview";
 import { InvoiceActionsMenu } from "@/components/invoices/invoice-actions";
 import { RecordReceiptButton } from "@/components/accounts/receipt-dialog";
+import { MarkPaidButton } from "@/components/invoices/mark-paid-button";
 import { Amount } from "@/components/accounts/money";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isAdmin } from "@/lib/auth";
@@ -43,8 +44,11 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           .order("received_on", { ascending: false })
       : Promise.resolve({ data: null }),
   ]);
-  const received = (receipts ?? []).reduce((s, r) => s + Number(r.applied_amount ?? r.amount), 0);
-  const balance = Math.round((Number(invoice.total) - received) * 100) / 100;
+  // Received / balance come from the payment summary (works for every role); admins also see the receipt lines.
+  const { data: summary } = await supabase.rpc("invoice_payment_summary", { p_ids: [id] });
+  const receivedRaw = invoice.status === "paid" ? Number(invoice.total) : Number(summary?.[0]?.received ?? 0);
+  const received = Math.min(Number(invoice.total), receivedRaw);
+  const balance = Math.max(0, Math.round((Number(invoice.total) - received) * 100) / 100);
 
   const html = renderInvoiceHtml(invoiceToTemplateData(invoice, invoice.invoice_items, invoice.group?.group_ref), previewTemplateAssets());
 
@@ -61,7 +65,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <a href={`/api/invoices/${invoice.id}/pdf`} className={buttonVariants()}>
               <Download /> Download PDF
             </a>
-            <InvoiceActionsMenu invoice={invoice} showView={false} />
+            <InvoiceActionsMenu invoice={{ ...invoice, balance }} showView={false} />
           </>
         }
       />
@@ -111,16 +115,16 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             </CardContent>
           </Card>
 
-          {admin && (
-            <Card>
+          <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex flex-wrap items-center justify-between gap-2">
                   <span>Payments</span>
-                  {invoice.status !== "cancelled" && balance > 0 && (
+                  {invoice.status === "issued" && balance > 0 && <MarkPaidButton size="sm" label="Record payment" invoiceId={invoice.id} invoiceNumber={invoice.invoice_number} balance={balance} currency={invoice.currency} />}
+                  {admin && invoice.status !== "cancelled" && balance > 0 && (
                     <RecordReceiptButton
                       size="sm"
-                      variant="outline"
-                      label="Record payment"
+                      variant="ghost"
+                      label="Record in Accounts"
                       invoice={{
                         id: invoice.id,
                         invoice_number: invoice.invoice_number,
@@ -160,10 +164,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                     ))}
                   </ul>
                 )}
-                {(!receipts || receipts.length === 0) && <p className="text-xs text-mr-muted">No payments recorded. Recording one here also updates Accounts.</p>}
+                {admin && (!receipts || receipts.length === 0) && <p className="text-xs text-mr-muted">No payments recorded. Recording one here also updates Accounts.</p>}
+                {!admin && received > 0 && invoice.status !== "paid" && <p className="text-xs text-mr-muted">Part payment recorded. The receipt lines are under Accounts.</p>}
               </CardContent>
             </Card>
-          )}
 
           <Card>
             <CardHeader>
