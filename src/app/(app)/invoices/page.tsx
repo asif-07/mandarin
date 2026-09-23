@@ -10,7 +10,8 @@ import { Pagination } from "@/components/shared/pagination";
 import { pageRange, parsePage } from "@/lib/pagination";
 import { ClearFilters, DateRangeParams, SearchParamInput, SelectParam } from "@/components/shared/url-filters";
 import { createClient } from "@/lib/supabase/server";
-import { INVOICE_STATUSES } from "@/lib/constants";
+import { INVOICE_STATUSES, labelFor } from "@/lib/constants";
+import { formatMoney } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Invoices" };
 
@@ -38,7 +39,25 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
     query = query.or(`invoice_number.ilike.${like},bill_to_name.ilike.${like}`);
   }
 
-  const { data, count, error } = await query;
+  // Totals for the same filters, across every page (billed = issued + paid; drafts and cancelled shown separately).
+  let totalsQuery = supabase.from("invoices").select("total, currency, status").limit(5000);
+  if (sp.status) totalsQuery = totalsQuery.eq("status", sp.status);
+  if (sp.from) totalsQuery = totalsQuery.gte("issue_date", sp.from);
+  if (sp.to) totalsQuery = totalsQuery.lte("issue_date", sp.to);
+  if (sp.q) {
+    const like = `%${sp.q.replace(/[%,()]/g, "")}%`;
+    totalsQuery = totalsQuery.or(`invoice_number.ilike.${like},bill_to_name.ilike.${like}`);
+  }
+  const [{ data, count, error }, { data: totalRows }] = await Promise.all([query, totalsQuery]);
+  const billed = new Map<string, number>();
+  const other = new Map<string, number>();
+  (totalRows ?? []).forEach((r) => {
+    const target = r.status === "issued" || r.status === "paid" ? billed : other;
+    target.set(r.currency, (target.get(r.currency) ?? 0) + Number(r.total));
+  });
+  const money = (m: Map<string, number>) => [...m.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([c, v]) => formatMoney(v, c)).join(" · ");
+  const shownFrom = count ? from + 1 : 0;
+  const shownTo = count ? Math.min(to + 1, count) : 0;
   const rows: InvoiceListRow[] = (data ?? []).map((r) => ({
     id: r.id,
     invoice_number: r.invoice_number,
@@ -55,6 +74,11 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader
         title="Invoices"
+        description={
+          count
+            ? `Showing ${shownFrom}–${shownTo} of ${count} invoice${count === 1 ? "" : "s"}${hasFilters ? " (filtered)" : ""} · Billed ${billed.size ? money(billed) : "0"}${other.size ? ` · ${sp.status ? labelFor(INVOICE_STATUSES, sp.status) : "draft or cancelled"} ${money(other)}` : ""}`
+            : "No invoices to show"
+        }
         actions={
           <Link href="/invoices/new" className={buttonVariants()}>
             <Plus /> New invoice

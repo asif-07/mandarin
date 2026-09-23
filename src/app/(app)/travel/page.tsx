@@ -17,8 +17,8 @@ import { packageDetail } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { docCompleteness, groupCoverage, groupPackReference, groupRef } from "@/lib/queries/travel";
 import { GroupDocuments } from "@/components/travel/group-documents";
-import { TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
-import { formatDate, formatDateRange, todayISO, toISODate } from "@/lib/format";
+import { INVOICE_STATUSES, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
+import { formatDate, formatDateRange, formatMoney, todayISO, toISODate } from "@/lib/format";
 import { addMonths, addWeeks, endOfMonth, endOfWeek, format as formatDf, parseISO, startOfMonth, startOfWeek } from "date-fns";
 
 export const metadata: Metadata = { title: "Travel" };
@@ -69,7 +69,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const { data: groups, error } = await supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, hotel_stars, transit_location, visa_status, visa_applied_at, visa_uploaded_at, visa_path, group_ref, group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at), travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, hotel_stars, transit_location, visa_status, visa_applied_at, visa_uploaded_at, visa_path, group_ref, invoices:invoices!invoices_travel_group_id_fkey(id, invoice_number, total, currency, status), group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at), travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
     )
     .lte("travel_date", view === "day" ? date : rangeEnd)
     .gte(view === "day" ? "travel_date" : "travel_end_date", view === "day" ? date : rangeStart)
@@ -191,6 +191,22 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                       }}
                     />
                   </div>
+                  <p className="mt-3 flex flex-wrap items-center gap-x-2 text-xs">
+                    {g.invoices.filter((i) => i.status !== "cancelled").length ? (
+                      <>
+                        <span className="rounded-md bg-mr-success/10 px-1.5 py-0.5 font-medium text-mr-success">Invoice generated</span>
+                        {g.invoices
+                          .filter((i) => i.status !== "cancelled")
+                          .map((i) => (
+                            <Link key={i.id} href={`/invoices/${i.id}`} className="text-mr-body hover:text-mr-ink hover:underline">
+                              {i.invoice_number} · {formatMoney(i.total, i.currency)} · {labelFor(INVOICE_STATUSES, i.status)}
+                            </Link>
+                          ))}
+                      </>
+                    ) : (
+                      <span className="rounded-md bg-mr-warning/10 px-1.5 py-0.5 font-medium text-mr-warning">No invoice yet</span>
+                    )}
+                  </p>
                   <div className="mt-3 flex items-center justify-between">
                     <span className="flex items-center gap-3">
                       <Link href={`/travel/travellers/new?group=${g.id}`} className="text-xs text-mr-body hover:text-mr-ink hover:underline">
