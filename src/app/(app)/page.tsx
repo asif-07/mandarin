@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, CheckCircle2, Download, Plane, Users } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { AlertTriangle, ArrowRight, CheckCircle2, Plane, Users } from "lucide-react";
+import { StatCard, StatGrid } from "@/components/shared/stat-card";
+import { Section } from "@/components/shared/section";
+import { Chip } from "@/components/shared/chip";
 import { addDays, parseISO, subDays } from "date-fns";
 import { PageHeader } from "@/components/shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatusPill, INVOICE_TONES, TRAVELLER_TONES } from "@/components/shared/status-pill";
+import { StatusPill, TRAVELLER_TONES } from "@/components/shared/status-pill";
 import { DocsBadge, PackageBadge } from "@/components/travel/traveller-table";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isAdmin } from "@/lib/auth";
@@ -14,7 +16,7 @@ import { MarkPaidButton } from "@/components/invoices/mark-paid-button";
 import { docCompleteness, groupTitle } from "@/lib/queries/travel";
 import { CompileGroupButton } from "@/components/travel/pack-panel";
 import { DownloadBundleButton, VisaStatusPill } from "@/components/travel/group-visa";
-import { INVOICE_STATUSES, TRAVELLER_STATUSES, labelFor, packageDetail } from "@/lib/constants";
+import { TRAVELLER_STATUSES, labelFor, packageDetail } from "@/lib/constants";
 import { daysFromToday, formatDate, formatDateRange, formatMoney, formatNumber, todayISO, toISODate } from "@/lib/format";
 import { endOfMonth, format as formatDf } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -140,31 +142,17 @@ export default async function DashboardPage() {
     <>
       <PageHeader title="Dashboard" description={formatDate(today)} />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat
-          label="Travellers this month"
-          value={String(totalThisMonth)}
-          hint={`${monthLabel} · ${monthTravelledOrTravelling + monthPartnerDeparted} already departed · ${monthPartnerPax} in partner packs · ${monthComplete} of ours with all documents`}
-          href="/travel/travellers"
-        />
-        <Stat label="Travelling in 7 days" value={String(travellersNext7)} hint={`${formatDate(today)} to ${formatDate(in7)}, partner packs included`} href="/travel/travellers" />
-        <Stat label="Groups this month" value={String(groupsThisMonth)} hint={`departing in ${monthLabel}`} href="/travel/groups" />
-        <Stat label="Invoiced this month" value={`USD ${formatNumber(invoiced)}`} hint={`received USD ${formatNumber(monthReceived)} · balance USD ${formatNumber(monthBalance)} · USD invoices`} href={admin ? "/accounts/receivables" : "/invoices"} />
-      </div>
+      <StatGrid cols={6}>
+        <StatCard label="Travellers this month" value={totalThisMonth} hint={`${monthTravelledOrTravelling + monthPartnerDeparted} departed · ${monthPartnerPax} in partner packs · ${monthComplete} of ours fully documented`} href="/travel/travellers" icon={<Users />} />
+        <StatCard label="Next 7 days" value={travellersNext7} hint={`${formatDate(today)} to ${formatDate(in7)}`} href="/travel?view=week" tone={travellersNext7 ? "warning" : "neutral"} icon={<Plane />} />
+        <StatCard label="Groups this month" value={groupsThisMonth} hint={monthLabel} href="/travel?view=month" />
+        <StatCard label="Docs incomplete" value={urgent.length} hint="travellers departing within 7 days" tone={urgent.length ? "red" : "success"} href="/travel/travellers" icon={<AlertTriangle />} />
+        <StatCard label="Invoiced" value={`USD ${formatNumber(invoiced)}`} hint={`${monthLabel} · USD invoices`} href="/invoices" />
+        <StatCard label="Outstanding" value={`USD ${formatNumber(monthBalance)}`} hint={`received USD ${formatNumber(monthReceived)}`} tone={monthBalance > 0 ? "warning" : "success"} href={admin ? "/accounts/receivables" : "/invoices"} />
+      </StatGrid>
 
       {completedGroups.length > 0 && (
-        <section className="mt-6" aria-labelledby="completed-groups">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 id="completed-groups" className="flex items-center gap-2 text-base font-semibold text-mr-ink">
-              <CheckCircle2 className="size-4 text-mr-success" /> Travel completed
-              <span className="text-sm font-normal text-mr-muted">
-                {completedPax} traveller{completedPax === 1 ? "" : "s"} crossed back in the last 30 days
-              </span>
-            </h2>
-            <Link href="/travel/travellers?status=travelled" className="inline-flex items-center gap-1 text-xs font-medium text-mr-body hover:text-mr-ink">
-              All travelled <ArrowRight className="size-3" />
-            </Link>
-          </div>
+        <Section id="completed-groups" title="Travel completed" icon={<CheckCircle2 />} hint={`${completedPax} traveller${completedPax === 1 ? "" : "s"} back in the last 30 days`} link={{ href: "/travel/travellers?status=travelled", label: "All travelled" }}>
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {completedGroups.map((g) => (
               <li key={g.id} className="rounded-lg border border-mr-success/30 bg-mr-success/5 p-4">
@@ -173,13 +161,11 @@ export default async function DashboardPage() {
                     <p className="tnum text-xs font-medium text-mr-body">{formatDateRange(g.travel_date, g.travel_end_date)}</p>
                     <Link href={`/travel?date=${g.travel_date}`} className="mt-0.5 block truncate font-heading text-lg font-semibold text-mr-ink hover:underline">
                       {g.group_code}
-                      {g.b2b && <span className="ml-2 align-middle rounded-md bg-mr-ink px-1.5 py-0.5 font-sans text-[11px] font-medium text-white">B2B {g.partner_code}</span>}
+                      {g.partner_code && <Chip tone="ink" className="ml-2 align-middle font-sans">{g.b2b ? "B2B" : "Partner"} {g.partner_code}</Chip>}
                       {g.label ? <span className="font-sans text-sm font-normal text-mr-body"> · {g.label}</span> : null}
                     </Link>
                   </div>
-                  <span className="shrink-0 rounded-md bg-mr-success/10 px-2 py-1 text-xs font-medium text-mr-success">
-                    {g.daysAgo === 0 ? "Exited today" : g.daysAgo === 1 ? "Exited yesterday" : `Exited ${g.daysAgo} days ago`}
-                  </span>
+                  <Chip tone="success" className="shrink-0">{g.daysAgo === 0 ? "Exited today" : g.daysAgo === 1 ? "Exited yesterday" : `Exited ${g.daysAgo} days ago`}</Chip>
                 </div>
                 <div className="mt-3 flex items-end justify-between gap-3">
                   <div>
@@ -196,18 +182,10 @@ export default async function DashboardPage() {
               </li>
             ))}
           </ul>
-        </section>
+        </Section>
       )}
 
-      <section className="mt-6" aria-labelledby="upcoming-groups">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 id="upcoming-groups" className="flex items-center gap-2 text-base font-semibold text-mr-ink">
-            <Plane className="size-4 text-mr-red" /> Travelling groups
-          </h2>
-          <Link href="/travel" className="inline-flex items-center gap-1 text-xs font-medium text-mr-body hover:text-mr-ink">
-            All groups <ArrowRight className="size-3" />
-          </Link>
-        </div>
+      <Section id="upcoming-groups" title="Travelling groups" icon={<Plane />} hint={upcomingGroups.length ? `${upcomingGroups.length} shown, soonest first` : undefined} link={{ href: "/travel?view=all", label: "All groups" }}>
         {upcomingGroups.length === 0 ? (
           <p className="rounded-lg border border-dashed border-mr-line px-4 py-6 text-center text-sm text-mr-muted">
             No groups travelling today or later. <Link href="/travel/groups" className="underline">Create groups</Link> to see them here.
@@ -221,13 +199,11 @@ export default async function DashboardPage() {
                     <p className="tnum text-sm font-medium text-mr-body">{formatDateRange(g.travel_date, g.travel_end_date)}</p>
                     <Link href={`/travel?date=${g.travel_date}`} className="mt-0.5 block truncate font-heading text-xl font-semibold text-mr-ink hover:underline">
                       {g.group_code}
-                      {g.b2b && <span className="ml-2 align-middle rounded-md bg-mr-ink px-1.5 py-0.5 font-sans text-[11px] font-medium text-white">B2B {g.partner_code}</span>}
+                      {g.partner_code && <Chip tone="ink" className="ml-2 align-middle font-sans">{g.b2b ? "B2B" : "Partner"} {g.partner_code}</Chip>}
                       {g.label ? <span className="font-sans text-base font-normal text-mr-body"> · {g.label}</span> : null}
                     </Link>
                   </div>
-                  <span className={cn("shrink-0 rounded-md px-2 py-1 text-xs font-medium", g.travelling ? "bg-mr-ink text-white" : g.days <= 7 ? "bg-mr-warning/10 text-mr-warning" : "bg-mr-surface text-mr-body")}>
-                    {g.travelling ? "Travelling now" : g.days === 1 ? "Tomorrow" : `In ${g.days} days`}
-                  </span>
+                  <Chip tone={g.travelling ? "ink" : g.days <= 7 ? "warning" : "neutral"} className="shrink-0">{g.travelling ? "Travelling now" : g.days === 1 ? "Tomorrow" : `In ${g.days} days`}</Chip>
                 </div>
                 <div className="mt-4 flex items-end justify-between gap-3">
                   <div>
@@ -284,9 +260,9 @@ export default async function DashboardPage() {
             ))}
           </ul>
         )}
-      </section>
+      </Section>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+      <div className="mt-8 grid gap-6 xl:grid-cols-2">
         <Card className="xl:order-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -418,15 +394,5 @@ export default async function DashboardPage() {
         </Card>
       </div>
     </>
-  );
-}
-
-function Stat({ label, value, hint, href }: { label: string; value: string; hint: string; href: string }) {
-  return (
-    <Link href={href} className="rounded-lg border border-mr-line bg-white p-5 transition-colors hover:border-mr-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mr-ink">
-      <p className="micro-label">{label}</p>
-      <p className="tnum mt-2 font-heading text-2xl font-semibold text-mr-ink">{value}</p>
-      <p className="mt-1 text-xs text-mr-muted">{hint}</p>
-    </Link>
   );
 }

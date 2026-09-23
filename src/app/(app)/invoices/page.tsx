@@ -12,6 +12,7 @@ import { ClearFilters, DateRangeParams, SearchParamInput, SelectParam } from "@/
 import { createClient } from "@/lib/supabase/server";
 import { INVOICE_STATUSES, labelFor } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
+import { StatCard, StatGrid } from "@/components/shared/stat-card";
 
 export const metadata: Metadata = { title: "Invoices" };
 
@@ -40,7 +41,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   }
 
   // Totals for the same filters, across every page (billed = issued + paid; drafts and cancelled shown separately).
-  let totalsQuery = supabase.from("invoices").select("total, currency, status").limit(5000);
+  let totalsQuery = supabase.from("invoices").select("id, total, currency, status").limit(5000);
   if (sp.status) totalsQuery = totalsQuery.eq("status", sp.status);
   if (sp.from) totalsQuery = totalsQuery.gte("issue_date", sp.from);
   if (sp.to) totalsQuery = totalsQuery.lte("issue_date", sp.to);
@@ -54,6 +55,19 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   (totalRows ?? []).forEach((r) => {
     const target = r.status === "issued" || r.status === "paid" ? billed : other;
     target.set(r.currency, (target.get(r.currency) ?? 0) + Number(r.total));
+  });
+  // Received / outstanding for the billed invoices (paid ones count in full even without a receipt).
+  const billedRows = (totalRows ?? []).filter((r) => r.status === "issued" || r.status === "paid");
+  const { data: payRows } = billedRows.length ? await supabase.rpc("invoice_payment_summary", { p_ids: billedRows.map((r) => r.id) }) : { data: [] as { invoice_id: string; received: number; balance: number; receipt_count: number }[] };
+  const payMap = new Map((payRows ?? []).map((r) => [r.invoice_id, { received: Number(r.received), balance: Number(r.balance) }]));
+  const received = new Map<string, number>();
+  const outstanding = new Map<string, number>();
+  billedRows.forEach((r) => {
+    const p = payMap.get(r.id);
+    const rec = r.status === "paid" ? Number(r.total) : Math.min(Number(r.total), p?.received ?? 0);
+    const due = Math.max(0, Number(r.total) - rec);
+    received.set(r.currency, (received.get(r.currency) ?? 0) + rec);
+    if (due > 0) outstanding.set(r.currency, (outstanding.get(r.currency) ?? 0) + due);
   });
   const money = (m: Map<string, number>) => [...m.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([c, v]) => formatMoney(v, c)).join(" · ");
   const shownFrom = count ? from + 1 : 0;
@@ -74,17 +88,22 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader
         title="Invoices"
-        description={
-          count
-            ? `Showing ${shownFrom}–${shownTo} of ${count} invoice${count === 1 ? "" : "s"}${hasFilters ? " (filtered)" : ""} · Billed ${billed.size ? money(billed) : "0"}${other.size ? ` · ${sp.status ? labelFor(INVOICE_STATUSES, sp.status) : "draft or cancelled"} ${money(other)}` : ""}`
-            : "No invoices to show"
-        }
+        description={count ? `Showing ${shownFrom}–${shownTo} of ${count} invoice${count === 1 ? "" : "s"}${hasFilters ? " (filtered)" : ""}` : "No invoices to show"}
         actions={
           <Link href="/invoices/new" className={buttonVariants()}>
             <Plus /> New invoice
           </Link>
         }
       />
+
+      {count ? (
+        <StatGrid cols={4} className="mb-5">
+          <StatCard label="Invoices" value={count} hint={hasFilters ? "matching the filters" : "all time"} tone="ink" />
+          <StatCard label="Billed" value={billed.size ? money(billed) : "0"} hint="issued and paid" tone="ink" />
+          <StatCard label="Received" value={received.size ? money(received) : "0"} hint="payments recorded or marked paid" tone={received.size ? "success" : "neutral"} />
+          <StatCard label="Outstanding" value={outstanding.size ? money(outstanding) : "0"} hint={other.size ? `${sp.status ? labelFor(INVOICE_STATUSES, sp.status) : "draft or cancelled"} ${money(other)} not counted` : "balance still due"} tone={outstanding.size ? "warning" : "success"} />
+        </StatGrid>
+      ) : null}
 
       <Suspense>
         <div className="mb-4 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">

@@ -1,26 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Download, Layers, Plus } from "lucide-react";
+import { Layers, Plus } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { buttonVariants } from "@/components/ui/button";
-import { StatusPill, TRAVELLER_TONES } from "@/components/shared/status-pill";
-import { DocsBadge, PackageBadge } from "@/components/travel/traveller-table";
-import { CompileGroupButton } from "@/components/travel/pack-panel";
 import { TravelRangeNav, type RangeView } from "@/components/travel/date-param";
-import { GroupRowActions, GroupsToolbar } from "@/components/travel/groups-manager";
-import { RemoveFromGroupButton } from "@/components/travel/remove-from-group-button";
-import { StopToggle } from "@/components/shared/stop-toggle";
-import { GroupVisaPanel, VisaStatusPill } from "@/components/travel/group-visa";
-import { packageDetail } from "@/lib/constants";
+import { GroupsToolbar } from "@/components/travel/groups-manager";
+import { GroupCard } from "@/components/travel/group-card";
+import { StatCard, StatGrid } from "@/components/shared/stat-card";
+import { groupIssues, groupPax } from "@/lib/queries/group-status";
 import { createClient } from "@/lib/supabase/server";
-import { docCompleteness, groupCoverage, groupPackReference, groupRef } from "@/lib/queries/travel";
-import { GroupDocuments } from "@/components/travel/group-documents";
-import { MarkPaidButton } from "@/components/invoices/mark-paid-button";
-import { INVOICE_STATUSES, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
-import { formatDate, formatDateRange, formatMoney, todayISO, toISODate } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { formatDate, todayISO, toISODate } from "@/lib/format";
 import { addMonths, addWeeks, endOfMonth, endOfWeek, format as formatDf, parseISO, startOfMonth, startOfWeek } from "date-fns";
 
 export const metadata: Metadata = { title: "Travel" };
@@ -87,224 +78,36 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   const { data: paymentRows } = invoiceIds.length ? await supabase.rpc("invoice_payment_summary", { p_ids: invoiceIds }) : { data: [] as { invoice_id: string; received: number; balance: number; receipt_count: number }[] };
   const balances = new Map((paymentRows ?? []).map((r) => [r.invoice_id, { received: Number(r.received), balance: Number(r.balance) }]));
 
-  type Issue = { text: string; tone: "red" | "warning" | "neutral" };
-  /** Everything still to do for a group, shown on the collapsed card and counted in the stats strip. */
-  const issuesFor = (g: NonNullable<typeof groups>[number]): Issue[] => {
-    const out: Issue[] = [];
-    const active = g.travellers.filter((t) => t.status !== "cancelled");
-    const cover = groupCoverage((g.group_documents ?? []).filter((d) => !d.deleted_at));
-    if (g.source === "b2b") {
-      if (!g.pack_path) out.push({ text: "Partner pack not uploaded", tone: "red" });
-    } else if (active.length === 0) {
-      out.push({ text: "No travellers yet", tone: "warning" });
-    } else {
-      const missing = active.map((t) => docCompleteness(t.traveller_documents, cover)).filter((c) => !c.complete);
-      if (missing.length) {
-        const labels = [...new Set(missing.flatMap((c) => c.missingLabels))];
-        out.push({ text: `${missing.length} of ${active.length} missing documents (${labels.slice(0, 3).join(", ")}${labels.length > 3 ? "…" : ""})`, tone: "red" });
-      }
-    }
-    if (!g.entry_port || !g.exit_port) out.push({ text: "Entry / exit port missing", tone: "warning" });
-    const live = g.invoices.filter((i) => i.status !== "cancelled");
-    if (live.length === 0) out.push({ text: "No invoice", tone: "warning" });
-    else {
-      const due = live.filter((i) => i.status === "issued" && (balances.get(i.id)?.balance ?? Number(i.total)) > 0);
-      if (due.length) out.push({ text: `Invoice unpaid · ${due.map((i) => formatMoney(balances.get(i.id)?.balance ?? i.total, i.currency)).join(", ")} due`, tone: "warning" });
-      if (live.some((i) => i.status === "draft")) out.push({ text: "Invoice still a draft", tone: "neutral" });
-    }
-    if (g.visa_status === "pending") out.push({ text: "Visa not applied", tone: "neutral" });
-    else if (g.visa_status === "applied") out.push({ text: "Visa awaited", tone: "neutral" });
-    return out;
-  };
-  const issueList = (groups ?? []).map((g) => ({ g, issues: issuesFor(g) }));
+  const list = groups ?? [];
+  const issueList = list.map((g) => ({ g, issues: groupIssues(g, balances) }));
+  const totalTravellers = list.reduce((n, g) => n + groupPax(g), 0);
   const stats = {
-    groups: groups?.length ?? 0,
-    unbilled: issueList.filter((x) => x.issues.some((i) => i.text === "No invoice")).length,
-    unpaid: issueList.filter((x) => x.issues.some((i) => i.text.startsWith("Invoice unpaid"))).length,
-    missingDocs: issueList.filter((x) => x.issues.some((i) => i.text.includes("missing documents") || i.text === "Partner pack not uploaded")).length,
-    visaOpen: issueList.filter((x) => x.g.visa_status !== "approved").length,
+    groups: list.length,
     ready: issueList.filter((x) => x.issues.length === 0).length,
+    docs: issueList.filter((x) => x.issues.some((i) => i.key === "docs" || i.key === "pack")).length,
+    unbilled: issueList.filter((x) => x.issues.some((i) => i.key === "invoice")).length,
+    unpaid: issueList.filter((x) => x.issues.some((i) => i.key === "unpaid")).length,
+    visaOpen: list.filter((g) => g.visa_status !== "approved").length,
   };
-
-  const totalTravellers = (groups ?? []).reduce((n, g) => n + (g.source === "b2b" && g.pax_expected && g.travellers.length === 0 ? g.pax_expected : g.travellers.filter((t) => t.status !== "cancelled").length), 0);
-  const partnerCodes = [...new Set((groups ?? []).map((g) => g.partner_code).filter((c): c is string => !!c))];
+  const partnerCodes = [...new Set(list.map((g) => g.partner_code).filter((c): c is string => !!c))];
   const { data: partnerRows } = partnerCodes.length ? await supabase.from("b2b_partners").select("code, logo_path").in("code", partnerCodes) : { data: [] as { code: string; logo_path: string | null }[] };
   const partnerHasLogo = new Map((partnerRows ?? []).map((p) => [p.code, !!p.logo_path]));
 
-  const paxOf = (g: NonNullable<typeof groups>[number]) => (g.source === "b2b" && g.pax_expected && g.travellers.length === 0 ? g.pax_expected : g.travellers.filter((t) => t.status !== "cancelled").length);
   // Sections per departure date. "All" puts today's and upcoming dates first (soonest at the top), then past dates most recent first.
-  const byDate = Object.entries((groups ?? []).reduce<Record<string, NonNullable<typeof groups>>>((acc, g) => ((acc[g.travel_date] ??= []).push(g), acc), {})).sort(([a], [b]) => {
+  const byDate = Object.entries(list.reduce<Record<string, typeof list>>((acc, g) => ((acc[g.travel_date] ??= []).push(g), acc), {})).sort(([a], [b]) => {
     if (view !== "all") return a.localeCompare(b);
     const aUp = a >= today;
     const bUp = b >= today;
     if (aUp !== bUp) return aUp ? -1 : 1;
     return aUp ? a.localeCompare(b) : b.localeCompare(a);
   });
-  const renderCard = (g: NonNullable<typeof groups>[number]) => {
-            const travellers = [...g.travellers].sort((a, b) => a.full_name.localeCompare(b.full_name));
-            const groupDocs = (g.group_documents ?? []).filter((d) => !d.deleted_at);
-            const coverage = groupCoverage(groupDocs);
-            const complete = travellers.filter((t) => docCompleteness(t.traveller_documents, coverage).complete).length;
-            return (
-              <details key={g.id} className="group rounded-lg border border-mr-line bg-white open:border-mr-ink" open={travellers.length > 0 && (groups?.length ?? 0) <= 4}>
-                <summary className="cursor-pointer list-none px-4 py-3 [&::-webkit-details-marker]:hidden">
-                  <div className="flex items-start gap-3">
-                  <span className="shrink-0 text-base font-semibold leading-6 text-mr-ink">{g.group_code}</span>
-                  <span className="min-w-0 flex-1 text-sm leading-6 text-mr-body">
-                    {g.source === "b2b" && <span className="mr-2 rounded-md bg-mr-ink px-1.5 py-0.5 text-[11px] font-medium text-white">B2B {g.partner_code}</span>}
-                    <span className="block truncate">
-                      {g.label ?? <span className="text-mr-muted">No label</span>}
-                      {g.guide_name ? ` · ${g.guide_name}` : ""}
-                    </span>
-                    <span className="block truncate text-xs text-mr-muted">
-                      {formatDateRange(g.travel_date, g.travel_end_date)} · ID {g.group_ref ?? groupRef(g)} · {groupPackReference(g, travellers.length)}
-                    </span>
-                    <span className="block truncate text-xs text-mr-muted">
-                      {g.entry_port && g.exit_port ? `In: ${g.entry_port} · Out: ${g.exit_port}` : <span className="text-mr-warning">Entry / exit port missing</span>}
-                      {g.package_tier ? ` · ${packageDetail(g.package_tier, g.hotel_stars, g.hotel_name, g.transit_location)}` : ""}
-                    </span>
-                  </span>
-                  <StopToggle className="flex shrink-0 items-center gap-1">
-                    <GroupRowActions
-                      group={{
-                        id: g.id,
-                        travel_date: g.travel_date,
-                        travel_end_date: g.travel_end_date,
-                        group_code: g.group_code,
-                        label: g.label,
-                        guide_name: g.guide_name,
-                        notes: g.notes,
-                        reference_prefix: g.reference_prefix,
-                        entry_port: g.entry_port,
-                        exit_port: g.exit_port,
-                        package_tier: g.package_tier,
-                        hotel_name: g.hotel_name,
-                        hotel_stars: g.hotel_stars,
-                        transit_location: g.transit_location,
-                        source: g.source,
-                        partner_code: g.partner_code,
-                        pax_expected: g.pax_expected,
-                        traveller_count: travellers.length,
-                        created_by_name: null,
-                        created_at: null,
-                      }}
-                    />
-                  </StopToggle>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 sm:pl-12">
-                    <VisaStatusPill group={g} />
-                    <span className="tnum rounded-md bg-mr-surface px-1.5 py-0.5 text-xs text-mr-body">
-                      {g.source === "b2b" && g.pax_expected ? `${g.pax_expected} pax` : `${travellers.length} pax`}
-                    </span>
-                    {g.source !== "b2b" && <DocsBadge count={complete} total={travellers.length || 0} />}
-                    {issuesFor(g).map((i) => (
-                      <span key={i.text} className={cn("rounded-md px-1.5 py-0.5 text-xs font-medium", i.tone === "red" ? "bg-mr-red/10 text-mr-red" : i.tone === "warning" ? "bg-mr-warning/10 text-mr-warning" : "bg-mr-surface text-mr-body")}>
-                        {i.text}
-                      </span>
-                    ))}
-                    {issuesFor(g).length === 0 && <span className="rounded-md bg-mr-success/10 px-1.5 py-0.5 text-xs font-medium text-mr-success">Ready</span>}
-                  </div>
-                </summary>
-                <div className="border-t border-mr-line px-4 py-3">
-                  {travellers.length === 0 ? (
-                    <p className="text-sm text-mr-muted">
-                      {g.source === "b2b" ? `Partner group: ${g.partner_code} compiled this pack themselves (${g.pax_expected ?? 0} pax). No individual travellers are tracked here.` : "No travellers assigned yet."}
-                    </p>
-                  ) : (
-                    <ul className="divide-y divide-mr-line">
-                      {travellers.map((t) => {
-                        const c = docCompleteness(t.traveller_documents, coverage);
-                        return (
-                          <li key={t.id} className="flex items-center gap-3 py-2">
-                            <div className="min-w-0 flex-1">
-                              <Link href={`/travel/travellers/${t.id}`} className="block truncate text-sm font-medium text-mr-ink hover:underline">
-                                {t.full_name}
-                              </Link>
-                              <p className="truncate text-xs text-mr-muted">
-                                {t.passport_number ?? "No passport no."}
-                                {t.visa_reference ? ` · ${t.visa_reference}` : ""}
-                              </p>
-                            </div>
-                            <PackageBadge tier={t.package_tier} />
-                            <StatusPill label={labelFor(TRAVELLER_STATUSES, t.status)} tone={TRAVELLER_TONES[t.status]} className="hidden sm:inline-flex" />
-                            <DocsBadge count={c.count} total={c.total} />
-                            <RemoveFromGroupButton travellerId={t.id} travellerName={t.full_name} groupCode={g.group_code} />
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                  <div className="mt-3 border-t border-mr-line pt-3">
-                    <GroupDocuments groupId={g.id} documents={groupDocs} />
-                  </div>
-                  <div className="mt-3 border-t border-mr-line pt-3">
-                    <GroupVisaPanel
-                      group={{
-                        id: g.id,
-                        source: g.source,
-                        partner_code: g.partner_code,
-                        visa_status: g.visa_status,
-                        visa_applied_at: g.visa_applied_at,
-                        visa_uploaded_at: g.visa_uploaded_at,
-                        visa_path: g.visa_path,
-                        pack_path: g.pack_path,
-                        traveller_count: travellers.length,
-                        partner_has_logo: g.partner_code ? (partnerHasLogo.get(g.partner_code) ?? false) : false,
-                      }}
-                    />
-                  </div>
-                  <p className="mt-3 flex flex-wrap items-center gap-x-2 text-xs">
-                    {g.invoices.filter((i) => i.status !== "cancelled").length ? (
-                      <>
-                        <span className="rounded-md bg-mr-success/10 px-1.5 py-0.5 font-medium text-mr-success">Invoice generated</span>
-                        {g.invoices
-                          .filter((i) => i.status !== "cancelled")
-                          .map((i) => (
-                            <span key={i.id} className="inline-flex items-center gap-2">
-                              <Link href={`/invoices/${i.id}`} className="text-mr-body hover:text-mr-ink hover:underline">
-                                {i.invoice_number} · {formatMoney(i.total, i.currency)} · {i.status === "paid" ? "Paid" : i.status === "issued" && (balances.get(i.id)?.balance ?? Number(i.total)) <= 0 ? "Paid in full" : labelFor(INVOICE_STATUSES, i.status)}
-                              </Link>
-                              {i.status === "issued" && (balances.get(i.id)?.balance ?? Number(i.total)) > 0 && <MarkPaidButton invoiceId={i.id} invoiceNumber={i.invoice_number} />}
-                            </span>
-                          ))}
-                      </>
-                    ) : (
-                      <span className="rounded-md bg-mr-warning/10 px-1.5 py-0.5 font-medium text-mr-warning">No invoice yet</span>
-                    )}
-                  </p>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="flex items-center gap-3">
-                      <Link href={`/travel/travellers/new?group=${g.id}`} className="text-xs text-mr-body hover:text-mr-ink hover:underline">
-                        + Add traveller
-                      </Link>
-                      <Link href={`/invoices/new?group=${g.id}`} className="text-xs text-mr-body hover:text-mr-ink hover:underline">
-                        + Create invoice
-                      </Link>
-                    </span>
-                    {g.source === "b2b" ? (
-                      g.pack_path ? (
-                        <a href={`/api/groups/${g.id}/bundle`} title="Mandarin Roots cover with the travel details, then the partner's pack; after the visa is received, the partner's own branding" className={buttonVariants({ size: "sm" })}>
-                          <Download /> Download pack
-                        </a>
-                      ) : (
-                        <Link href="/travel/b2b" className="text-xs text-mr-warning hover:underline">
-                          No pack file yet
-                        </Link>
-                      )
-                    ) : (
-                      <CompileGroupButton groupId={g.id} travellerCount={travellers.length} />
-                    )}
-                  </div>
-                </div>
-              </details>
-            );
-  };
+  const card = (g: (typeof list)[number]) => <GroupCard key={g.id} g={g} balances={balances} partnerHasLogo={g.partner_code ? (partnerHasLogo.get(g.partner_code) ?? false) : false} defaultOpen={view === "day" && list.length <= 2} />;
 
   return (
     <>
       <PageHeader
         title="Travel by group"
-        description={`${rangeLabel} · ${groups?.length ?? 0} groups · ${totalTravellers} travellers (own and partner groups, all packages)`}
+        description={`${rangeLabel} · ${stats.groups} group${stats.groups === 1 ? "" : "s"} · ${totalTravellers} travellers`}
         actions={
           <>
             <GroupsToolbar />
@@ -315,56 +118,44 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
         }
       />
       <Suspense>
-        <div className="mb-6">
+        <div className="mb-5">
           <TravelRangeNav view={view} date={view === "day" ? date : toISODate(anchor)} today={today} prev={view === "day" ? prev : step(-1)} next={view === "day" ? next : step(1)} nearby={nearby} rangeLabel={rangeLabel} />
         </div>
       </Suspense>
 
-      {!error && (groups?.length ?? 0) > 0 && (
-        <dl className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-          {(
-            [
-              { label: "Groups", value: stats.groups, hint: `${totalTravellers} travellers`, tone: "ink" },
-              { label: "Ready", value: stats.ready, hint: "nothing outstanding", tone: stats.ready === stats.groups ? "success" : "ink" },
-              { label: "Missing documents", value: stats.missingDocs, hint: "groups with gaps", tone: stats.missingDocs ? "red" : "success" },
-              { label: "Unbilled", value: stats.unbilled, hint: "no invoice yet", tone: stats.unbilled ? "warning" : "success" },
-              { label: "Unpaid", value: stats.unpaid, hint: "invoice balance due", tone: stats.unpaid ? "warning" : "success" },
-              { label: "Visa open", value: stats.visaOpen, hint: "not yet received", tone: stats.visaOpen ? "neutral" : "success" },
-            ] as const
-          ).map((t) => (
-            <div key={t.label} className="rounded-lg border border-mr-line bg-white px-4 py-3">
-              <dt className="micro-label">{t.label}</dt>
-              <dd className={cn("tnum mt-1 font-heading text-2xl font-semibold leading-none", t.tone === "red" ? "text-mr-red" : t.tone === "warning" ? "text-mr-warning" : t.tone === "success" ? "text-mr-success" : "text-mr-ink")}>{t.value}</dd>
-              <dd className="mt-1 text-xs text-mr-muted">{t.hint}</dd>
-            </div>
-          ))}
-        </dl>
+      {!error && list.length > 0 && (
+        <StatGrid cols={6} className="mb-6">
+          <StatCard label="Groups" value={stats.groups} hint={`${totalTravellers} travellers`} tone="ink" />
+          <StatCard label="Ready" value={stats.ready} hint="nothing outstanding" tone={stats.ready === stats.groups ? "success" : "neutral"} />
+          <StatCard label="Missing documents" value={stats.docs} hint="groups with gaps" tone={stats.docs ? "red" : "success"} />
+          <StatCard label="Unbilled" value={stats.unbilled} hint="no invoice yet" tone={stats.unbilled ? "warning" : "success"} />
+          <StatCard label="Unpaid" value={stats.unpaid} hint="invoice balance due" tone={stats.unpaid ? "warning" : "success"} />
+          <StatCard label="Visa open" value={stats.visaOpen} hint="not yet received" tone={stats.visaOpen ? "warning" : "success"} />
+        </StatGrid>
       )}
 
       {error ? (
         <p className="text-sm text-mr-red">Could not load groups: {error.message}</p>
-      ) : !groups || groups.length === 0 ? (
+      ) : list.length === 0 ? (
         <EmptyState icon={Layers} title={view === "day" ? `No groups on ${formatDate(date)}. Create them, or pick another date.` : `No groups travelling in ${rangeLabel}.`} action={<GroupsToolbar />} />
+      ) : view === "day" ? (
+        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">{list.map(card)}</div>
       ) : (
-        view === "day" ? (
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">{groups.map(renderCard)}</div>
-        ) : (
-          <div className="space-y-8">
-            {byDate.map(([d, list]) => (
-              <section key={d} aria-labelledby={`day-${d}`}>
-                <h2 id={`day-${d}`} className="mb-3 flex items-baseline gap-3 border-b border-mr-line pb-2">
-                  <Link href={`/travel?date=${d}`} className="font-heading text-lg font-semibold text-mr-ink hover:underline">
-                    {formatDate(d)}
-                  </Link>
-                  <span className="text-sm text-mr-muted">
-                    {list.length} group{list.length === 1 ? "" : "s"} · {list.reduce((n, g) => n + paxOf(g), 0)} pax
-                  </span>
-                </h2>
-                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">{list.map(renderCard)}</div>
-              </section>
-            ))}
-          </div>
-        )
+        <div className="space-y-8">
+          {byDate.map(([d, dayGroups]) => (
+            <section key={d} aria-labelledby={`day-${d}`}>
+              <h2 id={`day-${d}`} className="mb-3 flex items-baseline gap-3 border-b border-mr-line pb-2">
+                <Link href={`/travel?date=${d}`} className="font-heading text-lg font-semibold text-mr-ink hover:underline">
+                  {formatDate(d)}
+                </Link>
+                <span className="text-sm text-mr-muted">
+                  {dayGroups.length} group{dayGroups.length === 1 ? "" : "s"} · {dayGroups.reduce((n, g) => n + groupPax(g), 0)} pax
+                </span>
+              </h2>
+              <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">{dayGroups.map(card)}</div>
+            </section>
+          ))}
+        </div>
       )}
     </>
   );
