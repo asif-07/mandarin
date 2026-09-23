@@ -142,7 +142,7 @@ ${assets.fontCss}
     </table>
   </div>
   <div class="footer">
-    <span>${assets.logoSrc || !data.brand_name ? `${escapeHtml(COMPANY.name)} · ${escapeHtml(COMPANY.addressLine3)} · ${escapeHtml(COMPANY.phone)}` : escapeHtml(data.brand_name)}</span>
+    <span>${data.brand_name ? escapeHtml(data.brand_name) : `${escapeHtml(COMPANY.name)} · ${escapeHtml(COMPANY.addressLine3)} · ${escapeHtml(COMPANY.phone)}`}</span>
     <span>Confidential · contains personal identity documents</span>
   </div>
 </div>
