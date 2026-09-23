@@ -58,8 +58,8 @@ type GroupRow = NonNullable<Awaited<ReturnType<typeof loadGroup>>>;
  * the partner under their own logo (name only when no logo is on file); our
  * own groups keep the Mandarin Roots cover for the client.
  */
-export function defaultBundleLogo(group: { source: string; visa_status: string; visa_path: string | null }): BundleLogo {
-  return group.source === "b2b" && group.visa_status === "approved" && !!group.visa_path ? "partner" : "mr";
+export function defaultBundleLogo(group: { source: string; partner_code: string | null; visa_status: string; visa_path: string | null }): BundleLogo {
+  return !!group.partner_code && group.visa_status === "approved" && !!group.visa_path ? "partner" : "mr";
 }
 
 async function loadGroup(supabase: Client, groupId: string) {
@@ -98,7 +98,7 @@ export async function findCachedBundle(supabase: Client, groupId: string, opts: 
   const isB2b = group.source === "b2b";
   const logo: BundleLogo = opts.logo ?? defaultBundleLogo(group);
   let partnerLogoPath: string | null = null;
-  if (isB2b && logo === "partner") {
+  if (group.partner_code && logo === "partner") {
     const { data: partner } = await supabase.from("b2b_partners").select("logo_path").eq("code", group.partner_code ?? "").maybeSingle();
     partnerLogoPath = partner?.logo_path ?? null;
   }
@@ -140,7 +140,7 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
 
   // Cover branding (fetched in parallel with the files below)
   const logoChoice: BundleLogo = opts.logo ?? defaultBundleLogo(group);
-  const partnerPromise = isB2b && logoChoice !== "mr" ? supabase.from("b2b_partners").select("name, logo_path, logo_file_name").eq("code", group.partner_code ?? "").maybeSingle() : null;
+  const partnerPromise = group.partner_code && logoChoice !== "mr" ? supabase.from("b2b_partners").select("name, logo_path, logo_file_name").eq("code", group.partner_code ?? "").maybeSingle() : null;
 
   // Visa, group documents and the partner pack, downloaded together
   const groupDocs = group.group_documents.filter((d) => !d.deleted_at).sort((a, b) => GROUP_DOC_TYPES.findIndex((t) => t.value === a.doc_type) - GROUP_DOC_TYPES.findIndex((t) => t.value === b.doc_type));
@@ -196,7 +196,7 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
   let logoSrc: string | null | undefined = undefined;
   let brandName: string | null = null;
   let partnerLogoPath: string | null = null;
-  if (isB2b && logoChoice !== "mr") {
+  if (group.partner_code && logoChoice !== "mr") {
     const partner = partnerRes?.data ?? null;
     brandName = partner?.name || group.partner_code || null;
     logoSrc = null;
@@ -228,7 +228,7 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
     travellers: inputs,
     logoSrc,
     brand_name: brandName,
-    partner_code: isB2b ? group.partner_code : null,
+    partner_code: group.partner_code,
     pax_expected: isB2b ? group.pax_expected : null,
     package_label: group.package_tier ? labelFor(PACKAGE_TIERS, group.package_tier) : null,
     hotel_name: [group.hotel_stars ? `${group.hotel_stars}-star` : null, group.hotel_name, group.transit_location ? `Transit via ${group.transit_location}` : null].filter(Boolean).join(" · ") || null,

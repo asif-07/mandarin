@@ -19,7 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/shared/date-picker";
 import { A4Preview } from "@/components/shared/a4-preview";
 import { GroupCombobox } from "@/components/travel/group-combobox";
-import type { GroupOption } from "@/lib/actions/travel-groups";
+import { listPartners, type GroupOption, type PartnerRow } from "@/lib/actions/travel-groups";
 import { LeadCombobox } from "@/components/invoices/lead-combobox";
 import { createInvoice, duplicateInvoice, updateInvoice } from "@/lib/actions/invoices";
 import { invoiceSchema, computeTotals, round2, type InvoiceInput, type InvoiceValues } from "@/lib/validation/invoice";
@@ -76,6 +76,18 @@ export function InvoiceForm(props: Props) {
   const items = useFieldArray({ control, name: "items" });
 
   const watched = useWatch({ control });
+  const [partners, setPartners] = useState<PartnerRow[]>([]);
+  useEffect(() => {
+    listPartners().then(setPartners).catch(() => setPartners([]));
+  }, []);
+  function applyPartner(code: string | null) {
+    const p = partners.find((x) => x.code === code);
+    if (!p) return;
+    setValue("bill_to_name", p.name || p.code, { shouldDirty: true, shouldValidate: true });
+    setValue("bill_to_phone", p.phone ?? "", { shouldDirty: true });
+    setValue("bill_to_email", p.email ?? "", { shouldDirty: true });
+    setValue("bill_to_address", p.address ?? "", { shouldDirty: true });
+  }
   const invoiceNumber = props.mode === "edit" ? props.invoiceNumber : props.nextInvoiceNumber;
 
   const totals = useMemo(
@@ -244,6 +256,8 @@ export function InvoiceForm(props: Props) {
                   initial={props.initialGroup}
                   onChange={(g) => {
                     setValue("travel_group_id", g?.id ?? null, { shouldDirty: true });
+                    // A partner's group: fill the bill-to details from the partner record when nothing is typed yet.
+                    if (g?.partner_code && !getValues("bill_to_name")) applyPartner(g.partner_code);
                     // Pull the Group ID into the visa reference (and the chosen line) when none is set yet.
                     if (g?.group_ref && !getValues("visa_reference")) {
                       setValue("visa_reference", g.group_ref, { shouldDirty: true });
@@ -252,6 +266,23 @@ export function InvoiceForm(props: Props) {
                   }}
                 />
                 <p className="text-xs text-mr-muted">Newest groups first; type a date, code or Group ID to filter. The Group ID is printed on the invoice and fills the visa reference when empty.</p>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="bill_partner">Bill a partner (B2B client)</Label>
+                <Select onValueChange={(v) => applyPartner(v === "none" ? null : v)}>
+                  <SelectTrigger id="bill_partner" className="w-full rounded-lg">
+                    <SelectValue placeholder={partners.length ? "Choose a partner to fill the details below" : "No partners yet (add them on the B2B groups page)"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not a partner</SelectItem>
+                    {partners.map((p) => (
+                      <SelectItem key={p.code} value={p.code}>
+                        {p.code}
+                        {p.name ? ` · ${p.name}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Pull from lead</Label>

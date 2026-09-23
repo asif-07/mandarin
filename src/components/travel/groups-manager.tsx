@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Layers, Loader2, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addTravellersToGroup, assignTravellersToGroup, type TravellerPick } from "@/lib/actions/travellers";
-import { nextGroupCodeFor } from "@/lib/actions/travel-groups";
+import { listPartners, nextGroupCodeFor, type PartnerRow } from "@/lib/actions/travel-groups";
 import { TravellerCombobox } from "@/components/travel/traveller-combobox";
 import { PACKAGE_TIERS, tierHasHotel, tierHasTransit, tierNeedsStars } from "@/lib/constants";
 import { groupRef } from "@/lib/queries/travel";
@@ -59,6 +59,7 @@ type Editing = {
   hotel_name: string;
   hotel_stars: number | null;
   transit_location: string | null;
+  partner_code: string | null;
   label: string;
   guide_name: string;
   notes: string;
@@ -168,7 +169,7 @@ export function GroupsToolbar() {
       </Button>
       <Button
         onClick={() =>
-          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, transit_location: null, label: "", guide_name: "", notes: "", travellers: [], existing: [] })
+          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, transit_location: null, partner_code: null, label: "", guide_name: "", notes: "", travellers: [], existing: [] })
         }
       >
         <Plus /> New group
@@ -275,6 +276,11 @@ function GroupDialog({
   const travelDate = value?.travel_date ?? "";
   const latest = useRef(value);
   latest.current = value;
+  const [partners, setPartners] = useState<PartnerRow[] | null>(null);
+  useEffect(() => {
+    if (!value || partners) return;
+    listPartners().then(setPartners).catch(() => setPartners([]));
+  }, [value, partners]);
   useEffect(() => {
     if (!isNew || !travelDate) return;
     let live = true;
@@ -331,7 +337,7 @@ function GroupDialog({
               <Label htmlFor="g_prefix">Reference prefix</Label>
               <Input id="g_prefix" placeholder="MR144" value={value.reference_prefix} onChange={(e) => onChange({ ...value, reference_prefix: e.target.value.toUpperCase() })} />
               {value.travel_date && value.group_code && (
-                <p className="font-mono text-xs text-mr-muted">Group ID: {groupRef({ reference_prefix: value.reference_prefix, travel_date: value.travel_date, travel_end_date: value.travel_end_date, group_code: value.group_code })}</p>
+                <p className="font-mono text-xs text-mr-muted">Group ID: {groupRef({ reference_prefix: value.reference_prefix, partner_code: value.partner_code, travel_date: value.travel_date, travel_end_date: value.travel_end_date, group_code: value.group_code })}</p>
               )}
             </div>
             <div className="space-y-1.5">
@@ -366,6 +372,25 @@ function GroupDialog({
                 <Input id="g_hotel" value={value.hotel_name} onChange={(e) => onChange({ ...value, hotel_name: e.target.value })} placeholder="Guangzhou Marriott Tianhe" />
               </div>
             )}
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="g_partner">Partner (B2B client, optional)</Label>
+              <Select value={value.partner_code ?? "none"} onValueChange={(v) => onChange({ ...value, partner_code: v === "none" ? null : v })}>
+                <SelectTrigger id="g_partner" className="w-full rounded-lg">
+                  <SelectValue placeholder="Our own client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Our own client (no partner)</SelectItem>
+                  {(partners ?? []).map((p) => (
+                    <SelectItem key={p.code} value={p.code}>
+                      {p.code}
+                      {p.name ? ` · ${p.name}` : ""}
+                    </SelectItem>
+                  ))}
+                  {value.partner_code && !(partners ?? []).some((p) => p.code === value.partner_code) && <SelectItem value={value.partner_code}>{value.partner_code}</SelectItem>}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-mr-muted">Adds the partner code to the Group ID and, once the visa is received, puts their logo on the cover. Manage partners from the B2B groups page.</p>
+            </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="g_label">Label</Label>
               <Input id="g_label" placeholder="Canton Phase 2 - Morning" value={value.label} onChange={(e) => onChange({ ...value, label: e.target.value })} />
@@ -492,6 +517,7 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
             hotel_name: group.hotel_name ?? "",
             hotel_stars: group.hotel_stars ?? null,
             transit_location: group.transit_location ?? null,
+            partner_code: group.partner_code ?? null,
             label: group.label ?? "",
             guide_name: group.guide_name ?? "",
             notes: group.notes ?? "",

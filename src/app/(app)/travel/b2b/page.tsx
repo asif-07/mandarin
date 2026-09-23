@@ -9,7 +9,7 @@ import { B2bUploadButton, ReplaceB2bPackButton } from "@/components/travel/b2b-u
 import { GroupRowActions } from "@/components/travel/groups-manager";
 import { DownloadBundleButton, GroupVisaPanel } from "@/components/travel/group-visa";
 import { GroupDocuments } from "@/components/travel/group-documents";
-import { PartnerLogosCard } from "@/components/travel/partner-logos";
+import { PartnersButton } from "@/components/travel/partner-logos";
 import { BUCKETS, INVOICE_STATUSES, labelFor, packageDetail } from "@/lib/constants";
 import { SearchParamInput } from "@/components/shared/url-filters";
 import { createClient } from "@/lib/supabase/server";
@@ -27,7 +27,7 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
     .select(
       "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, partner_reference, pax_expected, pack_path, pack_file_name, pack_uploaded_at, package_tier, hotel_name, hotel_stars, transit_location, visa_status, visa_applied_at, visa_uploaded_at, visa_path, uploader:profiles!travel_groups_pack_uploaded_by_fkey(display_name), travellers(count), invoices:invoices!invoices_travel_group_id_fkey(id, invoice_number, total, currency, status), group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at)",
     )
-    .eq("source", "b2b")
+    .or("source.eq.b2b,partner_code.not.is.null")
     .order("travel_date", { ascending: false })
     .order("group_code")
     .limit(200);
@@ -35,7 +35,7 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
     const like = `%${sp.q.trim().replace(/[%,]/g, "")}%`;
     query = query.or(`partner_code.ilike.${like},partner_reference.ilike.${like},group_code.ilike.${like},label.ilike.${like}`);
   }
-  const [{ data, error }, { data: partnerRows }] = await Promise.all([query, supabase.from("b2b_partners").select("id, code, name, logo_path, logo_file_name").order("code")]);
+  const [{ data, error }, { data: partnerRows }] = await Promise.all([query, supabase.from("b2b_partners").select("id, code, name, phone, email, address, logo_path, logo_file_name").order("code")]);
   // Next departure first: groups still to travel (or travelling) in date order, then finished ones most recent first.
   const today = todayISO();
   const groups = [...(data ?? [])].sort((a, b) => {
@@ -67,7 +67,12 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
       <PageHeader
         title="B2B partner groups"
         description="Packs compiled by partner agencies. Upload their PDF with their code; it is filed under the next free group number for that date, renamed to our reference, and appears in the calendar and group views."
-        actions={<B2bUploadButton />}
+        actions={
+          <>
+            <PartnersButton partners={partners} />
+            <B2bUploadButton />
+          </>
+        }
       />
       <Suspense>
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -79,10 +84,6 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
           )}
         </div>
       </Suspense>
-
-      <div className="mb-6">
-        <PartnerLogosCard partners={partners} />
-      </div>
 
       {error ? (
         <p className="text-sm text-mr-red">Could not load groups: {error.message}</p>
@@ -196,10 +197,12 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
                         Original file
                       </a>
                     </span>
-                  ) : (
+                  ) : g.source === "b2b" ? (
                     <span className="text-xs text-mr-warning">No pack file</span>
+                  ) : (
+                    <span className="text-xs text-mr-body">Own group · documents compiled here</span>
                   )}
-                  <ReplaceB2bPackButton groupId={g.id} label={g.pack_path ? "Replace" : "Upload pack"} />
+                  {g.source === "b2b" ? <ReplaceB2bPackButton groupId={g.id} label={g.pack_path ? "Replace" : "Upload pack"} /> : <span className="text-xs text-mr-muted">Compiled by us for {g.partner_code}</span>}
                 </div>
                 <div className="mt-3 border-t border-mr-line pt-3">
                   <GroupDocuments groupId={g.id} documents={(g.group_documents ?? []).filter((d) => !d.deleted_at)} />

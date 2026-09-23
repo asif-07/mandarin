@@ -84,7 +84,10 @@ export type Database = {
           logo_file_name: string | null
           logo_path: string | null
           name: string | null
+          address: string | null
+          email: string | null
           notes: string | null
+          phone: string | null
           updated_at: string | null
         }
         Insert: {
@@ -95,7 +98,10 @@ export type Database = {
           logo_file_name?: string | null
           logo_path?: string | null
           name?: string | null
+          address?: string | null
+          email?: string | null
           notes?: string | null
+          phone?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -106,7 +112,10 @@ export type Database = {
           logo_file_name?: string | null
           logo_path?: string | null
           name?: string | null
+          address?: string | null
+          email?: string | null
           notes?: string | null
+          phone?: string | null
           updated_at?: string | null
         }
         Relationships: [

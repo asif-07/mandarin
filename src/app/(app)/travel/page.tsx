@@ -19,6 +19,7 @@ import { docCompleteness, groupCoverage, groupPackReference, groupRef } from "@/
 import { GroupDocuments } from "@/components/travel/group-documents";
 import { INVOICE_STATUSES, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate, formatDateRange, formatMoney, todayISO, toISODate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { addMonths, addWeeks, endOfMonth, endOfWeek, format as formatDf, parseISO, startOfMonth, startOfWeek } from "date-fns";
 
 export const metadata: Metadata = { title: "Travel" };
@@ -79,6 +80,50 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   if (view === "day") groupsQuery = groupsQuery.eq("travel_date", date);
   else if (view !== "all") groupsQuery = groupsQuery.lte("travel_date", rangeEnd).gte("travel_end_date", rangeStart);
   const { data: groups, error } = await groupsQuery;
+
+  // Received / balance for every invoice on the page, so unpaid groups can be flagged.
+  const invoiceIds = (groups ?? []).flatMap((g) => g.invoices.filter((i) => i.status !== "cancelled").map((i) => i.id));
+  const { data: paymentRows } = invoiceIds.length ? await supabase.rpc("invoice_payment_summary", { p_ids: invoiceIds }) : { data: [] as { invoice_id: string; received: number; balance: number; receipt_count: number }[] };
+  const balances = new Map((paymentRows ?? []).map((r) => [r.invoice_id, { received: Number(r.received), balance: Number(r.balance) }]));
+
+  type Issue = { text: string; tone: "red" | "warning" | "neutral" };
+  /** Everything still to do for a group, shown on the collapsed card and counted in the stats strip. */
+  const issuesFor = (g: NonNullable<typeof groups>[number]): Issue[] => {
+    const out: Issue[] = [];
+    const active = g.travellers.filter((t) => t.status !== "cancelled");
+    const cover = groupCoverage((g.group_documents ?? []).filter((d) => !d.deleted_at));
+    if (g.source === "b2b") {
+      if (!g.pack_path) out.push({ text: "Partner pack not uploaded", tone: "red" });
+    } else if (active.length === 0) {
+      out.push({ text: "No travellers yet", tone: "warning" });
+    } else {
+      const missing = active.map((t) => docCompleteness(t.traveller_documents, cover)).filter((c) => !c.complete);
+      if (missing.length) {
+        const labels = [...new Set(missing.flatMap((c) => c.missingLabels))];
+        out.push({ text: `${missing.length} of ${active.length} missing documents (${labels.slice(0, 3).join(", ")}${labels.length > 3 ? "…" : ""})`, tone: "red" });
+      }
+    }
+    if (!g.entry_port || !g.exit_port) out.push({ text: "Entry / exit port missing", tone: "warning" });
+    const live = g.invoices.filter((i) => i.status !== "cancelled");
+    if (live.length === 0) out.push({ text: "No invoice", tone: "warning" });
+    else {
+      const due = live.filter((i) => i.status !== "draft" && (balances.get(i.id)?.balance ?? Number(i.total)) > 0);
+      if (due.length) out.push({ text: `Invoice unpaid · ${due.map((i) => formatMoney(balances.get(i.id)?.balance ?? i.total, i.currency)).join(", ")} due`, tone: "warning" });
+      if (live.some((i) => i.status === "draft")) out.push({ text: "Invoice still a draft", tone: "neutral" });
+    }
+    if (g.visa_status === "pending") out.push({ text: "Visa not applied", tone: "neutral" });
+    else if (g.visa_status === "applied") out.push({ text: "Visa awaited", tone: "neutral" });
+    return out;
+  };
+  const issueList = (groups ?? []).map((g) => ({ g, issues: issuesFor(g) }));
+  const stats = {
+    groups: groups?.length ?? 0,
+    unbilled: issueList.filter((x) => x.issues.some((i) => i.text === "No invoice")).length,
+    unpaid: issueList.filter((x) => x.issues.some((i) => i.text.startsWith("Invoice unpaid"))).length,
+    missingDocs: issueList.filter((x) => x.issues.some((i) => i.text.includes("missing documents") || i.text === "Partner pack not uploaded")).length,
+    visaOpen: issueList.filter((x) => x.g.visa_status !== "approved").length,
+    ready: issueList.filter((x) => x.issues.length === 0).length,
+  };
 
   const totalTravellers = (groups ?? []).reduce((n, g) => n + (g.source === "b2b" && g.pax_expected && g.travellers.length === 0 ? g.pax_expected : g.travellers.filter((t) => t.status !== "cancelled").length), 0);
   const partnerCodes = [...new Set((groups ?? []).map((g) => g.partner_code).filter((c): c is string => !!c))];
@@ -151,6 +196,12 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
                       {g.source === "b2b" && g.pax_expected ? `${g.pax_expected} pax` : `${travellers.length} pax`}
                     </span>
                     {g.source !== "b2b" && <DocsBadge count={complete} total={travellers.length || 0} />}
+                    {issuesFor(g).map((i) => (
+                      <span key={i.text} className={cn("rounded-md px-1.5 py-0.5 text-xs font-medium", i.tone === "red" ? "bg-mr-red/10 text-mr-red" : i.tone === "warning" ? "bg-mr-warning/10 text-mr-warning" : "bg-mr-surface text-mr-body")}>
+                        {i.text}
+                      </span>
+                    ))}
+                    {issuesFor(g).length === 0 && <span className="rounded-md bg-mr-success/10 px-1.5 py-0.5 text-xs font-medium text-mr-success">Ready</span>}
                   </div>
                 </summary>
                 <div className="border-t border-mr-line px-4 py-3">
@@ -264,6 +315,27 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
           <TravelRangeNav view={view} date={view === "day" ? date : toISODate(anchor)} today={today} prev={view === "day" ? prev : step(-1)} next={view === "day" ? next : step(1)} nearby={nearby} rangeLabel={rangeLabel} />
         </div>
       </Suspense>
+
+      {!error && (groups?.length ?? 0) > 0 && (
+        <dl className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          {(
+            [
+              { label: "Groups", value: stats.groups, hint: `${totalTravellers} travellers`, tone: "ink" },
+              { label: "Ready", value: stats.ready, hint: "nothing outstanding", tone: stats.ready === stats.groups ? "success" : "ink" },
+              { label: "Missing documents", value: stats.missingDocs, hint: "groups with gaps", tone: stats.missingDocs ? "red" : "success" },
+              { label: "Unbilled", value: stats.unbilled, hint: "no invoice yet", tone: stats.unbilled ? "warning" : "success" },
+              { label: "Unpaid", value: stats.unpaid, hint: "invoice balance due", tone: stats.unpaid ? "warning" : "success" },
+              { label: "Visa open", value: stats.visaOpen, hint: "not yet received", tone: stats.visaOpen ? "neutral" : "success" },
+            ] as const
+          ).map((t) => (
+            <div key={t.label} className="rounded-lg border border-mr-line bg-white px-4 py-3">
+              <dt className="micro-label">{t.label}</dt>
+              <dd className={cn("tnum mt-1 font-heading text-2xl font-semibold leading-none", t.tone === "red" ? "text-mr-red" : t.tone === "warning" ? "text-mr-warning" : t.tone === "success" ? "text-mr-success" : "text-mr-ink")}>{t.value}</dd>
+              <dd className="mt-1 text-xs text-mr-muted">{t.hint}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
       {error ? (
         <p className="text-sm text-mr-red">Could not load groups: {error.message}</p>

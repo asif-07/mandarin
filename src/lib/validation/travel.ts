@@ -30,6 +30,13 @@ const referencePrefix = z
 
 const port = z.string().trim().min(1, "Required for the group visa").max(120);
 
+/** Optional partner code (the client we compile for); "" / "none" means our own client. */
+export const partnerCode = z
+  .union([z.string(), z.null()])
+  .optional()
+  .transform((v) => (v && v !== "none" ? v.trim().toUpperCase() : null))
+  .refine((v) => v === null || /^[A-Z0-9]{2,12}$/.test(v), "Partner code: 2–12 letters or digits");
+
 /** 3 / 4 / 5 star hotel class; "" or null from a select means unset. */
 export const hotelStars = z
   .union([z.number(), z.string(), z.null()])
@@ -98,6 +105,7 @@ export const groupSchema = z
     hotel_name: optionalText,
     hotel_stars: hotelStars,
     transit_location: transitLocation,
+    partner_code: partnerCode,
     label: optionalText,
     guide_name: optionalText,
     notes: optionalText,

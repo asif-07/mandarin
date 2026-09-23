@@ -376,23 +376,29 @@ export async function clearGroupVisa(groupId: string): Promise<ActionResult<{ id
 // ---------------------------------------------------------------------------
 // B2B partners (name + logo used on cover pages)
 // ---------------------------------------------------------------------------
-export type PartnerRow = { id: string; code: string; name: string | null; logo_path: string | null; logo_file_name: string | null };
+export type PartnerRow = { id: string; code: string; name: string | null; phone: string | null; email: string | null; address: string | null; logo_path: string | null; logo_file_name: string | null };
 
 export async function listPartners(): Promise<PartnerRow[]> {
   await requireProfile();
   const supabase = await createClient();
-  const { data } = await supabase.from("b2b_partners").select("id, code, name, logo_path, logo_file_name").order("code");
+  const { data } = await supabase.from("b2b_partners").select("id, code, name, phone, email, address, logo_path, logo_file_name").order("code");
   return data ?? [];
 }
 
-export async function savePartner(input: { code: string; name?: string | null }): Promise<ActionResult<{ id: string }>> {
+export async function savePartner(input: { code: string; name?: string | null; phone?: string | null; email?: string | null; address?: string | null }): Promise<ActionResult<{ id: string }>> {
   const profile = await requireProfile();
   const code = input.code.trim().toUpperCase();
   if (!/^[A-Z0-9]{2,12}$/.test(code)) return fail("Partner code: 2–12 letters or digits, e.g. EDPT");
+  if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) return fail("That email address does not look right");
   const supabase = await createClient();
+  // Only the fields supplied are written, so a name edit never blanks the phone and so on.
+  const patch: Record<string, string | null> = { code };
+  (["name", "phone", "email", "address"] as const).forEach((k) => {
+    if (input[k] !== undefined) patch[k] = input[k]?.toString().trim().slice(0, 500) || null;
+  });
   const { data, error } = await supabase
     .from("b2b_partners")
-    .upsert({ code, name: input.name?.trim() || null, created_by: profile.id }, { onConflict: "code" })
+    .upsert({ ...patch, code, created_by: profile.id }, { onConflict: "code" })
     .select("id")
     .single();
   if (error || !data) return fail(errorMessage(error, "Could not save partner"));

@@ -6,18 +6,19 @@ import { Building2, ImagePlus, Loader2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 import { removePartnerLogo, savePartner, setPartnerLogo, type PartnerRow } from "@/lib/actions/travel-groups";
 import { BUCKETS } from "@/lib/constants";
 
 type PartnerWithUrl = PartnerRow & { logo_url: string | null };
 
+/** One partner: logo, code, and the contact details that fill invoices and covers. Fields save on blur. */
 function PartnerLine({ partner }: { partner: PartnerWithUrl }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
-  const [name, setName] = useState(partner.name ?? "");
+  const [form, setForm] = useState({ name: partner.name ?? "", phone: partner.phone ?? "", email: partner.email ?? "", address: partner.address ?? "" });
   const ref = useRef<HTMLInputElement>(null);
 
   async function onLogo(f: File | undefined) {
@@ -42,92 +43,92 @@ function PartnerLine({ partner }: { partner: PartnerWithUrl }) {
     }
   }
 
-  function saveName() {
-    if ((partner.name ?? "") === name.trim()) return;
+  function save(field: keyof typeof form) {
+    const current = (partner[field] ?? "").trim();
+    if (current === form[field].trim()) return;
     startTransition(async () => {
-      const res = await savePartner({ code: partner.code, name });
+      const res = await savePartner({ code: partner.code, [field]: form[field] });
       if (!res.ok) return void toast.error(res.error);
-      toast.success("Saved");
       router.refresh();
     });
   }
 
   return (
-    <li className="flex flex-wrap items-center gap-3 py-3">
-      <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-mr-line bg-white">
-        {partner.logo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={partner.logo_url} alt={`${partner.code} logo`} className="max-h-full max-w-full object-contain" />
-        ) : (
-          <Building2 className="size-5 text-mr-muted" />
+    <li className="py-3">
+      <div className="flex items-center gap-3">
+        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-mr-line bg-white">
+          {partner.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={partner.logo_url} alt={`${partner.code} logo`} className="max-h-full max-w-full object-contain" />
+          ) : (
+            <Building2 className="size-4 text-mr-muted" />
+          )}
+        </div>
+        <span className="w-14 shrink-0 font-mono text-sm font-semibold text-mr-ink">{partner.code}</span>
+        <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} onBlur={() => save("name")} placeholder="Partner name" className="min-w-0 flex-1" disabled={pending} />
+        <input ref={ref} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => { onLogo(e.target.files?.[0]); e.target.value = ""; }} />
+        <Button variant="outline" size="sm" disabled={busy} onClick={() => ref.current?.click()} title={partner.logo_path ? "Replace logo" : "Add logo (printed on their covers)"}>
+          {busy ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+        </Button>
+        {partner.logo_path && (
+          <Button variant="ghost" size="icon-sm" aria-label="Remove logo" disabled={pending} onClick={() => startTransition(async () => { const res = await removePartnerLogo(partner.code); if (!res.ok) return void toast.error(res.error); router.refresh(); })}>
+            <X />
+          </Button>
         )}
       </div>
-      <span className="w-16 shrink-0 font-mono text-sm font-semibold text-mr-ink">{partner.code}</span>
-      <Input value={name} onChange={(e) => setName(e.target.value)} onBlur={saveName} placeholder="Partner name (printed when there is no logo)" className="min-w-[180px] flex-1" disabled={pending} />
-      <input
-        ref={ref}
-        type="file"
-        accept="image/png,image/jpeg"
-        className="hidden"
-        onChange={(e) => {
-          onLogo(e.target.files?.[0]);
-          e.target.value = "";
-        }}
-      />
-      <Button variant="outline" size="sm" disabled={busy} onClick={() => ref.current?.click()}>
-        {busy ? <Loader2 className="animate-spin" /> : <ImagePlus />} {partner.logo_path ? "Replace logo" : "Add logo"}
-      </Button>
-      {partner.logo_path && (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Remove logo"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              const res = await removePartnerLogo(partner.code);
-              if (!res.ok) return void toast.error(res.error);
-              router.refresh();
-            })
-          }
-        >
-          <X />
-        </Button>
-      )}
+      <div className="mt-2 grid gap-2 pl-[52px] sm:grid-cols-3">
+        <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} onBlur={() => save("phone")} placeholder="Phone" inputMode="tel" disabled={pending} />
+        <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} onBlur={() => save("email")} placeholder="Email" type="email" disabled={pending} />
+        <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} onBlur={() => save("address")} placeholder="Address / city" disabled={pending} />
+      </div>
     </li>
   );
 }
 
-export function PartnerLogosCard({ partners }: { partners: PartnerWithUrl[] }) {
+/** Compact "Partners" button opening a dialog to add partners and keep their logo and contact details. */
+export function PartnersButton({ partners }: { partners: PartnerWithUrl[] }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [code, setCode] = useState("");
+  const [name, setName] = useState("");
 
   function add() {
     startTransition(async () => {
-      const res = await savePartner({ code });
+      const res = await savePartner({ code, name });
       if (!res.ok) return void toast.error(res.error);
       toast.success(`${code.toUpperCase()} added`);
       setCode("");
+      setName("");
       router.refresh();
     });
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Partners</CardTitle>
-        <p className="text-xs text-mr-muted">A partner is created automatically the first time you upload a pack with their code. Add a PNG logo here and it is printed on the first page of their downloads instead of the Mandarin Roots logo.</p>
-      </CardHeader>
-      <CardContent>
-        {partners.length === 0 ? <p className="text-sm text-mr-muted">No partners yet.</p> : <ul className="divide-y divide-mr-line">{partners.map((p) => <PartnerLine key={p.id} partner={p} />)}</ul>}
-        <div className="mt-3 flex items-center gap-2">
-          <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="New partner code, e.g. EDPT" className="max-w-[220px] font-mono" disabled={pending} />
-          <Button variant="outline" size="sm" onClick={add} disabled={pending || !code.trim()}>
-            {pending ? <Loader2 className="animate-spin" /> : <Plus />} Add
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        <Building2 /> Partners{partners.length ? ` (${partners.length})` : ""}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Partners</DialogTitle>
+            <DialogDescription>
+              Partners appear in the group and invoice dropdowns. Name, phone, email and address fill the invoice; the logo is printed on their covers once the visa is received. A partner is also created automatically the first time a pack is uploaded with their code.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-mr-line bg-mr-surface p-3">
+            <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Code, e.g. EDPT" className="w-[150px] font-mono" disabled={pending} />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Partner name" className="min-w-[160px] flex-1" disabled={pending} />
+            <Button size="sm" onClick={add} disabled={pending || !code.trim()}>
+              {pending ? <Loader2 className="animate-spin" /> : <Plus />} Add partner
+            </Button>
+          </div>
+          <div className="max-h-[55vh] overflow-y-auto">
+            {partners.length === 0 ? <p className="py-4 text-sm text-mr-muted">No partners yet.</p> : <ul className="divide-y divide-mr-line">{partners.map((p) => <PartnerLine key={p.id} partner={p} />)}</ul>}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
