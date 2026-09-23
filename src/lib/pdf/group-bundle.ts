@@ -83,7 +83,7 @@ function cacheKey(group: GroupRow, logo: BundleLogo, partnerLogoPath: string | n
   const h = createHash("sha1");
   // travel_groups has no updated_at, so the cover's own fields are hashed directly.
   const cover = [group.group_code, group.label, group.guide_name, group.reference_prefix, group.entry_port, group.exit_port, group.travel_date, group.travel_end_date, group.partner_code, group.pax_expected, group.package_tier, group.hotel_name, group.hotel_stars, group.transit_location, group.visa_applied_at];
-  h.update(JSON.stringify({ v: 2, logo, partnerLogoPath, cover, pack: group.pack_uploaded_at, visa: group.visa_uploaded_at, visa_status: group.visa_status, docs, groupDocs, travellers }));
+  h.update(JSON.stringify({ v: 3, logo, partnerLogoPath, cover, pack: group.pack_uploaded_at, visa: group.visa_uploaded_at, visa_status: group.visa_status, docs, groupDocs, travellers }));
   return h.digest("hex").slice(0, 20);
 }
 
