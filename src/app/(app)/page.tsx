@@ -12,7 +12,7 @@ import { getCurrentProfile, isAdmin } from "@/lib/auth";
 import { RecordReceiptButton } from "@/components/accounts/receipt-dialog";
 import { docCompleteness, groupTitle } from "@/lib/queries/travel";
 import { CompileGroupButton } from "@/components/travel/pack-panel";
-import { VisaStatusPill } from "@/components/travel/group-visa";
+import { DownloadBundleButton, VisaStatusPill } from "@/components/travel/group-visa";
 import { INVOICE_STATUSES, TRAVELLER_STATUSES, labelFor, packageDetail } from "@/lib/constants";
 import { daysFromToday, formatDate, formatDateRange, formatMoney, formatNumber, todayISO, toISODate } from "@/lib/format";
 import { endOfMonth, format as formatDf } from "date-fns";
@@ -74,7 +74,7 @@ export default async function DashboardPage() {
       .limit(8),
     supabase
       .from("travel_groups")
-      .select("id, travel_date, travel_end_date, group_code, label, guide_name, entry_port, exit_port, source, partner_code, pax_expected, pack_path, visa_status, visa_applied_at, visa_uploaded_at, group_documents(doc_type, deleted_at), travellers(id, status, traveller_documents(doc_type, deleted_at))")
+      .select("id, travel_date, travel_end_date, group_code, label, guide_name, entry_port, exit_port, source, partner_code, pax_expected, pack_path, visa_status, visa_applied_at, visa_uploaded_at, visa_path, group_documents(doc_type, deleted_at), travellers(id, status, traveller_documents(doc_type, deleted_at))")
       .gte("travel_end_date", today)
       .order("travel_date", { ascending: true })
       .order("group_code", { ascending: true })
@@ -261,9 +261,19 @@ export default async function DashboardPage() {
                   </Link>
                   {g.b2b ? (
                     g.pack_path ? (
-                      <a href={`/api/groups/${g.id}/bundle`} title="Mandarin Roots cover with the travel details, then the partner's pack; after the visa is received, the partner's own branding" className={buttonVariants({ variant: "outline", size: "sm" })}>
-                        <Download /> Download pack
-                      </a>
+                      <DownloadBundleButton
+                        group={{
+                          id: g.id,
+                          source: g.source,
+                          partner_code: g.partner_code,
+                          visa_status: g.visa_status,
+                          visa_applied_at: g.visa_applied_at,
+                          visa_uploaded_at: g.visa_uploaded_at,
+                          visa_path: g.visa_path,
+                          pack_path: g.pack_path,
+                          traveller_count: g.pax,
+                        }}
+                      />
                     ) : null
                   ) : (
                     <CompileGroupButton groupId={g.id} travellerCount={g.pax} />

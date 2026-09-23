@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Download, FileCheck2, Loader2, Stamp, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusPill } from "@/components/shared/status-pill";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
@@ -95,26 +96,56 @@ export function UploadVisaButton({ groupId, replace = false, size = "sm" }: { gr
 }
 
 /**
- * One download per stage. Before the visa: the pack for the visa application,
- * Mandarin Roots cover. After the visa: partner groups get the partner's logo
- * on the cover (to forward to the partner), our groups keep our cover (to send
- * to the client). Branding is decided on the server from the group state.
+ * Before the visa: one download for the visa application (Mandarin Roots
+ * cover, all documents). After the visa: a small choice, cover + visa page
+ * only (what clients and partners usually need) or everything. Partner
+ * groups get the partner's branding after the visa; ours keep ours.
  */
 export function DownloadBundleButton({ group, size = "sm", variant = "outline" }: { group: GroupVisaInfo; size?: "sm" | "default"; variant?: "default" | "outline" }) {
+  const [open, setOpen] = useState(false);
   const isB2b = group.source === "b2b";
   const canBuild = isB2b ? !!group.pack_path : group.traveller_count > 0;
-  if (!canBuild) return null;
   const visaIn = group.visa_status === "approved" && !!group.visa_path;
-  const label = visaIn ? (isB2b ? `Download for ${group.partner_code ?? "partner"}` : "Download for client") : "Download for visa application";
-  const hint = visaIn
-    ? isB2b
-      ? `Cover with the ${group.partner_code ?? "partner"} logo${group.partner_has_logo ? "" : " (no logo on file: their name is printed; add one under Partners on the B2B page)"}, then the visa and the pack`
-      : "Mandarin Roots cover with the travel details, then the visa and every document"
-    : "Mandarin Roots cover with entry, exit, pax and dates, then the documents";
+  if (!canBuild && !visaIn) return null;
+  if (!visaIn) {
+    return (
+      <a href={`/api/groups/${group.id}/bundle`} title="Mandarin Roots cover with entry, exit, pax and dates, then the documents" className={buttonVariants({ variant, size })}>
+        <Download /> Download for visa application
+      </a>
+    );
+  }
+  const who = isB2b ? (group.partner_code ?? "partner") : "client";
+  const brand = isB2b ? `${group.partner_code ?? "partner"} branding${group.partner_has_logo ? "" : " (name only: no logo on file)"}` : "Mandarin Roots cover";
   return (
-    <a href={`/api/groups/${group.id}/bundle`} title={hint} className={buttonVariants({ variant, size })}>
-      <Download /> {label}
-    </a>
+    <>
+      <Button variant={variant} size={size} onClick={() => setOpen(true)}>
+        <Download /> Download for {who}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>What to download for {who}</DialogTitle>
+            <DialogDescription>{brand} on the first page. The visa page is included either way.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <a href={`/api/groups/${group.id}/bundle?scope=visa`} onClick={() => setOpen(false)} className="flex items-start gap-3 rounded-lg border border-mr-ink bg-mr-surface p-3 text-sm hover:bg-white">
+              <FileCheck2 className="mt-0.5 size-4 shrink-0 text-mr-ink" />
+              <span>
+                <span className="block font-medium text-mr-ink">First page and visa page only</span>
+                <span className="block text-xs text-mr-muted">Cover with the travel details, then the visa. Usual choice: they already hold their own hotel and ticket documents.</span>
+              </span>
+            </a>
+            <a href={`/api/groups/${group.id}/bundle?scope=all`} onClick={() => setOpen(false)} className="flex items-start gap-3 rounded-lg border border-mr-line p-3 text-sm hover:bg-mr-surface">
+              <Download className="mt-0.5 size-4 shrink-0 text-mr-body" />
+              <span>
+                <span className="block font-medium text-mr-ink">All documents</span>
+                <span className="block text-xs text-mr-muted">Cover, visa, then {isB2b ? "the partner's full pack" : "every traveller's PAR, passport, flight and hotel documents"}. Larger file.</span>
+              </span>
+            </a>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

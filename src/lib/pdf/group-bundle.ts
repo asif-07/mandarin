@@ -71,7 +71,9 @@ async function loadGroup(supabase: Client, groupId: string) {
  * Everything that changes the bundle's content goes into the cache key, so a
  * second download of an unchanged group is served from storage instantly.
  */
-function cacheKey(group: GroupRow, logo: BundleLogo, partnerLogoPath: string | null): string {
+export type BundleScope = "all" | "visa";
+
+function cacheKey(group: GroupRow, logo: BundleLogo, partnerLogoPath: string | null, scope: BundleScope = "all"): string {
   const docs = group.travellers
     .flatMap((t) => t.traveller_documents.filter((d) => !d.deleted_at).map((d) => `${t.id}:${d.id}:${d.uploaded_at}`))
     .sort();
@@ -83,14 +85,14 @@ function cacheKey(group: GroupRow, logo: BundleLogo, partnerLogoPath: string | n
   const h = createHash("sha1");
   // travel_groups has no updated_at, so the cover's own fields are hashed directly.
   const cover = [group.group_code, group.label, group.guide_name, group.reference_prefix, group.entry_port, group.exit_port, group.travel_date, group.travel_end_date, group.partner_code, group.pax_expected, group.package_tier, group.hotel_name, group.hotel_stars, group.transit_location, group.visa_applied_at];
-  h.update(JSON.stringify({ v: 3, logo, partnerLogoPath, cover, pack: group.pack_uploaded_at, visa: group.visa_uploaded_at, visa_status: group.visa_status, docs, groupDocs, travellers }));
+  h.update(JSON.stringify({ v: 3, logo, scope, partnerLogoPath, cover, pack: group.pack_uploaded_at, visa: group.visa_uploaded_at, visa_status: group.visa_status, docs, groupDocs, travellers }));
   return h.digest("hex").slice(0, 20);
 }
 
 export type CachedBundle = { path: string; fileName: string };
 
 /** Returns the storage path of an already-built bundle for this exact state, or null. */
-export async function findCachedBundle(supabase: Client, groupId: string, opts: { logo?: BundleLogo } = {}): Promise<CachedBundle | null> {
+export async function findCachedBundle(supabase: Client, groupId: string, opts: { logo?: BundleLogo; scope?: BundleScope } = {}): Promise<CachedBundle | null> {
   const group = await loadGroup(supabase, groupId);
   if (!group) return null;
   const isB2b = group.source === "b2b";
@@ -100,7 +102,7 @@ export async function findCachedBundle(supabase: Client, groupId: string, opts: 
     const { data: partner } = await supabase.from("b2b_partners").select("logo_path").eq("code", group.partner_code ?? "").maybeSingle();
     partnerLogoPath = partner?.logo_path ?? null;
   }
-  const key = cacheKey(group, logo, partnerLogoPath);
+  const key = cacheKey(group, logo, partnerLogoPath, opts.scope ?? "all");
   const { data: files } = await supabase.storage.from(BUCKETS.travelPacks).list(`_bundles/${group.id}/${key}`, { limit: 1 });
   const file = files?.[0];
   if (!file) return null;
@@ -117,13 +119,21 @@ export async function findCachedBundle(supabase: Client, groupId: string, opts: 
  * one is on file and falls back to their name as plain text; "none" prints
  * only the partner name; "mr" is the Mandarin Roots logo.
  */
-export async function buildGroupBundle(supabase: Client, browser: Browser, groupId: string, opts: { logo?: BundleLogo; includeVisa?: boolean } = {}): Promise<GroupBundle> {
+/**
+ * `scope` "visa" builds only the cover and the visa page (what a client or
+ * partner needs once the visa is issued); "all" adds every document / the
+ * partner pack as before.
+ */
+export async function buildGroupBundle(supabase: Client, browser: Browser, groupId: string, opts: { logo?: BundleLogo; includeVisa?: boolean; scope?: BundleScope } = {}): Promise<GroupBundle> {
+  const scope: BundleScope = opts.scope === "visa" && !!groupId ? "visa" : "all";
+  const visaOnly = scope === "visa";
   const group = await loadGroup(supabase, groupId);
   if (!group) throw new Error("Group not found");
 
   const isB2b = group.source === "b2b";
   const travellers = [...group.travellers].filter((t) => t.status !== "cancelled").sort((a, b) => a.full_name.localeCompare(b.full_name));
-  if (!isB2b && travellers.length === 0) throw new Error("This group has no travellers");
+  if (visaOnly && !group.visa_path) throw new Error("No visa has been uploaded for this group yet");
+  if (!isB2b && !visaOnly && travellers.length === 0) throw new Error("This group has no travellers");
 
   const warnings: string[] = [];
   const attachments: { label: string; bytes: Uint8Array; mimeType?: string }[] = [];
@@ -136,8 +146,8 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
   const groupDocs = group.group_documents.filter((d) => !d.deleted_at).sort((a, b) => GROUP_DOC_TYPES.findIndex((t) => t.value === a.doc_type) - GROUP_DOC_TYPES.findIndex((t) => t.value === b.doc_type));
   const [visaBytes, groupDocBytes, packBytes, partnerRes] = await Promise.all([
     opts.includeVisa !== false && group.visa_path ? download(supabase, BUCKETS.travelPacks, group.visa_path) : Promise.resolve(null),
-    mapLimit(groupDocs, 4, (d) => download(supabase, BUCKETS.travellerDocuments, d.storage_path)),
-    isB2b && group.pack_path ? download(supabase, BUCKETS.travelPacks, group.pack_path) : Promise.resolve(null),
+    visaOnly ? Promise.resolve([] as (Uint8Array | null)[]) : mapLimit(groupDocs, 4, (d) => download(supabase, BUCKETS.travellerDocuments, d.storage_path)),
+    isB2b && group.pack_path && !visaOnly ? download(supabase, BUCKETS.travelPacks, group.pack_path) : Promise.resolve(null),
     partnerPromise,
   ]);
 
@@ -145,7 +155,7 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
     if (visaBytes) attachments.push({ label: "Group visa", bytes: visaBytes });
     else warnings.push("Visa page could not be read from storage");
   }
-  groupDocs.forEach((d, i) => {
+  (visaOnly ? [] : groupDocs).forEach((d, i) => {
     const bytes = groupDocBytes[i];
     const label = GROUP_DOC_TYPES.find((t) => t.value === d.doc_type)?.label ?? d.doc_type;
     if (bytes) attachments.push({ label: `${label} (${d.file_name})`, bytes, mimeType: d.mime_type });
@@ -153,7 +163,7 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
   });
 
   let partnerPackBytes: Uint8Array | null = null;
-  if (isB2b) {
+  if (isB2b && !visaOnly) {
     if (!group.pack_path) throw new Error("No partner pack has been uploaded for this group");
     if (!packBytes) throw new Error("Partner pack could not be read from storage");
     partnerPackBytes = packBytes;
@@ -161,7 +171,7 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
 
   // Every traveller's documents, downloaded with bounded concurrency
   const inputs: { traveller: (typeof travellers)[number] & { group_code: string; group_label: string | null }; sources: PackSource[] }[] = [];
-  if (!isB2b) {
+  if (!isB2b && !visaOnly) {
     const jobs = travellers.flatMap((t) =>
       t.traveller_documents
         .filter((d) => !d.deleted_at)
@@ -223,7 +233,7 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
     package_label: group.package_tier ? labelFor(PACKAGE_TIERS, group.package_tier) : null,
     hotel_name: [group.hotel_stars ? `${group.hotel_stars}-star` : null, group.hotel_name, group.transit_location ? `Transit via ${group.transit_location}` : null].filter(Boolean).join(" · ") || null,
     visa_label: visaLabel,
-    attachments: isB2b ? [...attachments, { label: `${group.partner_code} pack (${group.pax_expected ?? 0} pax)`, bytes: partnerPackBytes!, mimeType: "application/pdf", coverOnly: true }] : attachments,
+    attachments: isB2b && partnerPackBytes ? [...attachments, { label: `${group.partner_code} pack (${group.pax_expected ?? 0} pax)`, bytes: partnerPackBytes, mimeType: "application/pdf", coverOnly: true }] : attachments,
   });
 
   let bytes = front.bytes;
@@ -239,7 +249,7 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
     pageCount = base.getPageCount();
   }
 
-  const fileName = `${reference}${group.visa_path && opts.includeVisa !== false ? "-WITH-VISA" : ""}.pdf`;
+  const fileName = `${reference}${visaOnly ? "-VISA" : group.visa_path && opts.includeVisa !== false ? "-WITH-VISA" : ""}.pdf`;
   return {
     bytes,
     pageCount,
@@ -250,6 +260,6 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
     fileName,
     travellerCount: travellers.length,
     source: group.source,
-    cachePath: `_bundles/${group.id}/${cacheKey(group, logoChoice, partnerLogoPath)}/${fileName}`,
+    cachePath: `_bundles/${group.id}/${cacheKey(group, logoChoice, partnerLogoPath, scope)}/${fileName}`,
   };
 }

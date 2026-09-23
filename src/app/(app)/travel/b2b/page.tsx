@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { B2bUploadButton, ReplaceB2bPackButton } from "@/components/travel/b2b-upload";
 import { GroupRowActions } from "@/components/travel/groups-manager";
-import { GroupVisaPanel } from "@/components/travel/group-visa";
+import { DownloadBundleButton, GroupVisaPanel } from "@/components/travel/group-visa";
 import { GroupDocuments } from "@/components/travel/group-documents";
 import { PartnerLogosCard } from "@/components/travel/partner-logos";
 import { BUCKETS, packageDetail } from "@/lib/constants";
@@ -130,9 +130,21 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
                 <div className="mt-3 flex items-center justify-between gap-2">
                   {g.pack_path ? (
                     <span className="flex items-center gap-3">
-                      <a href={`/api/groups/${g.id}/bundle`} title={g.visa_status === "approved" && g.visa_path ? `Cover with the ${g.partner_code} logo, then the visa and the pack` : "Mandarin Roots cover with the travel details, then the partner's pack"} className={buttonVariants({ size: "sm" })}>
-                        <Download /> {g.visa_status === "approved" && g.visa_path ? `Download for ${g.partner_code}` : "Download for visa application"}
-                      </a>
+                      <DownloadBundleButton
+                        variant="default"
+                        group={{
+                          id: g.id,
+                          source: g.source,
+                          partner_code: g.partner_code,
+                          visa_status: g.visa_status,
+                          visa_applied_at: g.visa_applied_at,
+                          visa_uploaded_at: g.visa_uploaded_at,
+                          visa_path: g.visa_path,
+                          pack_path: g.pack_path,
+                          traveller_count: Array.isArray(g.travellers) ? Number(g.travellers[0]?.count ?? 0) : 0,
+                          partner_has_logo: g.partner_code ? (partnerHasLogo.get(g.partner_code) ?? false) : false,
+                        }}
+                      />
                       <a href={`/api/groups/${g.id}/b2b-pack`} className="text-xs text-mr-muted hover:text-mr-ink hover:underline">
                         Original file
                       </a>
