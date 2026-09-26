@@ -13,6 +13,7 @@ import { PDFDocument } from "pdf-lib";
 import { config } from "dotenv";
 import { launchBrowser, htmlToPdf } from "../src/lib/pdf/browser";
 import { buildGroupPackPdf, buildTravelPackPdf } from "../src/lib/pdf/travel-pack";
+import { insertFrontPages } from "../src/lib/pdf/group-bundle";
 import { groupPackReference } from "../src/lib/queries/travel";
 import { parseB2bCode } from "../src/lib/travel/b2b-code";
 import { renderInvoiceHtml } from "../src/lib/pdf/invoice-template";
@@ -170,6 +171,13 @@ async function main() {
     assert(bundle.pageCount === 3, `b2b bundle = cover + visa + pack = 3 pages (got ${bundle.pageCount})`);
     await writeFile(path.join(OUT_DIR, "b2b-bundle-check.pdf"), bundle.bytes);
     console.log(`wrote ${path.join(OUT_DIR, "b2b-bundle-check.pdf")}`);
+
+    // Front pages inserted into a partner pack. A foreign PDF keeps every page; a pack this app compiled
+    // (uploaded as the partner's file) loses its own cover so the download has one cover, not two.
+    const foreign = await insertFrontPages(new Uint8Array(parPdf), bundle.bytes, { title: "t", author: "a" });
+    assert(!foreign.droppedOwnCover && foreign.pageCount === bundle.pageCount + 1, `partner-made pack keeps all pages (${foreign.pageCount})`);
+    const ours = await insertFrontPages(groupBuilt.bytes, bundle.bytes, { title: "t", author: "a" });
+    assert(ours.droppedOwnCover && ours.pageCount === bundle.pageCount + groupBuilt.pageCount - 1, `app-compiled pack loses its duplicate cover (${ours.pageCount})`);
   } finally {
     await browser.close();
   }

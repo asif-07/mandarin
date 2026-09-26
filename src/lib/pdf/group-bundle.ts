@@ -73,6 +73,36 @@ async function loadGroup(supabase: Client, groupId: string) {
  */
 export type BundleScope = "all" | "visa";
 
+/** True when a PDF was produced by this app's pack compiler (its Creator is set in travel-pack.ts). */
+function isAppCompiledPack(doc: PDFDocument): boolean {
+  try {
+    return (doc.getCreator() ?? "").startsWith("Mandarin Roots operations platform");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Put the freshly built front pages (cover, visa, group documents) in front
+ * of the partner's own pack without copying the pack's pages. A pack that was
+ * compiled by this app (our own group pack, downloaded and then uploaded as
+ * the partner's file) already starts with a Mandarin Roots cover, so that
+ * first page is dropped: the download carries one cover, not two.
+ */
+export async function insertFrontPages(partnerPackBytes: Uint8Array, frontBytes: Uint8Array, meta: { title: string; author: string }): Promise<{ bytes: Uint8Array; pageCount: number; droppedOwnCover: boolean }> {
+  // updateMetadata: false keeps the file's own Creator so an app-compiled pack can be recognised.
+  const base = await PDFDocument.load(partnerPackBytes, { ignoreEncryption: true, updateMetadata: false });
+  const droppedOwnCover = isAppCompiledPack(base) && base.getPageCount() > 1;
+  if (droppedOwnCover) base.removePage(0);
+  const frontDoc = await PDFDocument.load(frontBytes);
+  const pages = await base.copyPages(frontDoc, frontDoc.getPageIndices());
+  pages.forEach((p, i) => base.insertPage(i, p));
+  base.setTitle(meta.title);
+  base.setAuthor(meta.author);
+  base.setModificationDate(new Date());
+  return { bytes: await base.save({ useObjectStreams: false }), pageCount: base.getPageCount(), droppedOwnCover };
+}
+
 function cacheKey(group: GroupRow, logo: BundleLogo, partnerLogoPath: string | null, scope: BundleScope = "all"): string {
   const docs = group.travellers
     .flatMap((t) => t.traveller_documents.filter((d) => !d.deleted_at).map((d) => `${t.id}:${d.id}:${d.uploaded_at}`))
@@ -85,7 +115,7 @@ function cacheKey(group: GroupRow, logo: BundleLogo, partnerLogoPath: string | n
   const h = createHash("sha1");
   // travel_groups has no updated_at, so the cover's own fields are hashed directly.
   const cover = [group.group_code, group.label, group.guide_name, group.reference_prefix, group.entry_port, group.exit_port, group.travel_date, group.travel_end_date, group.partner_code, group.pax_expected, group.package_tier, group.hotel_name, group.hotel_stars, group.transit_location, group.visa_applied_at];
-  h.update(JSON.stringify({ v: 3, logo, scope, partnerLogoPath, cover, pack: group.pack_uploaded_at, visa: group.visa_uploaded_at, visa_status: group.visa_status, docs, groupDocs, travellers }));
+  h.update(JSON.stringify({ v: 4, logo, scope, partnerLogoPath, cover, pack: group.pack_uploaded_at, visa: group.visa_uploaded_at, visa_status: group.visa_status, docs, groupDocs, travellers }));
   return h.digest("hex").slice(0, 20);
 }
 
@@ -239,14 +269,10 @@ export async function buildGroupBundle(supabase: Client, browser: Browser, group
   let bytes = front.bytes;
   let pageCount = front.pageCount;
   if (isB2b && partnerPackBytes) {
-    const base = await PDFDocument.load(partnerPackBytes, { ignoreEncryption: true });
-    const frontDoc = await PDFDocument.load(front.bytes);
-    const pages = await base.copyPages(frontDoc, frontDoc.getPageIndices());
-    pages.forEach((p, i) => base.insertPage(i, p));
-    base.setTitle(`${reference} - Group Travel Pack`);
-    base.setAuthor(brandName && logoChoice !== "mr" ? brandName : "Mandarin Roots");
-    bytes = await base.save({ useObjectStreams: false });
-    pageCount = base.getPageCount();
+    const merged = await insertFrontPages(partnerPackBytes, front.bytes, { title: `${reference} - Group Travel Pack`, author: brandName && logoChoice !== "mr" ? brandName : "Mandarin Roots" });
+    bytes = merged.bytes;
+    pageCount = merged.pageCount;
+    if (merged.droppedOwnCover) warnings.push("The uploaded partner pack was compiled by this app, so its own cover page was left out");
   }
 
   const fileName = `${reference}${visaOnly ? "-VISA" : group.visa_path && opts.includeVisa !== false ? "-WITH-VISA" : ""}.pdf`;
