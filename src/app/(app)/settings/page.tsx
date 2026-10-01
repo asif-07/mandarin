@@ -68,6 +68,18 @@ export default async function SettingsPage() {
 
         <Card>
           <CardHeader>
+            <CardTitle>Voucher scanner partners</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-mr-body">
+            <p>The Hong Kong ground partners who verify transfer vouchers with the China Travel Support web scanner. Each partner gets an access key; the scanner lives at <span className="font-mono text-xs">/scan</span>.</p>
+            <Link href="/settings/scanner-partners" className={buttonVariants({ variant: "outline", size: "sm", className: "mt-3" })}>
+              Manage scanner partners
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Team accounts</CardTitle>
           </CardHeader>
           <CardContent>

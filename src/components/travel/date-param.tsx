@@ -9,12 +9,12 @@ import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** Date picker bound to ?date= plus quick links to neighbouring dates that have groups. */
-export function TravelDateNav({ date, prev, next, nearby }: { date: string; prev: string | null; next: string | null; nearby: string[] }) {
+export function TravelDateNav({ date, prev, next, nearby, basePath = "/travel" }: { date: string; prev: string | null; next: string | null; nearby: string[]; basePath?: string }) {
   const { set } = useUrlFilters();
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Link
-        href={prev ? `/travel?date=${prev}` : "#"}
+        href={prev ? `${basePath}?date=${prev}` : "#"}
         aria-disabled={!prev}
         aria-label="Previous travel date"
         className={cn(buttonVariants({ variant: "outline", size: "icon" }), !prev && "pointer-events-none opacity-40")}
@@ -23,7 +23,7 @@ export function TravelDateNav({ date, prev, next, nearby }: { date: string; prev
       </Link>
       <DatePicker value={date} onChange={(v) => set({ date: v })} className="w-[170px]" />
       <Link
-        href={next ? `/travel?date=${next}` : "#"}
+        href={next ? `${basePath}?date=${next}` : "#"}
         aria-disabled={!next}
         aria-label="Next travel date"
         className={cn(buttonVariants({ variant: "outline", size: "icon" }), !next && "pointer-events-none opacity-40")}
@@ -34,7 +34,7 @@ export function TravelDateNav({ date, prev, next, nearby }: { date: string; prev
         {nearby.map((d) => (
           <Link
             key={d}
-            href={`/travel?date=${d}`}
+            href={`${basePath}?date=${d}`}
             className={cn(
               "rounded-md px-2 py-1 text-xs",
               d === date ? "bg-mr-ink text-white" : "bg-mr-surface text-mr-body hover:text-mr-ink",
@@ -63,9 +63,9 @@ const VIEWS: { value: RangeView; label: string }[] = [
  * previous / next for the chosen unit, a jump to the current period, and a
  * month picker for any month.
  */
-export function TravelRangeNav({ view, date, today, prev, next, nearby, rangeLabel }: { view: RangeView; date: string; today: string; prev: string | null; next: string | null; nearby: string[]; rangeLabel: string }) {
+export function TravelRangeNav({ view, date, today, prev, next, nearby, rangeLabel, basePath = "/travel" }: { view: RangeView; date: string; today: string; prev: string | null; next: string | null; nearby: string[]; rangeLabel: string; basePath?: string }) {
   const { set } = useUrlFilters();
-  const href = (v: RangeView, d: string) => `/travel?view=${v}&date=${d}`;
+  const href = (v: RangeView, d: string) => `${basePath}?view=${v}&date=${d}`;
   const unit = view === "week" ? "week" : view === "month" ? "month" : view === "quarter" ? "3 months" : "date";
   if (view === "all") {
     return (

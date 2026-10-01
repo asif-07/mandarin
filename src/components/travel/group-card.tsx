@@ -16,8 +16,11 @@ import { ConnectInvoiceButton } from "@/components/invoices/connect-invoice-butt
 import { INVOICE_STATUSES, TRAVELLER_STATUSES, labelFor, packageDetail } from "@/lib/constants";
 import { docCompleteness, groupCoverage, groupPackReference, groupRef, type DocStub } from "@/lib/queries/travel";
 import { groupInvoiceState, groupIssues, groupPax, groupTiming, type Balance } from "@/lib/queries/group-status";
-import { formatDateRange, formatMoney } from "@/lib/format";
+import { formatDate, formatDateRange, formatDateTime, formatMoney } from "@/lib/format";
 import { serviceSummary } from "@/lib/services/format";
+import { IssueVoucherButton } from "@/components/travel/transfer-voucher-dialog";
+import { CancelVoucherButton, TicketLink } from "@/components/travel/voucher-row-actions";
+import { TRANSFER_MODES, VOUCHER_STATUSES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export type GroupCardGroup = {
@@ -47,6 +50,8 @@ export type GroupCardGroup = {
   group_ref: string | null;
   /** Services from the Product / Service master attached to this group (details entered once here). */
   group_services?: { id: string; service_name: string; kind: string; from_place: string | null; to_place: string | null; service_date: string | null; pax: number | null; transfer_mode: string | null; notes: string | null; quantity: number | string; rate: number | string | null; currency: string | null; position: number }[] | null;
+  /** Transfer vouchers issued from this group (QR-verified by the ground partner). */
+  transfer_vouchers?: { id: string; voucher_no: string; status: string; from_place: string; to_place: string; transfer_date: string; pax: number; transfer_mode: string | null; group_service_id: string | null; ticket_file_name: string | null; ticket_uploaded_at: string | null; redeemed_at: string | null; redeemed_partner: { code: string; name: string } | null }[] | null;
   invoices: { id: string; invoice_number: string; total: number | string; currency: string; status: string }[];
   group_documents: (GroupDocView & { deleted_at: string | null })[];
   travellers: { id: string; full_name: string; status: string; package_tier: string | null; passport_number: string | null; visa_reference: string | null; traveller_documents: DocStub[] }[];
@@ -247,15 +252,74 @@ export function GroupCard({ g, balances, partnerHasLogo, defaultOpen = false, ex
                         <p className="truncate text-xs text-mr-muted">{serviceSummary(s) || "No details"}</p>
                       </div>
                       {s.rate !== null && s.rate !== undefined && Number(s.rate) > 0 && <span className="tnum text-xs text-mr-body">{formatMoney(Number(s.rate), s.currency ?? "USD")}</span>}
-                      {s.kind === "airport_transfer" && (
-                        <a href={`/api/groups/${g.id}/voucher?service=${s.id}`} className={buttonVariants({ variant: "outline", size: "xs" })} title="Download the transfer voucher for this transfer">
-                          <Ticket /> Voucher TV{String(transferNo).padStart(2, "0")}
-                        </a>
-                      )}
+                      {s.kind === "airport_transfer" &&
+                        (() => {
+                          const issued = (g.transfer_vouchers ?? []).filter((v) => v.group_service_id === s.id && v.status !== "cancelled");
+                          return issued.length ? (
+                            <span className="flex items-center gap-1">
+                              {issued.map((v) => (
+                                <a key={v.id} href={`/api/vouchers/${v.id}/pdf`} className={buttonVariants({ variant: "outline", size: "xs" })} title={`${v.voucher_no} · ${v.status}`}>
+                                  <Ticket /> {v.voucher_no.slice(-4)} PDF
+                                </a>
+                              ))}
+                            </span>
+                          ) : (
+                            <IssueVoucherButton
+                              groupId={g.id}
+                              groupRef={g.group_ref ?? groupRef(g)}
+                              label={`Create voucher ${String(transferNo).padStart(2, "0")}`}
+                              defaults={{ group_service_id: s.id, from_place: s.from_place ?? "Hong Kong International Airport", to_place: s.to_place ?? "", transfer_date: s.service_date ?? g.travel_date, pax: s.pax ?? pax, transfer_mode: s.transfer_mode, notes: s.notes ?? "" }}
+                            />
+                          );
+                        })()}
                     </li>
                   );
                 })}
             </ul>
+          </div>
+        )}
+
+        {/* Transfer vouchers: the CRM record behind each QR; the PDF is what the customer carries */}
+        {((g.transfer_vouchers ?? []).length > 0 || !(g.group_services ?? []).some((s) => s.kind === "airport_transfer")) && (
+          <div>
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <p className="micro-label">Transfer vouchers</p>
+              <IssueVoucherButton
+                groupId={g.id}
+                groupRef={g.group_ref ?? groupRef(g)}
+                label="Create transfer voucher"
+                defaults={{ group_service_id: null, from_place: "Hong Kong International Airport", to_place: g.entry_port && !/hong kong/i.test(g.entry_port) ? g.entry_port : "Guangzhou", transfer_date: g.travel_date, pax, transfer_mode: null, notes: "" }}
+              />
+            </div>
+            {(g.transfer_vouchers ?? []).length === 0 ? (
+              <p className="text-xs text-mr-muted">None issued. A voucher pulls the group&rsquo;s details, prints a unique QR and is redeemed once by the ground partner.</p>
+            ) : (
+              <ul className="divide-y divide-mr-line">
+                {[...(g.transfer_vouchers ?? [])]
+                  .sort((a, b) => a.voucher_no.localeCompare(b.voucher_no))
+                  .map((v) => (
+                    <li key={v.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-mr-ink">
+                          <span className="font-mono text-xs">{v.voucher_no}</span>
+                        </p>
+                        <p className="truncate text-xs text-mr-muted">
+                          {v.from_place} → {v.to_place} · {formatDate(v.transfer_date)} · {v.pax} pax{v.transfer_mode ? ` · ${labelFor(TRANSFER_MODES, v.transfer_mode)}` : ""}
+                          {v.redeemed_at ? ` · redeemed ${formatDateTime(v.redeemed_at)}${v.redeemed_partner ? ` by ${v.redeemed_partner.code}` : ""}` : ""}
+                        </p>
+                      </div>
+                      <Chip tone={v.status === "redeemed" ? "success" : v.status === "cancelled" ? "muted" : "ink"}>{labelFor(VOUCHER_STATUSES, v.status)}</Chip>
+                      {v.ticket_uploaded_at ? <TicketLink voucherId={v.id} fileName={v.ticket_file_name} /> : v.status === "active" ? <span className="text-[11px] text-mr-muted">no ticket yet</span> : null}
+                      {v.status !== "cancelled" && (
+                        <a href={`/api/vouchers/${v.id}/pdf`} className={buttonVariants({ variant: "outline", size: "xs" })} title="Customer-facing PDF with the QR">
+                          <Ticket /> PDF
+                        </a>
+                      )}
+                      {v.status === "active" && <CancelVoucherButton voucherId={v.id} voucherNo={v.voucher_no} />}
+                    </li>
+                  ))}
+              </ul>
+            )}
           </div>
         )}
 

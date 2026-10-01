@@ -11,6 +11,7 @@ const TABS = [
   { href: "/travel/b2b", label: "B2B groups" },
   { href: "/travel/calendar", label: "Calendar" },
   { href: "/travel/groups", label: "Groups" },
+  { href: "/travel/transfers", label: "Transfers" },
 ];
 
 export function TravelNav() {

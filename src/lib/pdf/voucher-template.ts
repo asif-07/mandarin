@@ -1,4 +1,4 @@
-import { COMPANY, TRANSFER_MODES, labelFor } from "@/lib/constants";
+import { COMPANY, GROUND_BRAND, TRANSFER_MODES, labelFor } from "@/lib/constants";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { FONT_STACK } from "@/lib/pdf/fonts";
 import { escapeHtml, type TemplateAssets } from "@/lib/pdf/invoice-template";
@@ -22,11 +22,26 @@ export type VoucherData = {
   notes: string | null;
   travellers: { full_name: string; passport_number: string | null }[];
   generated_at: Date;
+  /** active | redeemed | cancelled; anything but active is stamped across the voucher. */
+  status?: string;
+  /** Data URI of the QR code (the secure token URL); omitted on previews. */
+  qr_src?: string | null;
+  /** Partner name shown top-left when the group is B2B and no logo is on file. */
+  brand_name?: string | null;
 };
 
-/** One-page transfer voucher, in the pack cover's design language, printed from a group's airport transfer. */
+/**
+ * One-page transfer voucher in the pack cover's design language. Branding
+ * follows the group: the partner's logo (or name) for a B2B group, Mandarin
+ * Roots for our own clients; China Travel Support is the neutral ground brand
+ * in the footer. The QR carries only the secure token: the partner scanner
+ * fetches the live record, the printed details are for the customer.
+ */
 export function renderTransferVoucherHtml(data: VoucherData, assets: Pick<TemplateAssets, "logoSrc" | "fontCss">): string {
+  const status = data.status ?? "active";
   const rows: [string, string][] = [
+    ["Voucher No.", data.voucher_no],
+    ["Status", status === "active" ? "ACTIVE" : status.toUpperCase()],
     ["Service", data.service_name],
     ["From", data.from_place ?? "—"],
     ["To", data.to_place ?? "—"],
@@ -69,7 +84,7 @@ ${assets.fontCss}
   .title .word { font-size: 16pt; font-weight: 700; letter-spacing: 4.6px; line-height: 1.15; margin-right: -4.6px; }
   .title .ref { font-size: 6.34pt; letter-spacing: 1.85px; color: #8A8A8A; margin-top: 3.5px; margin-right: -1.85px; }
   .rule { border-top: 1.6px solid #1A1A1A; margin-top: 21px; }
-  .route { margin-top: 40px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .route { margin-top: 40px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; width: 68%; }
   .route .place { font-size: 20pt; font-weight: 700; line-height: 1.2; }
   .route .arrow { font-size: 16pt; color: #E8192C; }
   .when { margin-top: 6px; font-size: 10pt; color: #5C5C5C; }
@@ -90,19 +105,26 @@ ${assets.fontCss}
   .present { margin-top: 24px; font-size: 7.49pt; color: #5C5C5C; }
   .footer { margin-top: auto; display: flex; justify-content: space-between; font-size: 6.34pt; color: #8A8A8A; border-top: 1px solid #CFCFCF; padding-top: 8px; }
   .bar { position: absolute; left: 0; top: 0; width: 6px; height: 100%; background: #E8192C; }
+  .header .brand { font-size: 14pt; font-weight: 700; letter-spacing: 0.5px; padding-top: 6px; min-height: 24px; }
+  .qr { position: absolute; right: 40px; top: 120px; width: 150px; text-align: center; }
+  .qr img { width: 150px; height: 150px; display: block; image-rendering: pixelated; }
+  .qr-note { font-size: 5.76pt; letter-spacing: 0.12em; text-transform: uppercase; color: #8A8A8A; margin-top: 4px; line-height: 1.4; }
+  .stamp { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%) rotate(-18deg); font-size: 44pt; font-weight: 700; letter-spacing: 8px; color: rgba(232, 25, 44, 0.18); border: 4px solid rgba(232, 25, 44, 0.18); padding: 6px 24px; border-radius: 10px; }
 </style>
 </head>
 <body>
 <div class="page">
   <div class="bar"></div>
   <div class="header">
-    <img class="logo" src="${assets.logoSrc}" alt="Mandarin Roots" />
+    ${assets.logoSrc ? `<img class="logo" src="${assets.logoSrc}" alt="${escapeHtml(data.brand_name ?? "Mandarin Roots")}" />` : `<div class="brand">${escapeHtml(data.brand_name ?? "")}</div>`}
     <div class="title">
       <div class="word">TRANSFER VOUCHER</div>
       <div class="ref">${escapeHtml(data.voucher_no)}</div>
     </div>
   </div>
   <div class="rule"></div>
+  ${status !== "active" ? `<div class="stamp">${escapeHtml(status.toUpperCase())}</div>` : ""}
+  ${data.qr_src ? `<div class="qr"><img src="${data.qr_src}" alt="Voucher QR" /><div class="qr-note">Scan by authorised<br/>${escapeHtml(GROUND_BRAND.name)} partner</div></div>` : ""}
   <div class="route">
     <span class="place">${escapeHtml(data.from_place ?? "—")}</span>
     <span class="arrow">→</span>
@@ -124,9 +146,9 @@ ${assets.fontCss}
       : ""
   }
   ${data.notes ? `<div class="notes"><div class="micro">Notes</div><div class="body">${escapeHtml(data.notes)}</div></div>` : ""}
-  <div class="present">Please present this voucher to the driver or coach representative. For assistance call ${escapeHtml(COMPANY.phone)}.</div>
+  <div class="present">Please present this voucher at the meeting point. The ground partner scans the QR code to verify it; it can be used once. For assistance call ${escapeHtml(COMPANY.phone)}.</div>
   <div class="footer">
-    <span>${escapeHtml(COMPANY.name)} · ${escapeHtml(COMPANY.addressLine3)} · ${escapeHtml(COMPANY.phone)}</span>
+    <span>Ground service by ${escapeHtml(GROUND_BRAND.name)}${data.brand_name ? "" : ` · ${escapeHtml(COMPANY.name)} · ${escapeHtml(COMPANY.phone)}`}</span>
     <span>${escapeHtml(data.voucher_no)}</span>
   </div>
 </div>

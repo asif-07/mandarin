@@ -1116,6 +1116,42 @@ export type Database = {
           },
         ]
       }
+      scanner_partners: {
+        Row: {
+          access_key_hash: string
+          active: boolean
+          code: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          last_seen_at: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          access_key_hash: string
+          active?: boolean
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          last_seen_at?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          access_key_hash?: string
+          active?: boolean
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          last_seen_at?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           active: boolean
@@ -1154,6 +1190,116 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      transfer_vouchers: {
+        Row: {
+          cancelled_at: string | null
+          created_at: string | null
+          from_place: string
+          group_id: string
+          group_service_id: string | null
+          id: string
+          issued_at: string
+          issued_by: string | null
+          notes: string | null
+          pax: number
+          redeemed_at: string | null
+          redeemed_partner_id: string | null
+          status: string
+          ticket_file_name: string | null
+          ticket_mime: string | null
+          ticket_partner_id: string | null
+          ticket_path: string | null
+          ticket_uploaded_at: string | null
+          to_place: string
+          token: string
+          transfer_date: string
+          transfer_mode: string | null
+          updated_at: string | null
+          voucher_no: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          created_at?: string | null
+          from_place: string
+          group_id: string
+          group_service_id?: string | null
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          notes?: string | null
+          pax: number
+          redeemed_at?: string | null
+          redeemed_partner_id?: string | null
+          status?: string
+          ticket_file_name?: string | null
+          ticket_mime?: string | null
+          ticket_partner_id?: string | null
+          ticket_path?: string | null
+          ticket_uploaded_at?: string | null
+          to_place: string
+          token: string
+          transfer_date: string
+          transfer_mode?: string | null
+          updated_at?: string | null
+          voucher_no: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          created_at?: string | null
+          from_place?: string
+          group_id?: string
+          group_service_id?: string | null
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          notes?: string | null
+          pax?: number
+          redeemed_at?: string | null
+          redeemed_partner_id?: string | null
+          status?: string
+          ticket_file_name?: string | null
+          ticket_mime?: string | null
+          ticket_partner_id?: string | null
+          ticket_path?: string | null
+          ticket_uploaded_at?: string | null
+          to_place?: string
+          token?: string
+          transfer_date?: string
+          transfer_mode?: string | null
+          updated_at?: string | null
+          voucher_no?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transfer_vouchers_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "travel_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_vouchers_group_service_id_fkey"
+            columns: ["group_service_id"]
+            isOneToOne: false
+            referencedRelation: "group_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_vouchers_ticket_partner_id_fkey"
+            columns: ["ticket_partner_id"]
+            isOneToOne: false
+            referencedRelation: "scanner_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_vouchers_redeemed_partner_id_fkey"
+            columns: ["redeemed_partner_id"]
+            isOneToOne: false
+            referencedRelation: "scanner_partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       travel_groups: {
         Row: {

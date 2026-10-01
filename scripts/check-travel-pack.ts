@@ -10,6 +10,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { PDFDocument } from "pdf-lib";
+import QRCode from "qrcode";
 import { config } from "dotenv";
 import { launchBrowser, htmlToPdf } from "../src/lib/pdf/browser";
 import { buildGroupPackPdf, buildTravelPackPdf } from "../src/lib/pdf/travel-pack";
@@ -205,6 +206,8 @@ async function main() {
             { full_name: "Fatima Al Mansoori", passport_number: null },
           ],
           generated_at: new Date("2026-10-01T10:00:00Z"),
+          status: "active",
+          qr_src: await QRCode.toDataURL("https://example.com/scan/v/test-token", { margin: 1, width: 300 }),
         },
         await loadTemplateAssets(),
       ),

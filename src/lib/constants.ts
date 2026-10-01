@@ -252,7 +252,17 @@ export const BUCKETS = {
   travelPacks: "travel-packs",
   invoices: "invoices",
   partnerLogos: "partner-logos",
+  transferTickets: "transfer-tickets",
 } as const;
+
+/** Neutral ground-service brand printed on transfer vouchers and the partner scanner. */
+export const GROUND_BRAND = { name: "China Travel Support", short: "CTS" } as const;
+
+export const VOUCHER_STATUSES = [
+  { value: "active", label: "Active" },
+  { value: "redeemed", label: "Redeemed" },
+  { value: "cancelled", label: "Cancelled" },
+] as const satisfies readonly Option[];
 
 /** Group visa lifecycle: pack downloaded = applied; visa page uploaded = approved. */
 export const VISA_STATUSES = [

@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login"];
+// /scan and /api/scan are the partner scanner: public pages that check the
+// partner's own access key server-side instead of a staff session.
+const PUBLIC_PATHS = ["/login", "/scan", "/api/scan"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
