@@ -529,6 +529,84 @@ export type Database = {
           },
         ]
       }
+      group_services: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          from_place: string | null
+          group_id: string
+          id: string
+          kind: string
+          notes: string | null
+          pax: number | null
+          position: number
+          quantity: number
+          rate: number | null
+          service_date: string | null
+          service_id: string | null
+          service_name: string
+          to_place: string | null
+          transfer_mode: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          from_place?: string | null
+          group_id: string
+          id?: string
+          kind?: string
+          notes?: string | null
+          pax?: number | null
+          position?: number
+          quantity?: number
+          rate?: number | null
+          service_date?: string | null
+          service_id?: string | null
+          service_name: string
+          to_place?: string | null
+          transfer_mode?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          from_place?: string | null
+          group_id?: string
+          id?: string
+          kind?: string
+          notes?: string | null
+          pax?: number | null
+          position?: number
+          quantity?: number
+          rate?: number | null
+          service_date?: string | null
+          service_id?: string | null
+          service_name?: string
+          to_place?: string | null
+          transfer_mode?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_services_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "travel_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           amount: number
@@ -1037,6 +1115,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      services: {
+        Row: {
+          active: boolean
+          created_at: string | null
+          currency: string | null
+          default_rate: number | null
+          description: string | null
+          id: string
+          kind: string
+          name: string
+          sort: number
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string | null
+          currency?: string | null
+          default_rate?: number | null
+          description?: string | null
+          id?: string
+          kind?: string
+          name: string
+          sort?: number
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string | null
+          currency?: string | null
+          default_rate?: number | null
+          description?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          sort?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       travel_groups: {
         Row: {

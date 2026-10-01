@@ -32,6 +32,21 @@ export const ENQUIRY_TYPES = [
 export type EnquiryType = (typeof ENQUIRY_TYPES)[number]["value"];
 
 /** Package options, used on leads and travellers with enquiry type "package". */
+/** Product / Service master kinds. The kind decides which details a group asks for. */
+export const SERVICE_KINDS = [
+  { value: "airport_transfer", label: "Airport transfer", short: "Transfer" },
+  { value: "general", label: "General service", short: "Service" },
+] as const satisfies readonly Option[];
+export type ServiceKind = (typeof SERVICE_KINDS)[number]["value"];
+
+export const TRANSFER_MODES = [
+  { value: "private_chauffeur", label: "Private Chauffeur" },
+  { value: "seat_in_coach", label: "Seat in Coach" },
+  { value: "private_bus", label: "Private Bus" },
+  { value: "other", label: "Other" },
+] as const satisfies readonly Option[];
+export type TransferMode = (typeof TRANSFER_MODES)[number]["value"];
+
 export const PACKAGE_TIERS = [
   { value: "visa_only", label: "Visa Only", short: "Visa" },
   { value: "visa_par", label: "Visa + PAR", short: "Visa+PAR" },

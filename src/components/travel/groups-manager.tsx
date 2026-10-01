@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Layers, Loader2, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react";
+import { Layers, Loader2, Pencil, Plus, Trash2, UserPlus, Wrench, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addTravellersToGroup, assignTravellersToGroup, type TravellerPick } from "@/lib/actions/travellers";
+import { listGroupServices, listServices, saveGroupServices, type GroupServiceRow, type ServiceRow } from "@/lib/actions/services";
+import { serviceSummary } from "@/lib/services/format";
 import { listPartners, nextGroupCodeFor, type PartnerRow } from "@/lib/actions/travel-groups";
 import { TravellerCombobox } from "@/components/travel/traveller-combobox";
-import { PACKAGE_TIERS, tierHasHotel, tierHasTransit, tierNeedsStars } from "@/lib/constants";
+import { PACKAGE_TIERS, SERVICE_KINDS, TRANSFER_MODES, labelFor, tierHasHotel, tierHasTransit, tierNeedsStars } from "@/lib/constants";
 import { groupRef } from "@/lib/queries/travel";
 import { TransitSelect } from "@/components/travel/transit-select";
 import { HotelStarsSelect } from "@/components/travel/hotel-stars-select";
@@ -65,7 +67,71 @@ type Editing = {
   notes: string;
   travellers: QuickRow[];
   existing: TravellerPick[];
+  /** Services from the Product / Service master with their details, entered once here. */
+  services: ServiceDraft[];
 };
+
+/** One service row in the dialog; strings so inputs stay controlled, parsed on save. */
+export type ServiceDraft = {
+  id: string | null;
+  service_id: string | null;
+  service_name: string;
+  kind: string;
+  from_place: string;
+  to_place: string;
+  service_date: string;
+  pax: string;
+  transfer_mode: string | null;
+  notes: string;
+  quantity: string;
+  rate: string;
+  currency: string | null;
+};
+
+export function serviceDraftFromRow(r: GroupServiceRow): ServiceDraft {
+  return {
+    id: r.id,
+    service_id: r.service_id,
+    service_name: r.service_name,
+    kind: r.kind,
+    from_place: r.from_place ?? "",
+    to_place: r.to_place ?? "",
+    service_date: r.service_date ?? "",
+    pax: r.pax ? String(r.pax) : "",
+    transfer_mode: r.transfer_mode,
+    notes: r.notes ?? "",
+    quantity: String(r.quantity ?? 1),
+    rate: r.rate === null ? "" : String(r.rate),
+    currency: r.currency,
+  };
+}
+
+function serviceDraftFromMaster(svc: ServiceRow, group: { travel_date: string; pax: number | null }): ServiceDraft {
+  return {
+    id: null,
+    service_id: svc.id,
+    service_name: svc.name,
+    kind: svc.kind,
+    from_place: "",
+    to_place: "",
+    service_date: group.travel_date,
+    pax: group.pax ? String(group.pax) : "",
+    transfer_mode: null,
+    notes: "",
+    quantity: "1",
+    rate: svc.default_rate === null ? "" : String(svc.default_rate),
+    currency: svc.currency,
+  };
+}
+
+/** Save the dialog's service rows after the group exists. */
+async function saveServices(groupId: string, rows: ServiceDraft[]) {
+  const res = await saveGroupServices(
+    groupId,
+    rows.map((r) => ({ ...r, id: r.id ?? undefined, service_id: r.service_id ?? undefined, pax: r.pax || null, rate: r.rate || null, quantity: r.quantity || 1, service_date: r.service_date || null })),
+  );
+  if (!res.ok) toast.error(`Services: ${res.error}`, { duration: 8000 });
+}
 
 type QuickRow = { full_name: string; passport_number: string; phone: string; nationality: string };
 const emptyRow = (): QuickRow => ({ full_name: "", passport_number: "", phone: "", nationality: "" });
@@ -137,6 +203,7 @@ export function GroupsToolbar() {
       if (!result.ok) return void toast.error(result.error);
       const assigned = (result.data as { group_code?: string }).group_code ?? single.group_code;
       toast.success(single.id ? "Group updated" : `${assigned} created · ID ${groupRef({ ...single, group_code: assigned, source: "internal" })}`, { description: single.travellers.some((r) => r.full_name.trim()) || single.existing.length ? undefined : "Add travellers any time with + Add traveller on the group card." });
+      await saveServices(result.data.id, single.services);
       await saveQuickRows(result.data.id, single.travellers);
       await saveExisting(result.data.id, single.existing);
       setSingle(null);
@@ -169,7 +236,7 @@ export function GroupsToolbar() {
       </Button>
       <Button
         onClick={() =>
-          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, transit_location: null, partner_code: null, label: "", guide_name: "", notes: "", travellers: [], existing: [] })
+          setSingle({ travel_date: today, travel_end_date: today, group_code: "G01", reference_prefix: "MR144", entry_port: "", exit_port: "", package_tier: null, hotel_name: "", hotel_stars: null, transit_location: null, partner_code: null, label: "", guide_name: "", notes: "", travellers: [], existing: [], services: [] })
         }
       >
         <Plus /> New group
@@ -277,10 +344,15 @@ function GroupDialog({
   const latest = useRef(value);
   latest.current = value;
   const [partners, setPartners] = useState<PartnerRow[] | null>(null);
+  const [master, setMaster] = useState<ServiceRow[] | null>(null);
   useEffect(() => {
     if (!value || partners) return;
     listPartners().then(setPartners).catch(() => setPartners([]));
   }, [value, partners]);
+  useEffect(() => {
+    if (!value || master) return;
+    listServices(true).then(setMaster).catch(() => setMaster([]));
+  }, [value, master]);
   useEffect(() => {
     if (!isNew || !travelDate) return;
     let live = true;
@@ -403,6 +475,118 @@ function GroupDialog({
               <Label htmlFor="g_notes">Notes</Label>
               <Input id="g_notes" value={value.notes} onChange={(e) => onChange({ ...value, notes: e.target.value })} />
             </div>
+            <div className="sm:col-span-2 space-y-2 rounded-lg border border-mr-line bg-mr-surface/40 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label htmlFor="g_service_add" className="flex items-center gap-1.5">
+                  <Wrench className="size-3.5" /> Services (from the Product / Service master)
+                </Label>
+                <Select
+                  value=""
+                  onValueChange={(id) => {
+                    const svc = (master ?? []).find((m) => m.id === id);
+                    if (!svc) return;
+                    const pax = value.existing.length + value.travellers.filter((r) => r.full_name.trim()).length || null;
+                    onChange({ ...value, services: [...value.services, serviceDraftFromMaster(svc, { travel_date: value.travel_date, pax })] });
+                  }}
+                >
+                  <SelectTrigger id="g_service_add" className="h-8 w-full rounded-lg sm:w-64">
+                    <SelectValue placeholder={master === null ? "Loading…" : master.length ? "+ Add a service" : "No services in the master yet"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(master ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                        <span className="ml-1 text-mr-muted">· {labelFor(SERVICE_KINDS, m.kind)}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {value.services.length === 0 ? (
+                <p className="text-xs text-mr-muted">Enter each service once here. The invoice takes the service name and details, and every airport transfer gets its own voucher. Manage the list under Settings.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {value.services.map((sv, i) => {
+                    const set = (patch: Partial<ServiceDraft>) => onChange({ ...value, services: value.services.map((r, j) => (j === i ? { ...r, ...patch } : r)) });
+                    const sid = `g_svc_${i}`;
+                    return (
+                      <li key={sv.id ?? `new-${i}`} className="rounded-md border border-mr-line bg-white p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium text-mr-ink">
+                            {sv.service_name}
+                            {sv.kind === "airport_transfer" && <span className="ml-2 text-xs font-normal text-mr-muted">Transfer {String(value.services.slice(0, i + 1).filter((r) => r.kind === "airport_transfer").length).padStart(2, "0")}</span>}
+                          </p>
+                          <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${sv.service_name}`} onClick={() => onChange({ ...value, services: value.services.filter((_, j) => j !== i) })}>
+                            <Trash2 />
+                          </Button>
+                        </div>
+                        {sv.kind === "airport_transfer" ? (
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            <div className="space-y-1">
+                              <Label htmlFor={`${sid}_from`} className="text-xs">From</Label>
+                              <Input id={`${sid}_from`} value={sv.from_place} onChange={(e) => set({ from_place: e.target.value })} placeholder="Hong Kong International Airport" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`${sid}_to`} className="text-xs">To</Label>
+                              <Input id={`${sid}_to`} value={sv.to_place} onChange={(e) => set({ to_place: e.target.value })} placeholder="Guangzhou" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Transfer date</Label>
+                              <DatePicker value={sv.service_date} onChange={(v) => set({ service_date: v ?? "" })} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label htmlFor={`${sid}_pax`} className="text-xs">Pax</Label>
+                                <Input id={`${sid}_pax`} type="number" inputMode="numeric" min={1} value={sv.pax} onChange={(e) => set({ pax: e.target.value })} placeholder="8" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor={`${sid}_rate`} className="text-xs">Rate{sv.currency ? ` (${sv.currency})` : ""}</Label>
+                                <Input id={`${sid}_rate`} type="number" inputMode="decimal" min={0} step="0.01" value={sv.rate} onChange={(e) => set({ rate: e.target.value })} placeholder="0" />
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`${sid}_mode`} className="text-xs">Transfer mode</Label>
+                              <Select value={sv.transfer_mode ?? ""} onValueChange={(v) => set({ transfer_mode: v })}>
+                                <SelectTrigger id={`${sid}_mode`} className="w-full rounded-lg">
+                                  <SelectValue placeholder="Choose…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {TRANSFER_MODES.map((m) => (
+                                    <SelectItem key={m.value} value={m.value}>
+                                      {m.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`${sid}_notes`} className="text-xs">Notes (optional)</Label>
+                              <Input id={`${sid}_notes`} value={sv.notes} onChange={(e) => set({ notes: e.target.value })} placeholder="Flight number, pickup time…" />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_90px_110px]">
+                            <div className="space-y-1">
+                              <Label htmlFor={`${sid}_notes`} className="text-xs">Details (optional)</Label>
+                              <Input id={`${sid}_notes`} value={sv.notes} onChange={(e) => set({ notes: e.target.value })} placeholder="Shown on the invoice line" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`${sid}_qty`} className="text-xs">Qty</Label>
+                              <Input id={`${sid}_qty`} type="number" inputMode="decimal" min={1} value={sv.quantity} onChange={(e) => set({ quantity: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`${sid}_rate`} className="text-xs">Rate{sv.currency ? ` (${sv.currency})` : ""}</Label>
+                              <Input id={`${sid}_rate`} type="number" inputMode="decimal" min={0} step="0.01" value={sv.rate} onChange={(e) => set({ rate: e.target.value })} placeholder="0" />
+                            </div>
+                          </div>
+                        )}
+                        <p className="mt-1.5 truncate text-xs text-mr-muted">{serviceSummary({ ...sv, pax: Number(sv.pax) || null }) || "Details appear on the invoice and the voucher"}</p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
             <div className="sm:col-span-2 space-y-1.5">
               <Label htmlFor="g_existing">Pull in existing travellers (optional)</Label>
               <TravellerCombobox id="g_existing" selected={value.existing} onChange={(next) => onChange({ ...value, existing: next })} excludeGroupId={value.id ?? null} />
@@ -470,6 +654,20 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<Editing | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // The group's saved services load once the dialog is open, so the fields show what is on record.
+  const loadedFor = useRef<string | null>(null);
+  const editingId = editing?.id ?? null;
+  useEffect(() => {
+    if (!editingId) {
+      loadedFor.current = null;
+      return;
+    }
+    if (loadedFor.current === editingId) return;
+    loadedFor.current = editingId;
+    listGroupServices(editingId)
+      .then((rows) => setEditing((cur) => (cur && cur.id === editingId ? { ...cur, services: rows.map(serviceDraftFromRow) } : cur)))
+      .catch(() => toast.error("Could not load the group's services"));
+  }, [editingId]);
 
   function save() {
     if (!editing?.id) return;
@@ -477,6 +675,7 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
       const result = await updateGroup(editing.id!, editing);
       if (!result.ok) return void toast.error(result.error);
       toast.success("Group updated");
+      await saveServices(editing.id!, editing.services);
       await saveQuickRows(editing.id!, editing.travellers);
       await saveExisting(editing.id!, editing.existing);
       setEditing(null);
@@ -523,6 +722,7 @@ export function GroupRowActions({ group }: { group: GroupRow }) {
             notes: group.notes ?? "",
             travellers: [],
             existing: [],
+            services: [],
           })
         }
       >

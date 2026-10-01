@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
@@ -49,6 +51,18 @@ export default async function SettingsPage() {
             <p className="mt-3 text-xs text-mr-muted">
               Edit these in src/lib/constants.ts; they are not user-editable in v1.
             </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Product / Service master</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-mr-body">
+            <p>The one list of services (Airport Transfer, Visa, Hotel Booking …) every group picks from. Details entered on the group flow to the invoice and the transfer voucher.</p>
+            <Link href="/settings/services" className={buttonVariants({ variant: "outline", size: "sm", className: "mt-3" })}>
+              Manage services
+            </Link>
           </CardContent>
         </Card>
 

@@ -14,6 +14,8 @@ import { config } from "dotenv";
 import { launchBrowser, htmlToPdf } from "../src/lib/pdf/browser";
 import { buildGroupPackPdf, buildTravelPackPdf } from "../src/lib/pdf/travel-pack";
 import { insertFrontPages } from "../src/lib/pdf/group-bundle";
+import { renderTransferVoucherHtml } from "../src/lib/pdf/voucher-template";
+import { serviceInvoiceLine, serviceSummary } from "../src/lib/services/format";
 import { groupPackReference } from "../src/lib/queries/travel";
 import { parseB2bCode } from "../src/lib/travel/b2b-code";
 import { renderInvoiceHtml } from "../src/lib/pdf/invoice-template";
@@ -178,6 +180,39 @@ async function main() {
     assert(!foreign.droppedOwnCover && foreign.pageCount === bundle.pageCount + 1, `partner-made pack keeps all pages (${foreign.pageCount})`);
     const ours = await insertFrontPages(groupBuilt.bytes, bundle.bytes, { title: "t", author: "a" });
     assert(ours.droppedOwnCover && ours.pageCount === bundle.pageCount + groupBuilt.pageCount - 1, `app-compiled pack loses its duplicate cover (${ours.pageCount})`);
+
+    // Transfer voucher: one page from the details entered on the group; the same details become the invoice line.
+    const transfer = { service_name: "Airport Transfer", kind: "airport_transfer", from_place: "Hong Kong International Airport", to_place: "Guangzhou", service_date: "2026-10-12", pax: 8, transfer_mode: "seat_in_coach", notes: null };
+    assert(serviceSummary(transfer) === "Hong Kong International Airport → Guangzhou · 12 Oct 2026 · 8 pax · Seat in Coach", `service summary (${serviceSummary(transfer)})`);
+    const line = serviceInvoiceLine({ ...transfer, rate: 150 });
+    assert(line.title === "Airport Transfer" && line.quantity === 8 && line.rate === 150, `invoice line from service (${JSON.stringify(line)})`);
+    const voucherPdf = await htmlToPdf(
+      renderTransferVoucherHtml(
+        {
+          voucher_no: "MR144-OCT11-OCT16-G01-TV01",
+          group_ref: "MR144-OCT11-OCT16-G01",
+          group_code: "G01",
+          label: "Canton Phase 2",
+          partner_code: null,
+          partner_name: null,
+          guide_name: "Li Wei",
+          travel_start_date: "2026-10-11",
+          travel_end_date: "2026-10-16",
+          ...transfer,
+          notes: "Pickup at Terminal 1, meeting point B. Flight CX 889 lands 09:40.",
+          travellers: [
+            { full_name: "Shareer Shahudeen", passport_number: "N1234567" },
+            { full_name: "Fatima Al Mansoori", passport_number: null },
+          ],
+          generated_at: new Date("2026-10-01T10:00:00Z"),
+        },
+        await loadTemplateAssets(),
+      ),
+    );
+    const vdoc = await PDFDocument.load(voucherPdf);
+    assert(vdoc.getPageCount() === 1, `transfer voucher is one page (got ${vdoc.getPageCount()})`);
+    await writeFile(path.join(OUT_DIR, "transfer-voucher-check.pdf"), voucherPdf);
+    console.log(`wrote ${path.join(OUT_DIR, "transfer-voucher-check.pdf")}`);
   } finally {
     await browser.close();
   }

@@ -20,6 +20,8 @@ import { DatePicker } from "@/components/shared/date-picker";
 import { A4Preview } from "@/components/shared/a4-preview";
 import { GroupCombobox } from "@/components/travel/group-combobox";
 import { listPartners, type GroupOption, type PartnerRow } from "@/lib/actions/travel-groups";
+import { listGroupServices } from "@/lib/actions/services";
+import { serviceInvoiceLine } from "@/lib/services/format";
 import { LeadCombobox } from "@/components/invoices/lead-combobox";
 import { createInvoice, duplicateInvoice, updateInvoice } from "@/lib/actions/invoices";
 import { invoiceSchema, computeTotals, round2, type InvoiceInput, type InvoiceValues } from "@/lib/validation/invoice";
@@ -133,6 +135,30 @@ export function InvoiceForm(props: Props) {
     const row = { title: item.title, description: item.description, reference: "", quantity: 1, rate: item.rate };
     if (onlyBlank) items.update(0, row);
     else items.append(row);
+  }
+
+  /**
+   * Pull the group's services (from the Product / Service master) in as line
+   * items: the exact service name as the title, the details as the description.
+   * Blank starter rows are replaced; typed rows are kept and the services appended.
+   */
+  async function applyGroupServices(groupId: string, groupRef: string | null) {
+    let rows: Awaited<ReturnType<typeof listGroupServices>> = [];
+    try {
+      rows = await listGroupServices(groupId);
+    } catch {
+      return;
+    }
+    if (rows.length === 0) return;
+    const current = getValues("items");
+    const blank = (it: (typeof current)[number] | undefined) => !it || (!it.title && !it.description && !Number(it.rate));
+    const lines = rows.map((r) => ({ ...serviceInvoiceLine(r), reference: groupRef ?? "" }));
+    const kept = current.filter((it) => !blank(it));
+    const already = new Set(kept.map((it) => it.title.trim().toLowerCase()));
+    const fresh = lines.filter((l) => !already.has(l.title.trim().toLowerCase()));
+    if (fresh.length === 0) return;
+    setValue("items", [...kept, ...fresh], { shouldDirty: true, shouldValidate: true });
+    toast.success(`${fresh.length} service${fresh.length === 1 ? "" : "s"} added from the group`);
   }
 
   function applyVisaReference(ref: string, index: number) {
@@ -263,6 +289,8 @@ export function InvoiceForm(props: Props) {
                       setValue("visa_reference", g.group_ref, { shouldDirty: true });
                       applyVisaReference(g.group_ref, applyRefTo);
                     }
+                    // Services entered on the group become the line items.
+                    if (g?.id) void applyGroupServices(g.id, g.group_ref ?? null);
                   }}
                 />
                 <p className="text-xs text-mr-muted">Newest groups first; type a date, code or Group ID to filter. The Group ID is printed on the invoice and fills the visa reference when empty.</p>

@@ -4,6 +4,8 @@ import { InvoiceForm } from "@/components/invoices/invoice-form";
 import { peekNextInvoiceNumber } from "@/lib/actions/invoices";
 import { createClient } from "@/lib/supabase/server";
 import type { InvoiceInput } from "@/lib/validation/invoice";
+import { listGroupServices } from "@/lib/actions/services";
+import { serviceInvoiceLine } from "@/lib/services/format";
 
 export const metadata: Metadata = { title: "New invoice" };
 
@@ -19,6 +21,9 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
     if (g) {
       initialGroup = { ...g, traveller_count: Array.isArray(g.travellers) ? Number(g.travellers[0]?.count ?? 0) : 0 };
       defaults = { travel_group_id: g.id, visa_reference: g.group_ref ?? "" };
+      // Services entered once on the group become the invoice lines, with the exact master name as the title.
+      const services = await listGroupServices(g.id);
+      if (services.length) defaults.items = services.map((sv) => ({ ...serviceInvoiceLine(sv), reference: g.group_ref ?? "" }));
     }
   }
   if (leadId) {

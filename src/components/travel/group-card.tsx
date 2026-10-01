@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, Download, FileText, Plane, Users } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Download, FileText, Plane, Ticket, Users } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Chip } from "@/components/shared/chip";
 import { StatusPill, TRAVELLER_TONES } from "@/components/shared/status-pill";
@@ -17,6 +17,7 @@ import { INVOICE_STATUSES, TRAVELLER_STATUSES, labelFor, packageDetail } from "@
 import { docCompleteness, groupCoverage, groupPackReference, groupRef, type DocStub } from "@/lib/queries/travel";
 import { groupInvoiceState, groupIssues, groupPax, groupTiming, type Balance } from "@/lib/queries/group-status";
 import { formatDateRange, formatMoney } from "@/lib/format";
+import { serviceSummary } from "@/lib/services/format";
 import { cn } from "@/lib/utils";
 
 export type GroupCardGroup = {
@@ -44,6 +45,8 @@ export type GroupCardGroup = {
   visa_uploaded_at: string | null;
   visa_path: string | null;
   group_ref: string | null;
+  /** Services from the Product / Service master attached to this group (details entered once here). */
+  group_services?: { id: string; service_name: string; kind: string; from_place: string | null; to_place: string | null; service_date: string | null; pax: number | null; transfer_mode: string | null; notes: string | null; quantity: number | string; rate: number | string | null; currency: string | null; position: number }[] | null;
   invoices: { id: string; invoice_number: string; total: number | string; currency: string; status: string }[];
   group_documents: (GroupDocView & { deleted_at: string | null })[];
   travellers: { id: string; full_name: string; status: string; package_tier: string | null; passport_number: string | null; visa_reference: string | null; traveller_documents: DocStub[] }[];
@@ -227,6 +230,34 @@ export function GroupCard({ g, balances, partnerHasLogo, defaultOpen = false, ex
         )}
 
         {extra}
+
+        {/* Services from the master, with a voucher per airport transfer */}
+        {(g.group_services ?? []).length > 0 && (
+          <div>
+            <p className="micro-label mb-1">Services</p>
+            <ul className="divide-y divide-mr-line">
+              {[...(g.group_services ?? [])]
+                .sort((a, b) => a.position - b.position)
+                .map((s, i, all) => {
+                  const transferNo = s.kind === "airport_transfer" ? all.slice(0, i + 1).filter((x) => x.kind === "airport_transfer").length : 0;
+                  return (
+                    <li key={s.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-mr-ink">{s.service_name}</p>
+                        <p className="truncate text-xs text-mr-muted">{serviceSummary(s) || "No details"}</p>
+                      </div>
+                      {s.rate !== null && s.rate !== undefined && Number(s.rate) > 0 && <span className="tnum text-xs text-mr-body">{formatMoney(Number(s.rate), s.currency ?? "USD")}</span>}
+                      {s.kind === "airport_transfer" && (
+                        <a href={`/api/groups/${g.id}/voucher?service=${s.id}`} className={buttonVariants({ variant: "outline", size: "xs" })} title="Download the transfer voucher for this transfer">
+                          <Ticket /> Voucher TV{String(transferNo).padStart(2, "0")}
+                        </a>
+                      )}
+                    </li>
+                  );
+                })}
+            </ul>
+          </div>
+        )}
 
         <GroupDocuments groupId={g.id} documents={groupDocs} />
 
