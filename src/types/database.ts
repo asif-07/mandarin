@@ -88,6 +88,9 @@ export type Database = {
           email: string | null
           notes: string | null
           phone: string | null
+          portal_active: boolean
+          portal_key_hash: string | null
+          portal_last_seen_at: string | null
           updated_at: string | null
         }
         Insert: {
@@ -102,6 +105,9 @@ export type Database = {
           email?: string | null
           notes?: string | null
           phone?: string | null
+          portal_active?: boolean
+          portal_key_hash?: string | null
+          portal_last_seen_at?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -116,6 +122,9 @@ export type Database = {
           email?: string | null
           notes?: string | null
           phone?: string | null
+          portal_active?: boolean
+          portal_key_hash?: string | null
+          portal_last_seen_at?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -529,6 +538,47 @@ export type Database = {
           },
         ]
       }
+      group_events: {
+        Row: {
+          actor_kind: string
+          actor_name: string | null
+          at: string
+          event: string
+          group_id: string
+          id: string
+          note: string | null
+          status: string | null
+        }
+        Insert: {
+          actor_kind: string
+          actor_name?: string | null
+          at?: string
+          event: string
+          group_id: string
+          id?: string
+          note?: string | null
+          status?: string | null
+        }
+        Update: {
+          actor_kind?: string
+          actor_name?: string | null
+          at?: string
+          event?: string
+          group_id?: string
+          id?: string
+          note?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_events_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "travel_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_services: {
         Row: {
           created_at: string | null
@@ -606,6 +656,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      guides: {
+        Row: {
+          active: boolean
+          created_at: string | null
+          id: string
+          languages: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string | null
+          id?: string
+          languages?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string | null
+          id?: string
+          languages?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       invoice_items: {
         Row: {
@@ -934,6 +1020,56 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          audience: string
+          body: string | null
+          created_at: string
+          email_error: string | null
+          email_status: string | null
+          email_to: string | null
+          group_id: string | null
+          id: string
+          partner_code: string | null
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          audience: string
+          body?: string | null
+          created_at?: string
+          email_error?: string | null
+          email_status?: string | null
+          email_to?: string | null
+          group_id?: string | null
+          id?: string
+          partner_code?: string | null
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          audience?: string
+          body?: string | null
+          created_at?: string
+          email_error?: string | null
+          email_status?: string | null
+          email_to?: string | null
+          group_id?: string | null
+          id?: string
+          partner_code?: string | null
+          read_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "travel_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parties: {
         Row: {
           address: string | null
@@ -1152,6 +1288,59 @@ export type Database = {
         }
         Relationships: []
       }
+      visa_team_members: {
+        Row: {
+          access_key_hash: string
+          active: boolean
+          code: string
+          created_at: string | null
+          created_by: string | null
+          guide_id: string | null
+          id: string
+          last_seen_at: string | null
+          name: string
+          phone: string | null
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          access_key_hash: string
+          active?: boolean
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          guide_id?: string | null
+          id?: string
+          last_seen_at?: string | null
+          name: string
+          phone?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Update: {
+          access_key_hash?: string
+          active?: boolean
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          guide_id?: string | null
+          id?: string
+          last_seen_at?: string | null
+          name?: string
+          phone?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visa_team_members_guide_id_fkey"
+            columns: ["guide_id"]
+            isOneToOne: false
+            referencedRelation: "guides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           active: boolean
@@ -1334,6 +1523,41 @@ export type Database = {
           visa_status: string
           visa_uploaded_at: string | null
           visa_uploaded_by: string | null
+          workflow_status: string | null
+          workflow_updated_at: string | null
+          submitted_by_partner: boolean
+          submitted_at: string | null
+          arrival_flight_date: string | null
+          arrival_flight_time: string | null
+          arrival_flight_no: string | null
+          departure_flight_date: string | null
+          departure_flight_time: string | null
+          departure_flight_no: string | null
+          other_border_requested: boolean
+          other_border_note: string | null
+          company_decision_note: string | null
+          company_approved_at: string | null
+          company_approved_by: string | null
+          visa_processing_started_at: string | null
+          visa_issued_at: string | null
+          visa_approved_at: string | null
+          visa_approved_by: string | null
+          visa_emailed_at: string | null
+          guide_id: string | null
+          guide_phone: string | null
+          guide_notes: string | null
+          destination: string | null
+          vehicle_notes: string | null
+          stamped_visa_path: string | null
+          stamped_visa_file_name: string | null
+          stamped_visa_uploaded_at: string | null
+          stamped_visa_uploaded_by: string | null
+          stamped_visa_shared: boolean
+          china_entry_at: string | null
+          china_entry_confirmed_by: string | null
+          china_exit_at: string | null
+          china_exit_confirmed_by: string | null
+          completed_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -1367,6 +1591,41 @@ export type Database = {
           visa_status?: string
           visa_uploaded_at?: string | null
           visa_uploaded_by?: string | null
+          workflow_status?: string | null
+          workflow_updated_at?: string | null
+          submitted_by_partner?: boolean
+          submitted_at?: string | null
+          arrival_flight_date?: string | null
+          arrival_flight_time?: string | null
+          arrival_flight_no?: string | null
+          departure_flight_date?: string | null
+          departure_flight_time?: string | null
+          departure_flight_no?: string | null
+          other_border_requested?: boolean
+          other_border_note?: string | null
+          company_decision_note?: string | null
+          company_approved_at?: string | null
+          company_approved_by?: string | null
+          visa_processing_started_at?: string | null
+          visa_issued_at?: string | null
+          visa_approved_at?: string | null
+          visa_approved_by?: string | null
+          visa_emailed_at?: string | null
+          guide_id?: string | null
+          guide_phone?: string | null
+          guide_notes?: string | null
+          destination?: string | null
+          vehicle_notes?: string | null
+          stamped_visa_path?: string | null
+          stamped_visa_file_name?: string | null
+          stamped_visa_uploaded_at?: string | null
+          stamped_visa_uploaded_by?: string | null
+          stamped_visa_shared?: boolean
+          china_entry_at?: string | null
+          china_entry_confirmed_by?: string | null
+          china_exit_at?: string | null
+          china_exit_confirmed_by?: string | null
+          completed_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -1400,8 +1659,50 @@ export type Database = {
           visa_status?: string
           visa_uploaded_at?: string | null
           visa_uploaded_by?: string | null
+          workflow_status?: string | null
+          workflow_updated_at?: string | null
+          submitted_by_partner?: boolean
+          submitted_at?: string | null
+          arrival_flight_date?: string | null
+          arrival_flight_time?: string | null
+          arrival_flight_no?: string | null
+          departure_flight_date?: string | null
+          departure_flight_time?: string | null
+          departure_flight_no?: string | null
+          other_border_requested?: boolean
+          other_border_note?: string | null
+          company_decision_note?: string | null
+          company_approved_at?: string | null
+          company_approved_by?: string | null
+          visa_processing_started_at?: string | null
+          visa_issued_at?: string | null
+          visa_approved_at?: string | null
+          visa_approved_by?: string | null
+          visa_emailed_at?: string | null
+          guide_id?: string | null
+          guide_phone?: string | null
+          guide_notes?: string | null
+          destination?: string | null
+          vehicle_notes?: string | null
+          stamped_visa_path?: string | null
+          stamped_visa_file_name?: string | null
+          stamped_visa_uploaded_at?: string | null
+          stamped_visa_uploaded_by?: string | null
+          stamped_visa_shared?: boolean
+          china_entry_at?: string | null
+          china_entry_confirmed_by?: string | null
+          china_exit_at?: string | null
+          china_exit_confirmed_by?: string | null
+          completed_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "travel_groups_guide_id_fkey"
+            columns: ["guide_id"]
+            isOneToOne: false
+            referencedRelation: "guides"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "travel_groups_created_by_fkey"
             columns: ["created_by"]

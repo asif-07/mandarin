@@ -64,7 +64,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
   let groupsQuery = supabase
     .from("travel_groups")
     .select(
-      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, hotel_stars, transit_location, visa_status, visa_applied_at, visa_uploaded_at, visa_path, group_ref, invoices:invoices!invoices_travel_group_id_fkey(id, invoice_number, total, currency, status), group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at), group_services(id, service_name, kind, from_place, to_place, service_date, pax, transfer_mode, notes, quantity, rate, currency, position), transfer_vouchers(id, voucher_no, status, from_place, to_place, transfer_date, pax, transfer_mode, group_service_id, ticket_file_name, ticket_uploaded_at, redeemed_at, redeemed_partner:scanner_partners!transfer_vouchers_redeemed_partner_id_fkey(code, name)), travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
+      "id, travel_date, travel_end_date, group_code, label, guide_name, notes, reference_prefix, entry_port, exit_port, source, partner_code, pax_expected, pack_path, package_tier, hotel_name, hotel_stars, transit_location, visa_status, visa_applied_at, visa_uploaded_at, visa_path, group_ref, workflow_status, submitted_by_partner, submitted_at, other_border_requested, other_border_note, company_decision_note, arrival_flight_date, arrival_flight_time, departure_flight_date, departure_flight_time, visa_approved_at, visa_emailed_at, guide_phone, destination, vehicle_notes, stamped_visa_path, stamped_visa_uploaded_at, stamped_visa_shared, china_entry_at, china_entry_confirmed_by, china_exit_at, china_exit_confirmed_by, invoices:invoices!invoices_travel_group_id_fkey(id, invoice_number, total, currency, status), group_documents(id, doc_type, file_name, file_size, uploaded_at, deleted_at), group_services(id, service_name, kind, from_place, to_place, service_date, pax, transfer_mode, notes, quantity, rate, currency, position), transfer_vouchers(id, voucher_no, status, from_place, to_place, transfer_date, pax, transfer_mode, group_service_id, ticket_file_name, ticket_uploaded_at, redeemed_at, redeemed_partner:scanner_partners!transfer_vouchers_redeemed_partner_id_fkey(code, name)), travellers(id, full_name, status, package_tier, passport_number, visa_reference, traveller_documents(doc_type, deleted_at))",
     )
     .order("travel_date")
     .order("group_code")
@@ -101,7 +101,7 @@ export default async function TravelByGroupPage({ searchParams }: { searchParams
     if (aUp !== bUp) return aUp ? -1 : 1;
     return aUp ? a.localeCompare(b) : b.localeCompare(a);
   });
-  const card = (g: (typeof list)[number]) => <GroupCard key={g.id} g={g} balances={balances} partnerHasLogo={g.partner_code ? (partnerHasLogo.get(g.partner_code) ?? false) : false} defaultOpen={view === "day" && list.length <= 2} />;
+  const card = (g: (typeof list)[number]) => <GroupCard key={g.id} g={{ ...g, workflow: { ...g, arrival_flight_time: g.arrival_flight_time ? String(g.arrival_flight_time) : null, departure_flight_time: g.departure_flight_time ? String(g.departure_flight_time) : null } }} balances={balances} partnerHasLogo={g.partner_code ? (partnerHasLogo.get(g.partner_code) ?? false) : false} defaultOpen={view === "day" && list.length <= 2} />;
 
   return (
     <>

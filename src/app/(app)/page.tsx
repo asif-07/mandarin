@@ -4,6 +4,10 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Plane, Users } from "lucide-re
 import { StatCard, StatGrid } from "@/components/shared/stat-card";
 import { Section } from "@/components/shared/section";
 import { Chip } from "@/components/shared/chip";
+import { WorkflowStatusChip } from "@/components/workflow/status-chip";
+import { NotificationsList } from "@/components/workflow/notifications-list";
+import { MarkReadButton } from "@/components/workflow/mark-read-button";
+import { listCompanyWorkflowGroups, listNotifications, unreadCount } from "@/lib/workflow/data";
 import { addDays, parseISO, subDays } from "date-fns";
 import { PageHeader } from "@/components/shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -138,6 +142,10 @@ export default async function DashboardPage() {
     .map((t) => ({ ...t, docs: docCompleteness(t.traveller_documents, t.group?.group_documents) }))
     .filter((t) => !t.docs.complete);
 
+  // Workflow inbox: partner submissions and uploaded visas waiting on the company, plus notifications.
+  const [workflowGroups, notifications, unread] = await Promise.all([listCompanyWorkflowGroups(), listNotifications({ audience: "company" }, 12), unreadCount({ audience: "company" })]);
+  const actionGroups = workflowGroups.filter((g) => ["submitted", "correction_requested", "visa_issued"].includes(g.workflow_status ?? ""));
+
   return (
     <>
       <PageHeader title="Dashboard" description={formatDate(today)} />
@@ -150,6 +158,37 @@ export default async function DashboardPage() {
         <StatCard label="Invoiced" value={`USD ${formatNumber(invoiced)}`} hint={`${monthLabel} · USD invoices`} href="/invoices" />
         <StatCard label="Outstanding" value={`USD ${formatNumber(monthBalance)}`} hint={`received USD ${formatNumber(monthReceived)}`} tone={monthBalance > 0 ? "warning" : "success"} href={admin ? "/accounts/receivables" : "/invoices"} />
       </StatGrid>
+
+      {(actionGroups.length > 0 || notifications.length > 0) && (
+        <div className="mt-8 grid gap-6 xl:grid-cols-2">
+          <Section id="workflow-inbox" title="Needs your approval" icon={<AlertTriangle />} hint={actionGroups.length ? `${actionGroups.length} group${actionGroups.length === 1 ? "" : "s"} waiting on the company` : "Nothing waiting"} link={{ href: "/travel/workflow", label: "Workflow board" }}>
+            {actionGroups.length === 0 ? (
+              <p className="text-sm text-mr-muted">No partner submissions or uploaded visas waiting for review.</p>
+            ) : (
+              <ul className="divide-y divide-mr-line rounded-lg border border-mr-line bg-white">
+                {actionGroups.map((g) => (
+                  <li key={g.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/travel/workflow?group=${g.id}`} className="font-mono text-xs font-medium text-mr-ink hover:underline">
+                        {g.group_ref}
+                      </Link>
+                      <p className="text-xs text-mr-muted">
+                        {formatDate(g.travel_date)} to {formatDate(g.travel_end_date)} · {g.pax_expected ?? g.traveller_count} pax{g.partner_code ? ` · ${g.partner_code}` : ""}
+                      </p>
+                    </div>
+                    {g.other_border_requested && <Chip tone="warning">Other border</Chip>}
+                    <WorkflowStatusChip status={g.workflow_status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+          <Section id="notifications" title="Notifications" icon={<CheckCircle2 />} hint={unread ? `${unread} unread` : "all read"} link={{ href: "/travel/workflow", label: "Workflow board" }}>
+            <div className="mb-2 flex justify-end">{unread > 0 && <MarkReadButton />}</div>
+            <NotificationsList items={notifications} hrefFor={(n) => (n.group_id ? `/travel/workflow?group=${n.group_id}` : null)} />
+          </Section>
+        </div>
+      )}
 
       {completedGroups.length > 0 && (
         <Section id="completed-groups" title="Travel completed" icon={<CheckCircle2 />} hint={`${completedPax} traveller${completedPax === 1 ? "" : "s"} back in the last 30 days`} link={{ href: "/travel/travellers?status=travelled", label: "All travelled" }}>

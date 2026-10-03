@@ -80,6 +80,35 @@ export default async function SettingsPage() {
 
         <Card>
           <CardHeader>
+            <CardTitle>B2B partner portal</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-mr-body">
+            <p>Registered partners submit groups with flight details and documents, follow the status and download the approved visa. Issue each partner a portal access key here.</p>
+            <Link href="/settings/partner-portal" className={buttonVariants({ variant: "outline", size: "sm", className: "mt-3" })}>
+              Manage partner access
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>China Visa Team extension</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-mr-body">
+            <p>Visa processing staff, team leader and ground / guide staff sign in with an access key to process approved groups, upload visas, assign guides and confirm China entry and exit.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link href="/settings/visa-team" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                Manage Visa Team access
+              </Link>
+              <Link href="/settings/guides" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                Guide / staff master
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Team accounts</CardTitle>
           </CardHeader>
           <CardContent>

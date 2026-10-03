@@ -258,6 +258,43 @@ export const BUCKETS = {
 /** Neutral ground-service brand printed on transfer vouchers and the partner scanner. */
 export const GROUND_BRAND = { name: "China Travel Support", short: "CTS" } as const;
 
+/**
+ * Group workflow from partner submission to China exit. `label` is the
+ * company wording, `b2b` what the partner portal shows, `visa` what the
+ * China Visa Team sees. Groups created by hand before this flow have no
+ * workflow status until they are sent to the Visa Team.
+ */
+export const WORKFLOW_STATUSES = [
+  { value: "draft", label: "Draft", b2b: "DRAFT", visa: "Draft", tone: "muted" },
+  { value: "submitted", label: "Submitted — pending company approval", b2b: "SUBMITTED — PENDING COMPANY APPROVAL", visa: "Awaiting company approval", tone: "warning" },
+  { value: "correction_requested", label: "Correction requested", b2b: "CORRECTION REQUIRED", visa: "Correction requested", tone: "red" },
+  { value: "rejected", label: "Rejected", b2b: "REJECTED", visa: "Rejected", tone: "red" },
+  { value: "company_approved", label: "Company approved — forwarded to Visa Team", b2b: "IN VISA PROCESSING / FORWARDED TO VISA TEAM", visa: "Ready for processing", tone: "ink" },
+  { value: "visa_processing", label: "Visa processing", b2b: "VISA PROCESSING", visa: "Visa processing", tone: "ink" },
+  { value: "visa_issued", label: "Visa issued — original copy uploaded, pending company approval", b2b: "VISA READY — PENDING COMPANY APPROVAL", visa: "Visa issued — original copy uploaded", tone: "warning" },
+  { value: "visa_approved", label: "Visa approved — available to B2B", b2b: "VISA APPROVED — AVAILABLE FOR DOWNLOAD", visa: "Visa approved / available", tone: "success" },
+  { value: "guide_assigned", label: "Guide assigned", b2b: "GUIDE ASSIGNED", visa: "Guide assigned", tone: "success" },
+  { value: "travelling_to_china", label: "Travelling to China", b2b: "TRAVELLING TO CHINA", visa: "Travelling to China", tone: "ink" },
+  { value: "entry_evidence_uploaded", label: "Entry evidence uploaded", b2b: "ENTRY EVIDENCE UPLOADED", visa: "Entry evidence uploaded", tone: "ink" },
+  { value: "travelling_in_china", label: "Travelling in China", b2b: "TRAVELLING IN CHINA", visa: "Travelling in China", tone: "ink" },
+  { value: "china_exited", label: "China exited", b2b: "CHINA EXITED", visa: "China exited", tone: "success" },
+  { value: "completed", label: "Group completed", b2b: "GROUP COMPLETED", visa: "Group completed", tone: "muted" },
+] as const;
+export type WorkflowStatus = (typeof WORKFLOW_STATUSES)[number]["value"];
+export const WORKFLOW_ORDER: readonly WorkflowStatus[] = WORKFLOW_STATUSES.map((s) => s.value);
+export function workflowMeta(value: string | null | undefined) {
+  return WORKFLOW_STATUSES.find((s) => s.value === value) ?? null;
+}
+
+export const VISA_TEAM_ROLES = [
+  { value: "visa_processor", label: "Visa processing staff" },
+  { value: "team_leader", label: "Team leader" },
+  { value: "ground_guide", label: "Ground / guide staff" },
+] as const satisfies readonly Option[];
+
+/** The only border supported by the normal B2B submission flow. */
+export const STANDARD_BORDER = "Shenzhen Bay Border";
+
 export const VOUCHER_STATUSES = [
   { value: "active", label: "Active" },
   { value: "redeemed", label: "Redeemed" },

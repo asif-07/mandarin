@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, ChevronDown, Download, FileText, Plane, Ticket, Users } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Chip } from "@/components/shared/chip";
+import { WorkflowStatusChip } from "@/components/workflow/status-chip";
 import { StatusPill, TRAVELLER_TONES } from "@/components/shared/status-pill";
 import { StopToggle } from "@/components/shared/stop-toggle";
 import { DocsBadge, PackageBadge } from "@/components/travel/traveller-table";
@@ -19,6 +20,7 @@ import { groupInvoiceState, groupIssues, groupPax, groupTiming, type Balance } f
 import { formatDate, formatDateRange, formatDateTime, formatMoney } from "@/lib/format";
 import { serviceSummary } from "@/lib/services/format";
 import { IssueVoucherButton } from "@/components/travel/transfer-voucher-dialog";
+import { GroupWorkflowPanel, type WorkflowPanelGroup } from "@/components/travel/group-workflow-panel";
 import { CancelVoucherButton, TicketLink } from "@/components/travel/voucher-row-actions";
 import { TRANSFER_MODES, VOUCHER_STATUSES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -48,6 +50,8 @@ export type GroupCardGroup = {
   visa_uploaded_at: string | null;
   visa_path: string | null;
   group_ref: string | null;
+  /** Workflow columns (partner submission, visa team, ground operations); absent on pages that do not select them. */
+  workflow?: WorkflowPanelGroup | null;
   /** Services from the Product / Service master attached to this group (details entered once here). */
   group_services?: { id: string; service_name: string; kind: string; from_place: string | null; to_place: string | null; service_date: string | null; pax: number | null; transfer_mode: string | null; notes: string | null; quantity: number | string; rate: number | string | null; currency: string | null; position: number }[] | null;
   /** Transfer vouchers issued from this group (QR-verified by the ground partner). */
@@ -155,6 +159,7 @@ export function GroupCard({ g, balances, partnerHasLogo, defaultOpen = false, ex
             {g.visa_status === "approved" ? "Visa received" : g.visa_status === "applied" ? "Visa applied" : "Visa not applied"}
           </Chip>
           <Chip tone={invoice.tone}>{invoice.label}</Chip>
+          {g.workflow?.workflow_status && <WorkflowStatusChip status={g.workflow.workflow_status} />}
           {issues.length === 0 ? (
             <Chip tone="success" icon={<CheckCircle2 />}>Ready</Chip>
           ) : (
@@ -233,6 +238,8 @@ export function GroupCard({ g, balances, partnerHasLogo, defaultOpen = false, ex
             </ul>
           </div>
         )}
+
+        {g.workflow && <GroupWorkflowPanel g={g.workflow} />}
 
         {extra}
 

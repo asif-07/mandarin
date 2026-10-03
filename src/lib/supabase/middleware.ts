@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // /scan and /api/scan are the partner scanner: public pages that check the
 // partner's own access key server-side instead of a staff session.
-const PUBLIC_PATHS = ["/login", "/scan", "/api/scan"];
+const PUBLIC_PATHS = ["/login", "/scan", "/api/scan", "/partner", "/api/partner", "/visa-team", "/api/visa-team"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
