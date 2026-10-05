@@ -26,13 +26,13 @@ function revalidateVisa(groupId: string) {
   revalidatePath("/");
 }
 
-/** The Visa Team starts actual processing of a company-approved group. */
+/** The Visa Team starts actual processing of a CTS-approved group. */
 export async function startVisaProcessing(groupId: string): Promise<ActionResult<{ status: string }>> {
   const m = await requireMember();
   const supabase = createAdminClient();
   const { data: g } = await supabase.from("travel_groups").select("workflow_status").eq("id", groupId).maybeSingle();
   if (!g) return fail("Group not found");
-  if (g.workflow_status !== "company_approved") return fail("Only a company-approved group can start processing");
+  if (g.workflow_status !== "company_approved") return fail("Only a CTS-approved group can start processing");
   const res = await transition(groupId, "visa_processing", actorOf(m), { patch: { visa_processing_started_at: new Date().toISOString() } });
   if (!res.ok) return fail(res.error);
   revalidateVisa(groupId);

@@ -266,12 +266,12 @@ export const GROUND_BRAND = { name: "China Travel Support", short: "CTS" } as co
  */
 export const WORKFLOW_STATUSES = [
   { value: "draft", label: "Draft", b2b: "DRAFT", visa: "Draft", tone: "muted" },
-  { value: "submitted", label: "Submitted — pending company approval", b2b: "SUBMITTED — PENDING COMPANY APPROVAL", visa: "Awaiting company approval", tone: "warning" },
+  { value: "submitted", label: "Submitted — pending CTS approval", b2b: "SUBMITTED — PENDING CTS APPROVAL", visa: "Awaiting CTS approval", tone: "warning" },
   { value: "correction_requested", label: "Correction requested", b2b: "CORRECTION REQUIRED", visa: "Correction requested", tone: "red" },
   { value: "rejected", label: "Rejected", b2b: "REJECTED", visa: "Rejected", tone: "red" },
-  { value: "company_approved", label: "Company approved — forwarded to Visa Team", b2b: "IN VISA PROCESSING / FORWARDED TO VISA TEAM", visa: "Ready for processing", tone: "ink" },
+  { value: "company_approved", label: "CTS approved — forwarded to Visa Team", b2b: "IN VISA PROCESSING / FORWARDED TO VISA TEAM", visa: "Ready for processing", tone: "ink" },
   { value: "visa_processing", label: "Visa processing", b2b: "VISA PROCESSING", visa: "Visa processing", tone: "ink" },
-  { value: "visa_issued", label: "Visa issued — original copy uploaded, pending company approval", b2b: "VISA READY — PENDING COMPANY APPROVAL", visa: "Visa issued — original copy uploaded", tone: "warning" },
+  { value: "visa_issued", label: "Visa issued — original copy uploaded, pending CTS approval", b2b: "VISA READY — PENDING CTS APPROVAL", visa: "Visa issued — original copy uploaded", tone: "warning" },
   { value: "visa_approved", label: "Visa approved — available to B2B", b2b: "VISA APPROVED — AVAILABLE FOR DOWNLOAD", visa: "Visa approved / available", tone: "success" },
   { value: "guide_assigned", label: "Guide assigned", b2b: "GUIDE ASSIGNED", visa: "Guide assigned", tone: "success" },
   { value: "travelling_to_china", label: "Travelling to China", b2b: "TRAVELLING TO CHINA", visa: "Travelling to China", tone: "ink" },

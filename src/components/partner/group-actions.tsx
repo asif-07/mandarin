@@ -44,7 +44,7 @@ export function PartnerGroupActions({ groupId, mode, hasPack }: { groupId: strin
   }
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <p className="text-xs text-mr-muted">{hasPack ? "Everything in place? Submit for company approval." : "Upload the traveller documents PDF to enable submission."}</p>
+      <p className="text-xs text-mr-muted">{hasPack ? "Everything in place? Submit for CTS approval." : "Upload the traveller documents PDF to enable submission."}</p>
       <Button
         type="button"
         disabled={pending || !hasPack}

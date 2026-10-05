@@ -14,9 +14,9 @@ import { formatDate } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 const QUEUES: { title: string; hint: string; statuses: string[] }[] = [
-  { title: "Ready for processing", hint: "approved by the company; download the application and start", statuses: ["company_approved"] },
+  { title: "Ready for processing", hint: "approved by CTS; download the application and start", statuses: ["company_approved"] },
   { title: "Visa processing", hint: "upload the issued visa when ready", statuses: ["visa_processing"] },
-  { title: "Visa uploaded, awaiting company approval", hint: "", statuses: ["visa_issued"] },
+  { title: "Visa uploaded, awaiting CTS approval", hint: "", statuses: ["visa_issued"] },
   { title: "Ground operations", hint: "assign guide, stamped visa, entry and exit", statuses: ["visa_approved", "guide_assigned", "travelling_to_china", "entry_evidence_uploaded", "travelling_in_china"] },
   { title: "Exited / completed", hint: "", statuses: ["china_exited", "completed"] },
 ];

@@ -148,7 +148,7 @@ export async function submitPartnerGroup(groupId: string): Promise<ActionResult<
     other_border_requested: g.other_border_requested,
   });
   if (check.blockers.length) return fail(check.blockers[0]!);
-  const res = await transition(groupId, "submitted", { kind: "partner", name: partner.name }, { note: g.other_border_requested ? "Other border requested: needs separate company approval" : null, patch: { submitted_at: new Date().toISOString(), submitted_by_partner: true } });
+  const res = await transition(groupId, "submitted", { kind: "partner", name: partner.name }, { note: g.other_border_requested ? "Other border requested: needs separate CTS approval" : null, patch: { submitted_at: new Date().toISOString(), submitted_by_partner: true } });
   if (!res.ok) return fail(res.error);
   revalidatePath("/partner");
   revalidatePath(`/partner/groups/${groupId}`);

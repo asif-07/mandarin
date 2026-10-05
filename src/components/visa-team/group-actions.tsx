@@ -82,7 +82,7 @@ export function VisaGroupActions({ g, guides, member }: { g: WorkflowGroup; guid
         <div className="mt-3 border-t border-mr-line pt-3">
           <p className="text-sm font-medium">Issued visa (original copy)</p>
           <p className="text-xs text-mr-muted">
-            {g.visa_path ? `${g.visa_file_name} · uploaded ${g.visa_uploaded_at ? formatDateTime(g.visa_uploaded_at) : ""}${g.visa_approved_at ? ` · company approved ${formatDateTime(g.visa_approved_at)}` : " · awaiting company approval"}` : "Upload the visa copy once issued (PDF or photo). It stays attached to the group permanently."}
+            {g.visa_path ? `${g.visa_file_name} · uploaded ${g.visa_uploaded_at ? formatDateTime(g.visa_uploaded_at) : ""}${g.visa_approved_at ? ` · company approved ${formatDateTime(g.visa_approved_at)}` : " · awaiting CTS approval"}` : "Upload the visa copy once issued (PDF or photo). It stays attached to the group permanently."}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {g.visa_path && (

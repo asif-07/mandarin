@@ -53,7 +53,7 @@ export async function sendToVisaTeam(groupId: string): Promise<ActionResult<{ st
   return ok({ status: "company_approved" });
 }
 
-/** Company reviews the visa the Visa Team uploaded: approved → partner notified and emailed, visa downloadable in the portal. */
+/** CTS reviews the visa the Visa Team uploaded: approved → partner notified and emailed, visa downloadable in the portal. */
 export async function approveVisa(groupId: string): Promise<ActionResult<{ email: string }>> {
   const profile = await requireProfile();
   const admin = createAdminClient();

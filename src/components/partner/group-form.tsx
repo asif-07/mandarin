@@ -91,7 +91,7 @@ export function PartnerGroupForm({ groupId, initial }: { groupId?: string; initi
           <Switch id="pg_other" checked={form.other_border_requested} onCheckedChange={(v) => set({ other_border_requested: v, entry_port: v ? "" : STANDARD_BORDER, exit_port: v ? "" : STANDARD_BORDER })} />
           <div className="min-w-0 flex-1">
             <Label htmlFor="pg_other">Request other border</Label>
-            <p className="text-xs text-mr-muted">The normal process uses {STANDARD_BORDER} for entry and exit. Another crossing is a separate request that needs company approval and is not treated as a normal submission.</p>
+            <p className="text-xs text-mr-muted">The normal process uses {STANDARD_BORDER} for entry and exit. Another crossing is a separate request that needs CTS approval and is not treated as a normal submission.</p>
             {form.other_border_requested && <Input className="mt-2" value={form.other_border_note} onChange={(e) => set({ other_border_note: e.target.value })} placeholder="Why another border is needed" />}
           </div>
         </div>

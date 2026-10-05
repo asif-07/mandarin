@@ -103,7 +103,7 @@ async function fanOut(supabase: Admin, g: GroupCore, to: WorkflowStatus, actor: 
       return notify(supabase, company, g.id, `Visa uploaded, review needed: ${ref}`, `The Visa Team uploaded the issued visa${by}. Review and approve it to release it to the partner.`);
     case "visa_approved":
       // The partner notification is written by emailVisaToPartner together with the email outcome.
-      return notify(supabase, visa, g.id, `Visa approved: ${ref}`, "The company approved the visa. Ground operations can be arranged.");
+      return notify(supabase, visa, g.id, `Visa approved: ${ref}`, "CTS approved the visa. Ground operations can be arranged.");
     case "guide_assigned":
       await notify(supabase, company, g.id, `Guide assigned: ${ref}`, note);
       return notify(supabase, partner, g.id, `Guide assigned: ${ref}`, note);

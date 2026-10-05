@@ -110,7 +110,7 @@ export async function listPartnerGroups(partnerCode: string): Promise<WorkflowGr
   return withPartners((data ?? []).map(mapGroup));
 }
 
-/** Groups in the visa team's hands: approved by the company and onward. */
+/** Groups in the visa team's hands: approved by CTS and onward. */
 export async function listVisaTeamGroups(): Promise<WorkflowGroup[]> {
   const supabase = createAdminClient();
   const { data } = await supabase

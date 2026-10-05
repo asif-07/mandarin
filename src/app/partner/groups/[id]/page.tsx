@@ -42,7 +42,7 @@ export default async function PartnerGroupPage({ params }: { params: Promise<{ i
 
       {g.workflow_status === "correction_requested" && g.company_decision_note && <p className="mb-4 rounded-md border border-mr-red/40 bg-mr-red/5 p-3 text-sm text-mr-red">Correction requested: {g.company_decision_note}</p>}
       {g.workflow_status === "rejected" && <p className="mb-4 rounded-md border border-mr-red/40 bg-mr-red/5 p-3 text-sm text-mr-red">Rejected{g.company_decision_note ? `: ${g.company_decision_note}` : ""}. Create a new group if the trip still goes ahead.</p>}
-      {g.workflow_status === "draft" && <p className="mb-4 rounded-md border border-mr-line bg-white p-3 text-sm text-mr-body">Draft. Upload the traveller documents, then submit the group for company approval.</p>}
+      {g.workflow_status === "draft" && <p className="mb-4 rounded-md border border-mr-line bg-white p-3 text-sm text-mr-body">Draft. Upload the traveller documents, then submit the group for CTS approval.</p>}
       {meta && !["draft", "correction_requested", "rejected"].includes(g.workflow_status ?? "") && <p className="mb-4 rounded-md border border-mr-line bg-white p-3 text-sm text-mr-body">{meta.b2b.charAt(0) + meta.b2b.slice(1).toLowerCase()}. {g.workflow_status === "visa_approved" ? "Download the approved visa below; it was also sent to your registered email." : g.workflow_status === "travelling_in_china" ? "China entry was confirmed by the guide." : g.workflow_status === "china_exited" ? "The group has exited China." : ""}</p>}
 
       <section className="mb-6 rounded-lg border border-mr-line bg-white p-4">

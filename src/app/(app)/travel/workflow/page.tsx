@@ -32,7 +32,7 @@ export default async function WorkflowPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader title="Group workflow" description="Partner submissions, company approval, China Visa Team processing, visa approval and ground operations, on the one group record." />
+      <PageHeader title="Group workflow" description="Partner submissions, CTS approval, China Visa Team processing, visa approval and ground operations, on the one group record." />
 
       {focus && (
         <section className="mb-8 rounded-lg border border-mr-ink bg-white p-4">
