@@ -29,7 +29,7 @@ export default async function PartnerGroupPage({ params }: { params: Promise<{ i
   const meta = workflowMeta(g.workflow_status);
 
   return (
-    <PortalShell title={partner.name} subtitle={`${GROUND_BRAND.name} · B2B partner portal`} homeHref="/partner" user={partner.code} signOutUrl="/api/partner/logout" nav={[{ href: "/partner", label: "Groups" }, { href: "/partner/groups/new", label: "New group" }]}>
+    <PortalShell title={partner.name} subtitle={`${GROUND_BRAND.name} · B2B partner portal`} homeHref="/partner" user={partner.code} signOutUrl="/api/partner/logout" nav={[{ href: "/partner", label: "Groups" }, { href: "/partner/groups/upload", label: "Bulk upload" }, { href: "/partner/groups/new", label: "New group" }]}>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="font-heading text-xl font-semibold">{g.group_ref}</h1>

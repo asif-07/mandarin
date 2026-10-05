@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { PortalShell } from "@/components/portal/shell";
 import { PortalLogin } from "@/components/portal/portal-login";
 import { WorkflowStatusChip } from "@/components/workflow/status-chip";
@@ -42,15 +42,20 @@ export default async function PartnerHome() {
   );
 
   return (
-    <PortalShell title={partner.name} subtitle={`${GROUND_BRAND.name} · B2B partner portal`} homeHref="/partner" user={partner.code} signOutUrl="/api/partner/logout" nav={[{ href: "/partner", label: "Groups" }, { href: "/partner/groups/new", label: "New group" }, { href: "/partner#notifications", label: "Notifications", badge: unread }]}>
+    <PortalShell title={partner.name} subtitle={`${GROUND_BRAND.name} · B2B partner portal`} homeHref="/partner" user={partner.code} signOutUrl="/api/partner/logout" nav={[{ href: "/partner", label: "Groups" }, { href: "/partner/groups/upload", label: "Bulk upload" }, { href: "/partner/groups/new", label: "New group" }, { href: "/partner#notifications", label: "Notifications", badge: unread }]}>
       <div className="mb-4 flex items-center justify-between gap-2">
         <h1 className="font-heading text-xl font-semibold">Your groups</h1>
-        <Link href="/partner/groups/new" className={buttonVariants({ size: "sm" })}>
-          <Plus /> New group
-        </Link>
+        <span className="flex items-center gap-2">
+          <Link href="/partner/groups/upload" className={buttonVariants({ size: "sm" })}>
+            <Upload /> Bulk upload PDF
+          </Link>
+          <Link href="/partner/groups/new" className={buttonVariants({ size: "sm", variant: "outline" })}>
+            <Plus /> New group
+          </Link>
+        </span>
       </div>
       {groups.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-mr-line bg-white px-4 py-8 text-center text-sm text-mr-muted">No groups yet. Create your first group: dates, ports, flight details and the traveller document PDF.</p>
+        <p className="rounded-lg border border-dashed border-mr-line bg-white px-4 py-8 text-center text-sm text-mr-muted">No groups yet. Upload your group PDF named with the code (the dates and pax are read from it), or create a group by form.</p>
       ) : (
         <>
           <ul className="divide-y divide-mr-line rounded-lg border border-mr-line bg-white">{open.map((g) => <GroupRow key={g.id} g={g} />)}</ul>
