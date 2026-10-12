@@ -75,6 +75,77 @@ export type Database = {
           },
         ]
       }
+      arrival_requests: {
+        Row: {
+          admin_reply: string | null
+          agent_name: string | null
+          agent_notes: string | null
+          agent_phone: string | null
+          airline_flight: string
+          arrival_date: string
+          arrival_time: string
+          created_at: string
+          group_id: string | null
+          id: string
+          partner_code: string
+          pax: number
+          ref: string
+          replied_at: string | null
+          replied_by: string | null
+          status: string
+          token: string
+          updated_at: string | null
+        }
+        Insert: {
+          admin_reply?: string | null
+          agent_name?: string | null
+          agent_notes?: string | null
+          agent_phone?: string | null
+          airline_flight: string
+          arrival_date: string
+          arrival_time: string
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          partner_code: string
+          pax: number
+          ref: string
+          replied_at?: string | null
+          replied_by?: string | null
+          status?: string
+          token: string
+          updated_at?: string | null
+        }
+        Update: {
+          admin_reply?: string | null
+          agent_name?: string | null
+          agent_notes?: string | null
+          agent_phone?: string | null
+          airline_flight?: string
+          arrival_date?: string
+          arrival_time?: string
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          partner_code?: string
+          pax?: number
+          ref?: string
+          replied_at?: string | null
+          replied_by?: string | null
+          status?: string
+          token?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrival_requests_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "travel_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       b2b_partners: {
         Row: {
           code: string

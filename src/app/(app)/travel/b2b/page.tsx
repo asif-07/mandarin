@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Building2 } from "lucide-react";
+import Link from "next/link";
+import { Building2, PlaneLanding } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { B2bUploadButton, ReplaceB2bPackButton } from "@/components/travel/b2b-upload";
 import { PartnersButton } from "@/components/travel/partner-logos";
+import { ArrivalsLinkButton } from "@/components/arrivals/arrival-admin";
+import { countNewArrivals } from "@/lib/arrivals/server";
 import { GroupCard } from "@/components/travel/group-card";
 import { StatCard, StatGrid } from "@/components/shared/stat-card";
 import { groupIssues, groupPax } from "@/lib/queries/group-status";
@@ -60,6 +64,7 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
     unpaid: issueList.filter((x) => x.issues.some((i) => i.key === "unpaid")).length,
   };
 
+  const newArrivals = await countNewArrivals();
   const byPartner = new Map<string, number>();
   groups.forEach((g) => byPartner.set(g.partner_code ?? "?", (byPartner.get(g.partner_code ?? "?") ?? 0) + 1));
 
@@ -70,6 +75,10 @@ export default async function B2bGroupsPage({ searchParams }: { searchParams: Pr
         description="Packs compiled by partner agencies, plus our own groups that belong to a partner. Upload a partner's PDF with their code and it is filed under the next free group number for that date."
         actions={
           <>
+            <Link href="/travel/arrivals" className={buttonVariants({ variant: newArrivals ? "default" : "outline" })}>
+              <PlaneLanding /> Arrivals{newArrivals ? ` · ${newArrivals} new` : ""}
+            </Link>
+            <ArrivalsLinkButton />
             <PartnersButton partners={partners} />
             <B2bUploadButton />
           </>

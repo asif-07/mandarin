@@ -8,6 +8,9 @@ import { WorkflowStatusChip } from "@/components/workflow/status-chip";
 import { NotificationsList } from "@/components/workflow/notifications-list";
 import { MarkReadButton } from "@/components/workflow/mark-read-button";
 import { listCompanyWorkflowGroups, listNotifications, unreadCount } from "@/lib/workflow/data";
+import { listArrivals } from "@/lib/arrivals/server";
+import { ArrivalsLinkButton } from "@/components/arrivals/arrival-admin";
+import { PlaneLanding } from "lucide-react";
 import { addDays, parseISO, subDays } from "date-fns";
 import { PageHeader } from "@/components/shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -145,6 +148,9 @@ export default async function DashboardPage() {
   // Workflow inbox: partner submissions and uploaded visas waiting on the company, plus notifications.
   const [workflowGroups, notifications, unread] = await Promise.all([listCompanyWorkflowGroups(), listNotifications({ audience: "company" }, 12), unreadCount({ audience: "company" })]);
   const actionGroups = workflowGroups.filter((g) => ["submitted", "correction_requested", "visa_issued"].includes(g.workflow_status ?? ""));
+  // Hong Kong arrival details sent by agents through the public link, next 14 days, unanswered first.
+  const arrivals = (await listArrivals({ from: today, to: toISODate(addDays(parseISO(today), 14)) })).sort((a, b) => (a.status === "new" ? 0 : 1) - (b.status === "new" ? 0 : 1) || a.arrival_date.localeCompare(b.arrival_date) || a.arrival_time.localeCompare(b.arrival_time));
+  const newArrivals = arrivals.filter((a) => a.status === "new").length;
 
   return (
     <>
@@ -158,6 +164,32 @@ export default async function DashboardPage() {
         <StatCard label="Invoiced" value={`USD ${formatNumber(invoiced)}`} hint={`${monthLabel} · USD invoices`} href="/invoices" />
         <StatCard label="Outstanding" value={`USD ${formatNumber(monthBalance)}`} hint={`received USD ${formatNumber(monthReceived)}`} tone={monthBalance > 0 ? "warning" : "success"} href={admin ? "/accounts/receivables" : "/invoices"} />
       </StatGrid>
+
+      <Section id="arrivals" title="Hong Kong group arrivals" icon={<PlaneLanding />} hint={arrivals.length ? `${arrivals.length} in the next 14 days · ${newArrivals} unanswered` : "none in the next 14 days"} link={{ href: "/travel/arrivals", label: "All arrivals" }}>
+        {arrivals.length === 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-mr-line px-4 py-4">
+            <p className="text-sm text-mr-muted">Share the public link with travel agents; their arrival details land here for you to reply to.</p>
+            <ArrivalsLinkButton />
+          </div>
+        ) : (
+          <ul className="divide-y divide-mr-line rounded-lg border border-mr-line bg-white">
+            {arrivals.slice(0, 8).map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+                <Link href={`/travel/arrivals?status=${a.status}`} className="tnum text-sm font-medium text-mr-ink hover:underline">
+                  {formatDate(a.arrival_date)} {a.arrival_time}
+                </Link>
+                <Chip tone="ink">{a.partner_code}</Chip>
+                <span className="text-sm text-mr-body">
+                  {a.airline_flight} · {a.pax} pax{a.agent_name ? ` · ${a.agent_name}` : ""}
+                </span>
+                <Chip tone={a.status === "new" ? "warning" : a.status === "closed" ? "muted" : "success"} className="ml-auto">
+                  {a.status === "new" ? "Needs reply" : a.status}
+                </Chip>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
 
       {(actionGroups.length > 0 || notifications.length > 0) && (
         <div className="mt-8 grid gap-6 xl:grid-cols-2">
