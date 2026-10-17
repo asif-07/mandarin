@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Building2 } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { buttonVariants } from "@/components/ui/button";
@@ -92,9 +92,14 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         title="Invoices"
         description={count ? `Showing ${shownFrom}–${shownTo} of ${count} invoice${count === 1 ? "" : "s"}${hasFilters ? " (filtered)" : ""}` : "No invoices to show"}
         actions={
-          <Link href="/invoices/new" className={buttonVariants()}>
-            <Plus /> New invoice
-          </Link>
+          <>
+            <Link href="/invoices/b2b" className={buttonVariants({ variant: "outline" })}>
+              <Building2 /> B2B invoices
+            </Link>
+            <Link href="/invoices/new" className={buttonVariants()}>
+              <Plus /> New invoice
+            </Link>
+          </>
         }
       />
 
