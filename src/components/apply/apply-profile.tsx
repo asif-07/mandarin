@@ -320,7 +320,7 @@ export function ApplyProfile({ initial }: { initial: ApplicantView }) {
             ))}
           </ul>
         )}
-        <Button type="button" className="mt-3" onClick={submit} disabled={!completeness.canSubmit || submitting || (status === "submitted" && !dirty && false)}>
+        <Button type="button" className="mt-3" onClick={submit} disabled={!completeness.canSubmit || submitting}>
           {submitting ? <Loader2 className="animate-spin" /> : <Send />} {status === "submitted" || status === "reviewed" ? "Re-send application" : completeness.ready ? "Apply directly" : "Submit application"}
         </Button>
       </section>

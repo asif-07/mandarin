@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { COMPANY } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: { default: `${COMPANY.name} · China visa application`, template: `%s · ${COMPANY.name}` },
+  title: { default: "China visa application", template: `%s · ${COMPANY.name}` },
   description: "Apply for your China trip online: upload your passport, photo and PAN card, add your PAR, hotel and flight if you have them.",
   robots: { index: false, follow: false },
 };
