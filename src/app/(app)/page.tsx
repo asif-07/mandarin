@@ -148,6 +148,11 @@ export default async function DashboardPage() {
   // Workflow inbox: partner submissions and uploaded visas waiting on the company, plus notifications.
   const [workflowGroups, notifications, unread] = await Promise.all([listCompanyWorkflowGroups(), listNotifications({ audience: "company" }, 12), unreadCount({ audience: "company" })]);
   const actionGroups = workflowGroups.filter((g) => ["submitted", "correction_requested", "visa_issued"].includes(g.workflow_status ?? ""));
+  // Today's border movements, for the Entry / Exit link.
+  const [{ count: enteringToday }, { count: exitingToday }] = await Promise.all([
+    supabase.from("travel_groups").select("id", { count: "exact", head: true }).eq("travel_date", today),
+    supabase.from("travel_groups").select("id", { count: "exact", head: true }).eq("travel_end_date", today),
+  ]);
   // Hong Kong arrival details sent by agents through the public link, next 14 days, unanswered first.
   const arrivals = (await listArrivals({ from: today, to: toISODate(addDays(parseISO(today), 14)) })).sort((a, b) => (a.status === "new" ? 0 : 1) - (b.status === "new" ? 0 : 1) || a.arrival_date.localeCompare(b.arrival_date) || a.arrival_time.localeCompare(b.arrival_time));
   const newArrivals = arrivals.filter((a) => a.status === "new").length;
@@ -256,7 +261,7 @@ export default async function DashboardPage() {
         </Section>
       )}
 
-      <Section id="upcoming-groups" title="Travelling groups" icon={<Plane />} hint={upcomingGroups.length ? `${upcomingGroups.length} shown, soonest first` : undefined} link={{ href: "/travel?view=all", label: "All groups" }}>
+      <Section id="upcoming-groups" title="Travelling groups" icon={<Plane />} hint={`${upcomingGroups.length ? `${upcomingGroups.length} shown, soonest first · ` : ""}today: ${enteringToday} entering, ${exitingToday} exiting`} link={{ href: "/travel/movements", label: "Entry / Exit today" }}>
         {upcomingGroups.length === 0 ? (
           <p className="rounded-lg border border-dashed border-mr-line px-4 py-6 text-center text-sm text-mr-muted">
             No groups travelling today or later. <Link href="/travel/groups" className="underline">Create groups</Link> to see them here.

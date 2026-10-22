@@ -14,6 +14,7 @@ const TABS = [
   { href: "/travel/transfers", label: "Transfers" },
   { href: "/travel/workflow", label: "Workflow" },
   { href: "/travel/arrivals", label: "Arrivals" },
+  { href: "/travel/movements", label: "Entry / Exit" },
 ];
 
 export function TravelNav() {

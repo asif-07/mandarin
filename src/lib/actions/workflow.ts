@@ -206,3 +206,72 @@ export async function saveGuideForCompany(id: string | null, input: GuideInput):
   revalidateWorkflow();
   return ok({ id: res.id });
 }
+
+// ---------------------------------------------------------------------------
+// Manual China entry / exit (Travel → Entry / Exit), for any group
+// ---------------------------------------------------------------------------
+const ENTERED_OR_LATER = ["travelling_in_china", "china_exited", "completed"];
+
+/** Mark the group as entered China now (or at the given time). Travellers stay as they are; the group timeline records who confirmed. */
+export async function markGroupEntered(groupId: string, at?: string | null): Promise<ActionResult<{ status: string }>> {
+  const profile = await requireProfile();
+  const admin = createAdminClient();
+  const g = await loadGroupCore(admin, groupId);
+  if (!g) return fail("Group not found");
+  if (ENTERED_OR_LATER.includes(g.workflow_status ?? "")) return fail("Entry is already confirmed for this group");
+  const when = at && !Number.isNaN(Date.parse(at)) ? new Date(at).toISOString() : new Date().toISOString();
+  const res = await transition(groupId, "travelling_in_china", { kind: "company", name: profile.display_name }, { note: "Entry confirmed manually by CTS", patch: { china_entry_at: when, china_entry_confirmed_by: `${profile.display_name} (CTS)` } });
+  if (!res.ok) return fail(res.error);
+  revalidateWorkflow();
+  revalidatePath("/travel/movements");
+  return ok({ status: "travelling_in_china" });
+}
+
+/** Mark the group as exited China now (or at the given time); its travellers become Travelled. */
+export async function markGroupExitedManually(groupId: string, at?: string | null): Promise<ActionResult<{ status: string }>> {
+  const profile = await requireProfile();
+  const admin = createAdminClient();
+  const g = await loadGroupCore(admin, groupId);
+  if (!g) return fail("Group not found");
+  if (["china_exited", "completed"].includes(g.workflow_status ?? "")) return fail("Exit is already confirmed for this group");
+  const when = at && !Number.isNaN(Date.parse(at)) ? new Date(at).toISOString() : new Date().toISOString();
+  const patch: Record<string, string | null> = { china_exit_at: when, china_exit_confirmed_by: `${profile.display_name} (CTS)` };
+  // An exit implies the entry: fill it from the travel date when nobody recorded it.
+  const { data: cur } = await admin.from("travel_groups").select("china_entry_at, travel_date").eq("id", groupId).maybeSingle();
+  if (cur && !cur.china_entry_at) {
+    patch.china_entry_at = new Date(`${cur.travel_date}T00:00:00Z`).toISOString();
+    patch.china_entry_confirmed_by = `${profile.display_name} (CTS, with the exit)`;
+  }
+  const res = await transition(groupId, "china_exited", { kind: "company", name: profile.display_name }, { note: "Exit confirmed manually by CTS", patch });
+  if (!res.ok) return fail(res.error);
+  await admin.from("travellers").update({ status: "travelled" }).eq("travel_group_id", groupId).not("status", "in", "(cancelled,travelled)");
+  revalidateWorkflow();
+  revalidatePath("/travel/movements");
+  revalidatePath("/travel/travellers");
+  return ok({ status: "china_exited" });
+}
+
+/** Undo a manual entry or exit confirmation (wrong group clicked). */
+export async function undoGroupMovement(groupId: string, kind: "entry" | "exit"): Promise<ActionResult<{ status: string | null }>> {
+  const profile = await requireProfile();
+  const admin = createAdminClient();
+  const { data: g } = await admin.from("travel_groups").select("workflow_status, guide_id, visa_approved_at, submitted_by_partner").eq("id", groupId).maybeSingle();
+  if (!g) return fail("Group not found");
+  if (kind === "exit") {
+    if (g.workflow_status !== "china_exited") return fail("This group is not marked as exited");
+    const { error } = await admin.from("travel_groups").update({ workflow_status: "travelling_in_china", workflow_updated_at: new Date().toISOString(), china_exit_at: null, china_exit_confirmed_by: null, completed_at: null }).eq("id", groupId);
+    if (error) return fail(errorMessage(error, "Could not undo"));
+    await admin.from("travellers").update({ status: "visa_approved" }).eq("travel_group_id", groupId).eq("status", "travelled");
+    await recordEvent(admin, groupId, { kind: "company", name: profile.display_name }, "Exit confirmation undone", { status: "travelling_in_china" });
+  } else {
+    if (g.workflow_status !== "travelling_in_china") return fail("Undo the exit first, or the group is not marked as entered");
+    // Back to the step before entry: guide assigned when one is set, else visa approved, else out of the workflow for manual groups.
+    const back = g.guide_id ? "guide_assigned" : g.visa_approved_at ? "visa_approved" : g.submitted_by_partner ? "visa_approved" : null;
+    const { error } = await admin.from("travel_groups").update({ workflow_status: back, workflow_updated_at: new Date().toISOString(), china_entry_at: null, china_entry_confirmed_by: null }).eq("id", groupId);
+    if (error) return fail(errorMessage(error, "Could not undo"));
+    await recordEvent(admin, groupId, { kind: "company", name: profile.display_name }, "Entry confirmation undone", { status: back });
+  }
+  revalidateWorkflow();
+  revalidatePath("/travel/movements");
+  return ok({ status: kind === "exit" ? "travelling_in_china" : null });
+}
