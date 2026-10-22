@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FileCheck2, Loader2, Stamp, Trash2, Upload } from "lucide-react";
+import { Download, FileCheck2, ListChecks, Loader2, Stamp, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,7 +10,8 @@ import { StatusPill } from "@/components/shared/status-pill";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
 import { clearGroupVisa } from "@/lib/actions/travel-groups";
-import { BUCKETS, VISA_STATUSES, labelFor } from "@/lib/constants";
+import { BUCKETS, DOC_TYPES, VISA_STATUSES, labelFor } from "@/lib/constants";
+import { DocTypePicker } from "@/components/travel/pack-panel";
 import { checkUploadFile, ACCEPTED_EXT } from "@/lib/validation/travel";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -103,45 +104,69 @@ export function UploadVisaButton({ groupId, replace = false, size = "sm" }: { gr
  */
 export function DownloadBundleButton({ group, size = "sm", variant = "outline" }: { group: GroupVisaInfo; size?: "sm" | "default"; variant?: "default" | "outline" }) {
   const [open, setOpen] = useState(false);
+  const [choose, setChoose] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(DOC_TYPES.map((d) => d.value as string)));
   const isB2b = group.source === "b2b";
   const canBuild = isB2b ? !!group.pack_path : group.traveller_count > 0;
   const visaIn = group.visa_status === "approved" && !!group.visa_path;
   if (!canBuild && !visaIn) return null;
-  if (!visaIn) {
-    return (
-      <a href={`/api/groups/${group.id}/bundle`} title="Mandarin Roots cover with entry, exit, pax and dates, then the documents" className={buttonVariants({ variant, size })}>
-        <Download /> Download for visa application
-      </a>
-    );
-  }
-  const who = isB2b ? (group.partner_code ?? "partner") : "client";
-  const brand = isB2b ? `${group.partner_code ?? "partner"} branding${group.partner_has_logo ? "" : " (name only: no logo on file)"}` : "Mandarin Roots cover";
+  const who = visaIn ? (isB2b ? (group.partner_code ?? "partner") : "client") : "visa application";
+  const brand = isB2b && visaIn ? `${group.partner_code ?? "partner"} branding${group.partner_has_logo ? "" : " (name only: no logo on file)"}` : "Mandarin Roots cover";
+  const docsParam = [...selected].join(",");
   return (
     <>
-      <Button variant={variant} size={size} onClick={() => setOpen(true)}>
+      <Button variant={variant} size={size} onClick={() => setOpen(true)} title={visaIn ? undefined : "Mandarin Roots cover with entry, exit, pax and dates, then the documents"}>
         <Download /> Download for {who}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>What to download for {who}</DialogTitle>
-            <DialogDescription>{brand} on the first page. The visa page is included either way.</DialogDescription>
+            <DialogDescription>
+              {brand} on the first page.{visaIn ? " The visa page is included either way." : ""}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
-            <a href={`/api/groups/${group.id}/bundle?scope=visa`} onClick={() => setOpen(false)} className="flex items-start gap-3 rounded-lg border border-mr-ink bg-mr-surface p-3 text-sm hover:bg-white">
-              <FileCheck2 className="mt-0.5 size-4 shrink-0 text-mr-ink" />
-              <span>
-                <span className="block font-medium text-mr-ink">First page and visa page only</span>
-                <span className="block text-xs text-mr-muted">Cover with the travel details, then the visa. Usual choice: they already hold their own hotel and ticket documents.</span>
-              </span>
-            </a>
-            <a href={`/api/groups/${group.id}/bundle?scope=all`} onClick={() => setOpen(false)} className="flex items-start gap-3 rounded-lg border border-mr-line p-3 text-sm hover:bg-mr-surface">
+            {visaIn && (
+              <a href={`/api/groups/${group.id}/bundle?scope=visa`} onClick={() => setOpen(false)} className="flex items-start gap-3 rounded-lg border border-mr-ink bg-mr-surface p-3 text-sm hover:bg-white">
+                <FileCheck2 className="mt-0.5 size-4 shrink-0 text-mr-ink" />
+                <span>
+                  <span className="block font-medium text-mr-ink">First page and visa page only</span>
+                  <span className="block text-xs text-mr-muted">Cover with the travel details, then the visa. Usual choice: they already hold their own hotel and ticket documents.</span>
+                </span>
+              </a>
+            )}
+            <a href={`/api/groups/${group.id}/bundle?scope=all`} onClick={() => setOpen(false)} className={cn("flex items-start gap-3 rounded-lg border p-3 text-sm hover:bg-mr-surface", visaIn ? "border-mr-line" : "border-mr-ink bg-mr-surface hover:bg-white")}>
               <Download className="mt-0.5 size-4 shrink-0 text-mr-body" />
               <span>
                 <span className="block font-medium text-mr-ink">All documents</span>
-                <span className="block text-xs text-mr-muted">Cover, visa, then {isB2b ? "the partner's full pack" : "every traveller's PAR, passport, flight and hotel documents"}. Larger file.</span>
+                <span className="block text-xs text-mr-muted">Cover{visaIn ? ", visa" : ""}, then {isB2b ? "the partner's full pack" : "every traveller's PAR, passport, flight, hotel, photo and PAN documents"}. Larger file.</span>
               </span>
             </a>
+            {!isB2b && (
+              <div className={cn("rounded-lg border border-mr-line p-3 text-sm", choose && "bg-mr-surface")}>
+                <button type="button" onClick={() => setChoose((c) => !c)} className="flex w-full items-start gap-3 text-left">
+                  <ListChecks className="mt-0.5 size-4 shrink-0 text-mr-body" />
+                  <span>
+                    <span className="block font-medium text-mr-ink">Choose documents</span>
+                    <span className="block text-xs text-mr-muted">Any combination: PAR only, passport and flight, … for every traveller in the group.</span>
+                  </span>
+                </button>
+                {choose && (
+                  <div className="mt-3 space-y-3">
+                    <DocTypePicker types={DOC_TYPES.map((d) => d.value)} selected={selected} onChange={setSelected} />
+                    <a
+                      href={`/api/groups/${group.id}/bundle?scope=all&docs=${encodeURIComponent(docsParam)}`}
+                      onClick={(e) => (selected.size === 0 ? e.preventDefault() : setOpen(false))}
+                      aria-disabled={selected.size === 0}
+                      className={buttonVariants({ size: "sm", className: selected.size === 0 ? "pointer-events-none opacity-50" : "" })}
+                    >
+                      <Download /> Download {selected.size} type{selected.size === 1 ? "" : "s"}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

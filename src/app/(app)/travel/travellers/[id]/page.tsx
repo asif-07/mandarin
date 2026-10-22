@@ -11,6 +11,13 @@ import { CompilePackButton, PackHistory } from "@/components/travel/pack-panel";
 import { TravellerStatusSelect } from "@/components/travel/traveller-status-select";
 import { createClient } from "@/lib/supabase/server";
 import { docCompleteness, groupCoverage, groupTitle } from "@/lib/queries/travel";
+import { loadSuggestionInputs } from "@/lib/queries/suggestions";
+import { suggestForTraveller } from "@/lib/travel/suggestions";
+import { GroupSuggestions } from "@/components/travel/group-suggestions";
+import { ApplicationActions } from "@/components/travel/application-actions";
+import { Chip } from "@/components/shared/chip";
+import { PORTAL_STATUSES } from "@/lib/constants";
+import { todayISO } from "@/lib/format";
 import { DeleteTravellerButton } from "@/components/travel/delete-traveller-button";
 import { BUCKETS, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
@@ -64,6 +71,9 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
     preview_url: urlByPath.get(d.storage_path) ?? null,
   }));
   const groupCovered = [...groupCoverage(t.group?.group_documents)];
+  // Ungrouped upcoming traveller: suggest a group to merge into or a travel mate to pair with (group visa needs 2+).
+  const wantsSuggestions = !t.travel_group_id && t.status !== "cancelled" && t.status !== "travelled" && t.travel_start_date >= todayISO();
+  const suggestions = wantsSuggestions ? await loadSuggestionInputs(supabase).then((inp) => suggestForTraveller({ id: t.id, full_name: t.full_name, traveller_ref: t.traveller_ref, travel_start_date: t.travel_start_date, travel_end_date: t.travel_end_date }, inp.groups, inp.ungrouped)) : [];
   const completeness = docCompleteness((docs ?? []).map((d) => ({ doc_type: d.doc_type, deleted_at: null })), new Set(groupCovered));
 
   const defaults: TravellerInput = {
@@ -85,6 +95,11 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
     lead_id: t.lead_id,
     invoice_id: t.invoice_id,
     customer_id: t.customer_id,
+    address: t.address ?? "",
+    pan_number: t.pan_number ?? "",
+    date_of_birth: t.date_of_birth ?? "",
+    sex: t.sex,
+    passport_expiry: t.passport_expiry ?? "",
   };
 
   const initialGroup = t.group
@@ -108,7 +123,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
         actions={
           <>
             <DeleteTravellerButton travellerId={t.id} travellerName={t.full_name} />
-            <CompilePackButton travellerId={t.id} missing={completeness.missingLabels} />
+            <CompilePackButton travellerId={t.id} missing={completeness.missingLabels} available={[...new Set(documents.map((d) => d.doc_type))]} />
           </>
         }
       />
@@ -117,8 +132,26 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
         <StatusPill label={labelFor(TRAVELLER_STATUSES, t.status)} tone={TRAVELLER_TONES[t.status]} />
         <TravellerStatusSelect travellerId={t.id} status={t.status} />
         {t.visa_reference && <span className="font-mono text-xs text-mr-body">{t.visa_reference}</span>}
+        {t.source === "b2c_portal" && (
+          <>
+            <Chip tone="ink">Customer portal</Chip>
+            <Chip tone={t.portal_status === "submitted" ? "warning" : t.portal_status === "reviewed" ? "success" : "muted"}>{labelFor(PORTAL_STATUSES, t.portal_status ?? "draft")}</Chip>
+            {t.portal_status !== "draft" && <Chip tone={t.portal_ready ? "ink" : "neutral"}>{t.portal_ready ? "Has PAR + hotel" : "Needs PAR / hotel"}</Chip>}
+          </>
+        )}
         <Attribution name={t.creator?.display_name} date={t.created_at} />
       </div>
+      {t.source === "b2c_portal" && (
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <ApplicationActions travellerId={t.id} portalStatus={t.portal_status} token={t.portal_token} missing={[]} />
+        </div>
+      )}
+      {wantsSuggestions && (
+        <section className="mb-6">
+          <h2 className="micro-label mb-2">Group suggestion</h2>
+          <GroupSuggestions travellerId={t.id} suggestions={suggestions} />
+        </section>
+      )}
 
       <section className="mb-8">
         <h2 className="micro-label mb-3">Documents</h2>

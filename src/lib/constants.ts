@@ -228,15 +228,39 @@ export const CHINA_PORTS = [
   "Xiamen Gaoqi International Airport (XMN)",
 ] as const;
 
+/**
+ * Document slots. `required` ones make up the travel pack completeness
+ * (PAR, passport, flight, hotel); `slot` ones hold a single file per
+ * traveller and are replaced on re-upload (the identity documents the B2C
+ * portal asks for: passport photo and PAN card); "other" is a free list.
+ */
 export const DOC_TYPES = [
-  { value: "par", label: "PAR", mergeOrder: 1, required: true, keywords: ["par", "arrival", "record"] },
-  { value: "passport", label: "Passport", mergeOrder: 2, required: true, keywords: ["passport", "ppt", "pp"] },
-  { value: "flight_ticket", label: "Flight Ticket", mergeOrder: 3, required: true, keywords: ["ticket", "flight", "itinerary", "boarding", "pnr"] },
-  { value: "hotel_booking", label: "Hotel Booking", mergeOrder: 4, required: true, keywords: ["hotel", "booking", "reservation", "accommodation"] },
-  { value: "other", label: "Other", mergeOrder: 5, required: false, keywords: [] },
+  { value: "par", label: "PAR", mergeOrder: 1, required: true, slot: true, keywords: ["par", "arrival", "record"] },
+  { value: "passport", label: "Passport", mergeOrder: 2, required: true, slot: true, keywords: ["passport", "ppt", "pp"] },
+  { value: "flight_ticket", label: "Flight Ticket", mergeOrder: 3, required: true, slot: true, keywords: ["ticket", "flight", "itinerary", "boarding", "pnr"] },
+  { value: "hotel_booking", label: "Hotel Booking", mergeOrder: 4, required: true, slot: true, keywords: ["hotel", "booking", "reservation", "accommodation"] },
+  { value: "photo", label: "Passport photo", mergeOrder: 5, required: false, slot: true, keywords: ["photo", "picture", "selfie"] },
+  { value: "pan_card", label: "PAN card", mergeOrder: 6, required: false, slot: true, keywords: ["pan"] },
+  { value: "other", label: "Other", mergeOrder: 7, required: false, slot: false, keywords: [] },
 ] as const;
 export type DocType = (typeof DOC_TYPES)[number]["value"];
 export const REQUIRED_DOC_TYPES = DOC_TYPES.filter((d) => d.required).map((d) => d.value);
+/** Identity slots shown after the four required ones (one file each). */
+export const IDENTITY_DOC_TYPES = DOC_TYPES.filter((d) => d.slot && !d.required).map((d) => d.value);
+
+/** Where a traveller record came from. */
+export const TRAVELLER_SOURCES = [
+  { value: "internal", label: "Entered by us" },
+  { value: "b2c_portal", label: "Customer portal" },
+] as const satisfies readonly Option[];
+export type TravellerSource = (typeof TRAVELLER_SOURCES)[number]["value"];
+
+/** Customer portal application states (travellers.portal_status). */
+export const PORTAL_STATUSES = [
+  { value: "draft", label: "Not submitted" },
+  { value: "submitted", label: "Submitted" },
+  { value: "reviewed", label: "Reviewed" },
+] as const satisfies readonly Option[];
 
 export const ACCEPTED_UPLOAD_TYPES: Record<string, string[]> = {
   "application/pdf": [".pdf"],

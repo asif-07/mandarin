@@ -3,6 +3,12 @@ import { isValidPhoneNumber } from "libphonenumber-js";
 import { ACCEPTED_UPLOAD_TYPES, DOC_TYPES, MAX_UPLOAD_BYTES, PACKAGE_TIERS, TRAVELLER_STATUSES, TRANSIT_LOCATIONS, tierHasHotel, tierHasTransit, tierNeedsStars } from "@/lib/constants";
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date");
+const optionalDate = z
+  .string()
+  .optional()
+  .nullable()
+  .transform((v) => (v ? v : null))
+  .refine((v) => !v || /^\d{4}-\d{2}-\d{2}$/.test(v), "Use a full date");
 
 const optionalText = z
   .string()
@@ -185,6 +191,23 @@ export const travellerSchema = z
     lead_id: optionalUuid,
     invoice_id: optionalUuid,
     customer_id: optionalUuid,
+    // Identity details (filled by the customer portal's passport OCR, editable here)
+    address: optionalText,
+    pan_number: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .optional()
+      .nullable()
+      .transform((v) => (v ? v : null))
+      .refine((v) => !v || /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v), "PAN looks like ABCDE1234F"),
+    date_of_birth: optionalDate,
+    sex: z
+      .union([z.string(), z.null()])
+      .optional()
+      .transform((v) => (v ? v : null))
+      .refine((v) => v === null || v === "M" || v === "F" || v === "X", "Choose M, F or X"),
+    passport_expiry: optionalDate,
   })
   .refine((v) => v.travel_end_date >= v.travel_start_date, {
     message: "End date must be on or after the start date",

@@ -43,6 +43,11 @@ export function emptyTravellerValues(): TravellerInput {
     lead_id: null,
     invoice_id: null,
     customer_id: null,
+    address: "",
+    pan_number: "",
+    date_of_birth: "",
+    sex: null,
+    passport_expiry: "",
   };
 }
 
@@ -247,6 +252,50 @@ export function TravellerForm({ mode, travellerId, defaultValues, initialGroup, 
                 <Input id="t_hotel" placeholder="e.g. Guangzhou Marriott Tianhe" {...register("hotel_name")} />
               </div>
             )}
+            <div className="sm:col-span-2">
+              <p className="micro-label mb-2">Identity (for the visa form; filled by the customer portal&apos;s passport scan when they applied online)</p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="t_dob">Date of birth</Label>
+                  <Input id="t_dob" type="date" aria-invalid={!!errors.date_of_birth} {...register("date_of_birth")} />
+                  <FieldError message={errors.date_of_birth?.message} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="t_sex">Sex</Label>
+                  <Controller
+                    control={control}
+                    name="sex"
+                    render={({ field }) => (
+                      <Select value={field.value ?? "none"} onValueChange={(v) => field.onChange(v === "none" ? null : v)}>
+                        <SelectTrigger id="t_sex" className="w-full">
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">—</SelectItem>
+                          <SelectItem value="M">Male</SelectItem>
+                          <SelectItem value="F">Female</SelectItem>
+                          <SelectItem value="X">Other / X</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="t_expiry">Passport expiry</Label>
+                  <Input id="t_expiry" type="date" aria-invalid={!!errors.passport_expiry} {...register("passport_expiry")} />
+                  <FieldError message={errors.passport_expiry?.message} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="t_pan">PAN number</Label>
+                  <Input id="t_pan" className="uppercase" placeholder="ABCDE1234F" autoCapitalize="characters" aria-invalid={!!errors.pan_number} {...register("pan_number")} />
+                  <FieldError message={errors.pan_number?.message} />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="t_address">Address</Label>
+                  <Textarea id="t_address" rows={2} {...register("address")} />
+                </div>
+              </div>
+            </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="t_notes">Notes</Label>
               <Textarea id="t_notes" rows={3} {...register("notes")} />

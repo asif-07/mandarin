@@ -9,6 +9,10 @@ import { NotificationsList } from "@/components/workflow/notifications-list";
 import { MarkReadButton } from "@/components/workflow/mark-read-button";
 import { listCompanyWorkflowGroups, listNotifications, unreadCount } from "@/lib/workflow/data";
 import { listArrivals } from "@/lib/arrivals/server";
+import { listApplications } from "@/lib/queries/suggestions";
+import { ApplyLinkButton } from "@/components/apply/apply-link-button";
+import { PORTAL_STATUSES } from "@/lib/constants";
+import { UserPlus } from "lucide-react";
 import { ArrivalsLinkButton } from "@/components/arrivals/arrival-admin";
 import { PlaneLanding } from "lucide-react";
 import { addDays, parseISO, subDays } from "date-fns";
@@ -156,6 +160,9 @@ export default async function DashboardPage() {
   // Hong Kong arrival details sent by agents through the public link, next 14 days, unanswered first.
   const arrivals = (await listArrivals({ from: today, to: toISODate(addDays(parseISO(today), 14)) })).sort((a, b) => (a.status === "new" ? 0 : 1) - (b.status === "new" ? 0 : 1) || a.arrival_date.localeCompare(b.arrival_date) || a.arrival_time.localeCompare(b.arrival_time));
   const newArrivals = arrivals.filter((a) => a.status === "new").length;
+  const applications = await listApplications(supabase, { limit: 40 });
+  const openApplications = applications.filter((a) => a.portal_status === "submitted");
+  const recentApplications = applications.filter((a) => a.portal_status !== "draft").slice(0, 6);
 
   return (
     <>
@@ -190,6 +197,32 @@ export default async function DashboardPage() {
                 <Chip tone={a.status === "new" ? "warning" : a.status === "closed" ? "muted" : "success"} className="ml-auto">
                   {a.status === "new" ? "Needs reply" : a.status}
                 </Chip>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section id="applications" title="Customer applications" icon={<UserPlus />} hint={openApplications.length ? `${openApplications.length} submitted, not yet reviewed` : "nothing waiting"} link={{ href: "/travel/applications", label: "All applications" }}>
+        {recentApplications.length === 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-mr-line px-4 py-4">
+            <p className="text-sm text-mr-muted">Share the customer link with individual travellers: they upload passport, photo and PAN card, and land here to be grouped.</p>
+            <ApplyLinkButton />
+          </div>
+        ) : (
+          <ul className="divide-y divide-mr-line rounded-lg border border-mr-line bg-white">
+            {recentApplications.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+                <Link href={`/travel/travellers/${a.id}`} className="text-sm font-medium text-mr-ink hover:underline">
+                  {a.full_name}
+                </Link>
+                <span className="tnum text-sm text-mr-body">{formatDateRange(a.travel_start_date, a.travel_end_date)}</span>
+                <span className="text-xs text-mr-muted">{a.doc_types.length} document{a.doc_types.length === 1 ? "" : "s"}</span>
+                <span className="ml-auto flex items-center gap-1.5">
+                  {a.portal_ready && <Chip tone="ink">PAR + hotel</Chip>}
+                  {a.group_ref ? <Chip tone="success">{a.group_ref}</Chip> : <Chip tone="red">No group</Chip>}
+                  <Chip tone={a.portal_status === "submitted" ? "warning" : "success"}>{labelFor(PORTAL_STATUSES, a.portal_status ?? "draft")}</Chip>
+                </span>
               </li>
             ))}
           </ul>

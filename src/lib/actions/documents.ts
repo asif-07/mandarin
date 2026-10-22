@@ -67,7 +67,7 @@ export async function registerDocument(
   const docType = DOC_TYPES.find((d) => d.value === parsed.data.doc_type)!;
   let mergeOrder = docType.mergeOrder;
 
-  if (docType.required) {
+  if (docType.slot) {
     // Replace: soft-delete the previous document in this slot (audit trail kept).
     await supabase
       .from("traveller_documents")

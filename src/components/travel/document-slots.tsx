@@ -44,6 +44,7 @@ export function DocumentSlots({ travellerId, documents, groupCovered = [] }: { t
   const [assignBusy, setAssignBusy] = useState(false);
 
   const required = DOC_TYPES.filter((d) => d.required);
+  const identity = DOC_TYPES.filter((d) => d.slot && !d.required);
   const filled = required.filter((d) => documents.some((doc) => doc.doc_type === d.value) || groupCovered.includes(d.value)).length;
   const others = documents.filter((d) => d.doc_type === "other");
 
@@ -146,6 +147,19 @@ export function DocumentSlots({ travellerId, documents, groupCovered = [] }: { t
             />
           );
         })}
+      </div>
+
+      <div className="mt-3 rounded-lg border border-mr-line p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-medium text-mr-ink">Identity</span>
+          <span className="text-xs text-mr-muted">Photo and PAN card for the visa form · the customer portal asks for these</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {identity.map((slot) => {
+            const doc = documents.find((d) => d.doc_type === slot.value);
+            return <SlotCard key={slot.value} label={slot.label} doc={doc} busy={!!uploading[slot.value]} onFiles={(files) => handleFiles(files, slot.value)} onDeleted={() => router.refresh()} />;
+          })}
+        </div>
       </div>
 
       <div className="mt-3 rounded-lg border border-mr-line p-3">

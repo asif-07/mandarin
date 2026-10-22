@@ -6,21 +6,24 @@ import { launchBrowser } from "@/lib/pdf/browser";
 import { buildGroupBundle } from "@/lib/pdf/group-bundle";
 import { markGroupVisaApplied } from "@/lib/travel/visa";
 import { BUCKETS, TIMEZONE } from "@/lib/constants";
+import { parseDocTypes } from "@/lib/pdf/doc-filter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * POST /api/groups/:id/packs -> { url, file_name, page_count, count, warnings }
+ * POST /api/groups/:id/packs  body { docs?: string[] }  -> { url, file_name, page_count, count, warnings }
  * Builds ONE merged PDF for the group (group cover, the visa page if received,
  * then every traveller's documents in PAR, passport, flight, hotel order),
  * named like MR144-Aug25-Aug30-05px-G01.pdf, stores it in the travel-packs
  * bucket and returns a signed download URL. Downloading marks the group as
  * visa applied.
  */
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const body = (await request.json().catch(() => null)) as { docs?: unknown } | null;
+  const docTypes = parseDocTypes(Array.isArray(body?.docs) ? body.docs.join(",") : null);
   const current = await getCurrentProfile();
   if (!current) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   const supabase = await createClient();
@@ -28,7 +31,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   let browser;
   try {
     browser = await launchBrowser();
-    const built = await buildGroupBundle(supabase, browser, id, { logo: "mr", includeVisa: true });
+    const built = await buildGroupBundle(supabase, browser, id, { logo: "mr", includeVisa: true, docTypes });
 
     const stamp = formatInTimeZone(new Date(), TIMEZONE, "yyyyMMdd-HHmmss");
     const storagePath = `_groups/${built.groupId}/${stamp}/${built.fileName}`;

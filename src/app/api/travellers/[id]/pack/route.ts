@@ -3,14 +3,17 @@ import { createClient } from "@/lib/supabase/server";
 import { launchBrowser } from "@/lib/pdf/browser";
 import { compileTravelPack } from "@/lib/pdf/travel-pack";
 import { BUCKETS } from "@/lib/constants";
+import { parseDocTypes } from "@/lib/pdf/doc-filter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/** POST /api/travellers/:id/pack -> { url, page_count, warnings } */
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+/** POST /api/travellers/:id/pack  body { docs?: string[] }  -> { url, page_count, warnings }. `docs` limits the pack to those document types (any combination). */
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const body = (await request.json().catch(() => null)) as { docs?: unknown } | null;
+  const docTypes = parseDocTypes(Array.isArray(body?.docs) ? body.docs.join(",") : null);
   const supabase = await createClient();
   const {
     data: { user },
@@ -20,7 +23,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   let browser;
   try {
     browser = await launchBrowser();
-    const result = await compileTravelPack(supabase, browser, id, user.id);
+    const result = await compileTravelPack(supabase, browser, id, user.id, { docTypes });
     const { data: signed, error } = await supabase.storage
       .from(BUCKETS.travelPacks)
       .createSignedUrl(result.storagePath, 120, { download: result.fileName });

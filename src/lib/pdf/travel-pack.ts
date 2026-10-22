@@ -264,7 +264,9 @@ export async function compileTravelPack(
   browser: Browser,
   travellerId: string,
   generatedBy: string,
+  opts: { docTypes?: string[] | null } = {},
 ): Promise<PackResult> {
+  const docFilter = opts.docTypes && opts.docTypes.length ? new Set(opts.docTypes) : null;
   const { data: t, error } = await supabase
     .from("travellers")
     .select("id, traveller_ref, full_name, passport_number, nationality, travel_start_date, travel_end_date, visa_reference, group:travel_groups(group_code, label)")
@@ -282,7 +284,7 @@ export async function compileTravelPack(
 
   const sources: PackSource[] = [];
   const warnings: string[] = [];
-  for (const d of docs ?? []) {
+  for (const d of (docs ?? []).filter((d) => !docFilter || docFilter.has(d.doc_type))) {
     const { data: blob, error: dlError } = await supabase.storage.from(BUCKETS.travellerDocuments).download(d.storage_path);
     if (dlError || !blob) {
       warnings.push(`${labelFor(DOC_TYPES, d.doc_type)} (${d.file_name}) skipped: ${dlError?.message ?? "download failed"}`);
@@ -310,7 +312,8 @@ export async function compileTravelPack(
   warnings.push(...built.warnings);
 
   const stamp = formatInTimeZone(new Date(), TIMEZONE, "yyyyMMdd-HHmmss");
-  const fileName = `${t.traveller_ref}-travel-pack-${stamp}.pdf`;
+  const suffix = docFilter ? `-${[...docFilter].map((d) => d.replace(/_.*$/, "")).join("-")}` : "";
+  const fileName = `${t.traveller_ref}-travel-pack${suffix}-${stamp}.pdf`;
   const storagePath = `${t.id}/${fileName}`;
 
   const { error: upError } = await supabase.storage

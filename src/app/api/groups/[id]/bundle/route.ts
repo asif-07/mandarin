@@ -4,6 +4,7 @@ import { getCurrentProfile } from "@/lib/auth";
 import { launchBrowser } from "@/lib/pdf/browser";
 import { buildGroupBundle, findCachedBundle, type BundleLogo, type BundleScope } from "@/lib/pdf/group-bundle";
 import { BUCKETS } from "@/lib/constants";
+import { parseDocTypes } from "@/lib/pdf/doc-filter";
 import { markGroupVisaApplied } from "@/lib/travel/visa";
 
 export const runtime = "nodejs";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * GET /api/groups/:id/bundle?logo=mr|partner|none&scope=all|visa
+ * GET /api/groups/:id/bundle?logo=mr|partner|none&scope=all|visa&docs=par,passport
  * scope=visa returns only the cover and the visa page.
  * Streams "visa + all documents" for a group as one PDF. For B2B groups the
  * logo choice picks the cover branding (partner logo when on file, plain
@@ -28,9 +29,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const raw = request.nextUrl.searchParams.get("logo");
   const logo: BundleLogo | undefined = raw === "mr" || raw === "partner" || raw === "none" ? raw : undefined;
   const scope: BundleScope = request.nextUrl.searchParams.get("scope") === "visa" ? "visa" : "all";
+  // docs=par,passport limits the documents to any combination of types (PAR only, passport + flight, …).
+  const docTypes = parseDocTypes(request.nextUrl.searchParams.get("docs"));
   const supabase = await createClient();
 
-  const cached = await findCachedBundle(supabase, id, { logo, scope }).catch(() => null);
+  const cached = await findCachedBundle(supabase, id, { logo, scope, docTypes }).catch(() => null);
   if (cached) {
     const { data: signed } = await supabase.storage.from(BUCKETS.travelPacks).createSignedUrl(cached.path, 300, { download: cached.fileName });
     if (signed) {
@@ -42,7 +45,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   let browser;
   try {
     browser = await launchBrowser();
-    const built = await buildGroupBundle(supabase, browser, id, { logo, includeVisa: true, scope });
+    const built = await buildGroupBundle(supabase, browser, id, { logo, includeVisa: true, scope, docTypes });
     await markGroupVisaApplied(supabase, built.groupId);
     // Store the result for next time, after the response has been sent.
     after(async () => {

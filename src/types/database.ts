@@ -1927,6 +1927,18 @@ export type Database = {
           traveller_ref: string
           updated_at: string | null
           visa_reference: string | null
+          source: string
+          portal_token: string | null
+          portal_status: string | null
+          portal_submitted_at: string | null
+          portal_ready: boolean
+          portal_last_seen_at: string | null
+          address: string | null
+          pan_number: string | null
+          date_of_birth: string | null
+          sex: string | null
+          passport_expiry: string | null
+          passport_ocr: Json | null
         }
         Insert: {
           created_at?: string | null
@@ -1952,6 +1964,18 @@ export type Database = {
           traveller_ref: string
           updated_at?: string | null
           visa_reference?: string | null
+          source?: string
+          portal_token?: string | null
+          portal_status?: string | null
+          portal_submitted_at?: string | null
+          portal_ready?: boolean
+          portal_last_seen_at?: string | null
+          address?: string | null
+          pan_number?: string | null
+          date_of_birth?: string | null
+          sex?: string | null
+          passport_expiry?: string | null
+          passport_ocr?: Json | null
         }
         Update: {
           created_at?: string | null
@@ -1977,6 +2001,18 @@ export type Database = {
           traveller_ref?: string
           updated_at?: string | null
           visa_reference?: string | null
+          source?: string
+          portal_token?: string | null
+          portal_status?: string | null
+          portal_submitted_at?: string | null
+          portal_ready?: boolean
+          portal_last_seen_at?: string | null
+          address?: string | null
+          pan_number?: string | null
+          date_of_birth?: string | null
+          sex?: string | null
+          passport_expiry?: string | null
+          passport_ocr?: Json | null
         }
         Relationships: [
           {

@@ -12,6 +12,7 @@ import { ClearFilters, DateRangeParams, SearchParamInput, SelectParam } from "@/
 import { createClient } from "@/lib/supabase/server";
 import { docCompleteness, groupTitle } from "@/lib/queries/travel";
 import { PACKAGE_TIERS, TRAVELLER_STATUSES } from "@/lib/constants";
+import { ApplyLinkButton } from "@/components/apply/apply-link-button";
 
 export const metadata: Metadata = { title: "Travellers" };
 
@@ -66,9 +67,12 @@ export default async function TravellersPage({ searchParams }: { searchParams: P
       <PageHeader
         title="Travellers"
         actions={
-          <Link href="/travel/travellers/new" className={buttonVariants()}>
-            <Plus /> New traveller
-          </Link>
+          <>
+            <ApplyLinkButton />
+            <Link href="/travel/travellers/new" className={buttonVariants()}>
+              <Plus /> New traveller
+            </Link>
+          </>
         }
       />
       <Suspense>
