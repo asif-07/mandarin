@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 export function ApplyLinkButton({ className, variant = "outline", size }: { className?: string; variant?: "outline" | "default" | "ghost"; size?: "sm" | "default" | "xs" }) {
   const url = typeof window !== "undefined" ? `${window.location.origin}/apply` : "/apply";
   return (
-    <Button type="button" variant={variant} size={size} className={className} title={url} onClick={() => navigator.clipboard.writeText(url).then(() => toast.success("Customer application link copied: share it with any traveller")).catch(() => toast.error("Copy failed"))}>
-      <Copy /> Copy customer link
+    <Button type="button" variant={variant} size={size} className={className} title={url} onClick={() => navigator.clipboard.writeText(url).then(() => toast.success("Application link copied: share it with travellers and travel agents")).catch(() => toast.error("Copy failed"))}>
+      <Copy /> Copy application link
     </Button>
   );
 }

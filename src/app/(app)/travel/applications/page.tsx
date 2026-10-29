@@ -1,108 +1,126 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Inbox } from "lucide-react";
+import { Building2, Inbox, User } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { StatCard, StatGrid } from "@/components/shared/stat-card";
 import { Chip } from "@/components/shared/chip";
 import { ClearFilters, SearchParamInput, SelectParam } from "@/components/shared/url-filters";
-import { StatusPill, TRAVELLER_TONES } from "@/components/shared/status-pill";
 import { ApplyLinkButton } from "@/components/apply/apply-link-button";
 import { ApplicationActions } from "@/components/travel/application-actions";
 import { GroupSuggestions } from "@/components/travel/group-suggestions";
 import { createClient } from "@/lib/supabase/server";
 import { listApplications, loadSuggestionInputs } from "@/lib/queries/suggestions";
 import { suggestForTraveller } from "@/lib/travel/suggestions";
-import { PORTAL_DOCS, portalDocLabel } from "@/lib/apply/shared";
-import { PORTAL_STATUSES, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
+import { PORTAL_DOCS, portalDocLabel, requiredFields, FIELD_LABELS } from "@/lib/apply/shared";
+import { PORTAL_STATUSES, labelFor } from "@/lib/constants";
 import { formatDate, formatDateRange, formatDateTime } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Customer applications" };
+export const metadata: Metadata = { title: "Applications" };
 export const dynamic = "force-dynamic";
 
-/** B2C applications from the public /apply link: what came in, what is missing, and which group each customer could join. */
-export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
+/** Documents received through the public /apply link: customers (with co-passengers) and travel agents (bulk). What is missing, and which group to put them in. */
+export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<{ status?: string; kind?: string; q?: string }> }) {
   const sp = await searchParams;
   const supabase = await createClient();
-  const [rows, inputs] = await Promise.all([listApplications(supabase, { status: sp.status, q: sp.q?.trim() }), loadSuggestionInputs(supabase)]);
+  const [rows, inputs] = await Promise.all([listApplications(supabase, { status: sp.status, kind: sp.kind, q: sp.q?.trim() }), loadSuggestionInputs(supabase)]);
   const stats = {
-    submitted: rows.filter((r) => r.portal_status === "submitted").length,
-    drafts: rows.filter((r) => r.portal_status === "draft").length,
-    ready: rows.filter((r) => r.portal_ready && r.portal_status !== "draft").length,
-    ungrouped: rows.filter((r) => !r.travel_group_id && r.portal_status !== "draft").length,
+    submitted: rows.filter((r) => r.status === "submitted").length,
+    pax: rows.filter((r) => r.status !== "draft").reduce((n, r) => n + r.passengers.length, 0),
+    ready: rows.filter((r) => r.ready && r.status !== "draft").length,
+    ungrouped: rows.filter((r) => r.status !== "draft" && r.passengers.some((p) => !p.travel_group_id)).length,
   };
 
   return (
     <>
-      <PageHeader title="Customer applications" description="Individual travellers who applied through the public link. Passport read by OCR, photo and PAN card uploaded; PAR and hotel when they have them. Group them with the suggestions below: the China group visa needs at least two travellers." actions={<ApplyLinkButton />} />
+      <PageHeader title="Applications" description="Documents received through the public link. Customers upload for themselves and their co-passengers; travel agents bulk upload a group (no partner code asked). Passports are read by OCR; photo and PAN card are mandatory for every passenger." actions={<ApplyLinkButton />} />
       <Suspense>
         <div className="mb-5 flex flex-wrap items-center gap-2">
-          <SearchParamInput placeholder="Search name, reference, passport, phone" className="md:w-80" />
+          <SearchParamInput placeholder="Search contact, agency, phone, email" className="md:w-80" />
           <SelectParam name="status" placeholder="All states" options={PORTAL_STATUSES.map((s) => ({ value: s.value, label: s.label }))} />
-          <ClearFilters keys={["q", "status"]} />
+          <SelectParam name="kind" placeholder="Customers and agents" options={[{ value: "b2c", label: "Customers" }, { value: "b2b", label: "Travel agents" }]} />
+          <ClearFilters keys={["q", "status", "kind"]} />
         </div>
       </Suspense>
       <StatGrid cols={4} className="mb-6">
         <StatCard label="Submitted" value={stats.submitted} hint="waiting for review" tone={stats.submitted ? "warning" : "success"} />
-        <StatCard label="Can apply directly" value={stats.ready} hint="PAR and hotel uploaded" tone="ink" />
-        <StatCard label="Not grouped" value={stats.ungrouped} hint="submitted, no group yet" tone={stats.ungrouped ? "red" : "success"} />
-        <StatCard label="Started, not submitted" value={stats.drafts} hint="customer still uploading" tone="neutral" />
+        <StatCard label="Passengers" value={stats.pax} hint="in submitted applications" tone="ink" />
+        <StatCard label="Can apply directly" value={stats.ready} hint="PAR and hotel for everyone" tone="neutral" />
+        <StatCard label="Not grouped" value={stats.ungrouped} hint="applications with ungrouped passengers" tone={stats.ungrouped ? "red" : "success"} />
       </StatGrid>
 
       {rows.length === 0 ? (
-        <EmptyState icon={Inbox} title={sp.q || sp.status ? "No applications match." : "No customer applications yet. Share the link with individual travellers."} action={!sp.q && !sp.status && <ApplyLinkButton />} />
+        <EmptyState icon={Inbox} title={sp.q || sp.status || sp.kind ? "No applications match." : "No applications yet. Share the link with travellers and travel agents."} action={!sp.q && !sp.status && !sp.kind && <ApplyLinkButton />} />
       ) : (
         <ul className="space-y-3">
           {rows.map((r) => {
-            const present = new Set(r.doc_types);
-            const missing = PORTAL_DOCS.filter((d) => d.need && !present.has(d.type)).map((d) => d.title);
-            const suggestions = !r.travel_group_id && r.portal_status !== "draft" ? suggestForTraveller({ id: r.id, full_name: r.full_name, traveller_ref: r.traveller_ref, travel_start_date: r.travel_start_date, travel_end_date: r.travel_end_date }, inputs.groups, inputs.ungrouped) : [];
+            const ungrouped = r.passengers.filter((p) => !p.travel_group_id);
+            const suggestions = ungrouped.length && r.status !== "draft" ? suggestForTraveller({ id: r.id, full_name: r.contact_name, traveller_ref: r.id, travel_start_date: r.travel_start_date, travel_end_date: r.travel_end_date, application_id: r.id }, inputs.groups, inputs.ungrouped.filter((t) => t.application_id !== r.id)) : [];
+            const fields = requiredFields(r.kind);
+            const groupLabel = r.kind === "b2b" ? r.agency_name ?? r.contact_name : r.passengers.length > 1 ? `${r.contact_name} +${r.passengers.length - 1}` : r.contact_name;
             return (
               <li key={r.id} className="rounded-lg border border-mr-line bg-white p-4">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <Link href={`/travel/travellers/${r.id}`} className="font-medium text-mr-ink hover:underline">
-                    {r.full_name}
-                  </Link>
-                  <span className="font-mono text-xs text-mr-muted">{r.traveller_ref}</span>
+                  <Chip tone={r.kind === "b2b" ? "ink" : "neutral"} icon={r.kind === "b2b" ? <Building2 /> : <User />}>
+                    {r.kind === "b2b" ? "Travel agent" : "Customer"}
+                  </Chip>
+                  <span className="font-medium text-mr-ink">{r.kind === "b2b" ? r.agency_name ?? r.contact_name : r.contact_name}</span>
+                  {r.kind === "b2b" && <span className="text-xs text-mr-muted">contact {r.contact_name}</span>}
                   <span className="tnum text-sm text-mr-body">{formatDateRange(r.travel_start_date, r.travel_end_date)}</span>
-                  {r.nationality && <span className="text-xs text-mr-muted">{r.nationality}</span>}
+                  <span className="text-sm text-mr-body">
+                    {r.passengers.length} pax{r.nationality ? ` · ${r.nationality}` : ""}
+                  </span>
                   <span className="ml-auto flex flex-wrap items-center gap-1.5">
-                    <Chip tone={r.portal_status === "submitted" ? "warning" : r.portal_status === "reviewed" ? "success" : "muted"}>{labelFor(PORTAL_STATUSES, r.portal_status ?? "draft")}</Chip>
-                    {r.portal_status !== "draft" && <Chip tone={r.portal_ready ? "ink" : "neutral"}>{r.portal_ready ? "Has PAR + hotel: apply directly" : "Needs PAR / hotel from us"}</Chip>}
-                    {r.group_ref ? (
-                      <Chip tone="success">Group {r.group_ref}</Chip>
-                    ) : (
-                      <Chip tone={r.portal_status === "draft" ? "muted" : "red"}>No group</Chip>
-                    )}
-                    <StatusPill label={labelFor(TRAVELLER_STATUSES, r.status)} tone={TRAVELLER_TONES[r.status]} />
+                    <Chip tone={r.status === "submitted" ? "warning" : r.status === "reviewed" ? "success" : "muted"}>{labelFor(PORTAL_STATUSES, r.status)}</Chip>
+                    {r.status !== "draft" && <Chip tone={r.ready ? "ink" : "neutral"}>{r.ready ? "PAR + hotel for all: apply directly" : "Needs PAR / hotel from us"}</Chip>}
+                    {r.group_ref ? <Chip tone="success">Group {r.group_ref}</Chip> : ungrouped.length ? <Chip tone={r.status === "draft" ? "muted" : "red"}>{ungrouped.length === r.passengers.length ? "No group" : `${ungrouped.length} not grouped`}</Chip> : r.passengers.length ? <Chip tone="success">Grouped</Chip> : null}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-mr-muted">
-                  {r.phone ?? "no phone"}
-                  {r.email ? ` · ${r.email}` : ""}
-                  {r.passport_number ? ` · passport ${r.passport_number}` : " · passport number missing"}
-                  {r.pan_number ? ` · PAN ${r.pan_number}` : " · PAN number missing"}
-                  {r.address ? "" : " · address missing"}
-                  {r.portal_submitted_at ? ` · submitted ${formatDateTime(r.portal_submitted_at)}` : r.created_at ? ` · started ${formatDate(r.created_at)}` : ""}
+                  {r.contact_phone ?? "no phone"}
+                  {r.contact_email ? ` · ${r.contact_email}` : ""}
+                  {r.submitted_at ? ` · submitted ${formatDateTime(r.submitted_at)}` : ` · started ${formatDate(r.created_at)}`}
                 </p>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {PORTAL_DOCS.map((d) => (
-                    <Chip key={d.type} tone={present.has(d.type) ? "success" : d.need ? "red" : "muted"}>
-                      {portalDocLabel(d.type)}
-                      {present.has(d.type) ? "" : d.need ? " missing" : " —"}
-                    </Chip>
-                  ))}
-                  {present.has("other") && <Chip tone="neutral">Other</Chip>}
-                </div>
-                {suggestions.length > 0 || (!r.travel_group_id && r.portal_status !== "draft") ? (
+
+                {r.passengers.length > 0 && (
+                  <ul className="mt-3 divide-y divide-mr-line rounded-md border border-mr-line">
+                    {r.passengers.map((p) => {
+                      const present = new Set(p.doc_types);
+                      const missingDocs = PORTAL_DOCS.filter((d) => d.need && !present.has(d.type)).map((d) => portalDocLabel(d.type));
+                      const missingFields = fields.filter((f) => !(p[f] ?? "").toString().trim()).map((f) => FIELD_LABELS[f] ?? f);
+                      const missing = [...missingDocs, ...missingFields];
+                      return (
+                        <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
+                          <Link href={`/travel/travellers/${p.id}`} className="font-medium text-mr-ink hover:underline">
+                            {p.full_name}
+                          </Link>
+                          <span className="font-mono text-xs text-mr-muted">{p.traveller_ref}</span>
+                          {p.passport_number && <span className="font-mono text-xs text-mr-body">{p.passport_number}</span>}
+                          {p.pan_number && <span className="font-mono text-xs text-mr-body">PAN {p.pan_number}</span>}
+                          <span className="ml-auto flex flex-wrap items-center gap-1">
+                            {PORTAL_DOCS.map((d) => (
+                              <Chip key={d.type} tone={present.has(d.type) ? "success" : d.need ? "red" : "muted"} title={portalDocLabel(d.type)}>
+                                {portalDocLabel(d.type).replace("Passport-size photo", "Photo").replace("Hotel booking", "Hotel").replace("Flight ticket", "Flight")}
+                              </Chip>
+                            ))}
+                            {p.group_ref && <Chip tone="success">{p.group_ref}</Chip>}
+                          </span>
+                          {missing.length > 0 && <span className="basis-full text-xs text-mr-warning">Missing: {missing.join(", ")}</span>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                {ungrouped.length > 0 && r.status !== "draft" && (
                   <div className="mt-3">
                     <p className="micro-label mb-1">Group suggestion</p>
-                    <GroupSuggestions travellerId={r.id} suggestions={suggestions} />
+                    <GroupSuggestions travellerIds={ungrouped.map((p) => p.id)} suggestions={suggestions} label={groupLabel} />
                   </div>
-                ) : null}
+                )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <ApplicationActions travellerId={r.id} portalStatus={r.portal_status} token={r.portal_token} missing={missing} />
+                  <ApplicationActions applicationId={r.id} status={r.status} token={r.token} travellerId={r.passengers[0]?.id} ungroupedIds={r.status !== "draft" ? ungrouped.map((p) => p.id) : []} dates={{ travel_date: r.travel_start_date, travel_end_date: r.travel_end_date }} groupLabel={groupLabel} />
                 </div>
               </li>
             );

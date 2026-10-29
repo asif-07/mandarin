@@ -1,44 +1,72 @@
 "use client";
 
 import { parseMrzText, type MrzResult } from "@/lib/apply/mrz";
+import type { Worker } from "tesseract.js";
 
 /**
- * Reads the passport's machine readable zone in the customer's browser with
- * tesseract.js (loaded on demand from its CDN; nothing runs on our server
- * and the image never leaves the device for OCR). Tries the whole page
- * first, then the bottom strip where the MRZ sits, upscaled. Returns null
- * when no readable MRZ is found; the customer then types the details.
+ * OCR in the uploader's browser with tesseract.js (loaded on demand from its
+ * CDN; the images never leave the device for this). One worker is kept for
+ * the page so a bulk upload of twenty passports loads the engine once.
+ */
+let workerPromise: Promise<Worker> | null = null;
+
+async function getWorker(onProgress?: (label: string, pct: number) => void): Promise<Worker> {
+  if (!workerPromise) {
+    onProgress?.("Loading reader", 5);
+    workerPromise = import("tesseract.js").then(({ createWorker }) => createWorker("eng", 1)).catch((e) => {
+      workerPromise = null;
+      throw e;
+    });
+  }
+  return workerPromise;
+}
+
+async function bitmapFor(file: File): Promise<ImageBitmap | null> {
+  if (!file.type.startsWith("image/") || file.type === "image/heic" || file.type === "image/heif") return null;
+  return createImageBitmap(file).catch(() => null);
+}
+
+/**
+ * Reads the passport's machine readable zone: the bottom strip first
+ * (upscaled), then the whole page. Null when no readable MRZ is found; the
+ * uploader then types the details.
  */
 export async function readPassportMrz(file: File, onProgress?: (label: string, pct: number) => void): Promise<MrzResult | null> {
-  if (!file.type.startsWith("image/") || file.type === "image/heic" || file.type === "image/heif") return null;
-  const bitmap = await createImageBitmap(file).catch(() => null);
+  const bitmap = await bitmapFor(file);
   if (!bitmap) return null;
-
   const full = draw(bitmap, { scale: Math.min(1, 2000 / bitmap.width) });
   const strip = draw(bitmap, { scale: Math.min(2.2, 2600 / bitmap.width), crop: { top: 0.55, bottom: 1 } });
   bitmap.close?.();
-
-  const { createWorker } = await import("tesseract.js");
-  onProgress?.("Loading reader", 5);
-  const worker = await createWorker("eng", 1, {
-    logger: (m: { status?: string; progress?: number }) => {
-      if (m.status === "recognizing text" && typeof m.progress === "number") onProgress?.("Reading passport", 20 + Math.round(m.progress * 70));
-    },
-  });
-  try {
-    await worker.setParameters({ tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<", preserve_interword_spaces: "0" });
-    for (const canvas of [strip, full]) {
-      const { data } = await worker.recognize(canvas);
-      const parsed = parseMrzText(data.text ?? "");
-      if (parsed && (parsed.valid || (parsed.passport_number.length >= 6 && parsed.surname))) {
-        onProgress?.("Done", 100);
-        return parsed;
-      }
+  const worker = await getWorker(onProgress);
+  await worker.setParameters({ tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<", preserve_interword_spaces: "0" });
+  let i = 0;
+  for (const canvas of [strip, full]) {
+    onProgress?.("Reading passport", 20 + i++ * 40);
+    const { data } = await worker.recognize(canvas);
+    const parsed = parseMrzText(data.text ?? "");
+    if (parsed && (parsed.valid || (parsed.passport_number.length >= 6 && parsed.surname))) {
+      onProgress?.("Done", 100);
+      return parsed;
     }
-    return null;
-  } finally {
-    await worker.terminate().catch(() => undefined);
   }
+  return null;
+}
+
+/** Reads the 10-character PAN (ABCDE1234F) off a PAN card image. Null when none is found. */
+export async function readPanNumber(file: File, onProgress?: (label: string, pct: number) => void): Promise<string | null> {
+  const bitmap = await bitmapFor(file);
+  if (!bitmap) return null;
+  const canvas = draw(bitmap, { scale: Math.min(2, 2200 / bitmap.width) });
+  bitmap.close?.();
+  const worker = await getWorker(onProgress);
+  await worker.setParameters({ tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ", preserve_interword_spaces: "1" });
+  onProgress?.("Reading PAN card", 40);
+  const { data } = await worker.recognize(canvas);
+  const text = (data.text ?? "").toUpperCase().replace(/[^A-Z0-9\n ]/g, "");
+  // Fourth letter is the holder type (P person, C company, …); the fifth is the surname initial.
+  const m = text.match(/\b([A-Z]{3}[ABCFGHLJPTK][A-Z][0-9]{4}[A-Z])\b/) ?? text.replace(/\s+/g, "").match(/([A-Z]{5}[0-9]{4}[A-Z])/);
+  onProgress?.("Done", 100);
+  return m ? m[1]! : null;
 }
 
 function draw(bitmap: ImageBitmap, opts: { scale: number; crop?: { top: number; bottom: number } }): HTMLCanvasElement {
@@ -51,7 +79,6 @@ function draw(bitmap: ImageBitmap, opts: { scale: number; crop?: { top: number; 
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(bitmap, 0, top, bitmap.width, srcH, 0, 0, canvas.width, canvas.height);
-  // Greyscale with a little contrast: MRZ is black on white, OCR likes it crisp.
   const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {

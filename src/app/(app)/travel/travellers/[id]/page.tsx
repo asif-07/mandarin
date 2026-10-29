@@ -32,7 +32,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
   const { data: t } = await supabase
     .from("travellers")
     .select(
-      "*, creator:profiles!travellers_created_by_fkey(display_name), group:travel_groups(id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, travellers(count), group_documents(doc_type, deleted_at)), lead:leads(id, lead_ref, full_name), invoice:invoices(id, invoice_number)",
+      "*, application:portal_applications(id, token, kind, status, agency_name, contact_name), creator:profiles!travellers_created_by_fkey(display_name), group:travel_groups(id, travel_date, travel_end_date, group_code, label, guide_name, reference_prefix, entry_port, exit_port, travellers(count), group_documents(doc_type, deleted_at)), lead:leads(id, lead_ref, full_name), invoice:invoices(id, invoice_number)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -73,7 +73,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
   const groupCovered = [...groupCoverage(t.group?.group_documents)];
   // Ungrouped upcoming traveller: suggest a group to merge into or a travel mate to pair with (group visa needs 2+).
   const wantsSuggestions = !t.travel_group_id && t.status !== "cancelled" && t.status !== "travelled" && t.travel_start_date >= todayISO();
-  const suggestions = wantsSuggestions ? await loadSuggestionInputs(supabase).then((inp) => suggestForTraveller({ id: t.id, full_name: t.full_name, traveller_ref: t.traveller_ref, travel_start_date: t.travel_start_date, travel_end_date: t.travel_end_date }, inp.groups, inp.ungrouped)) : [];
+  const suggestions = wantsSuggestions ? await loadSuggestionInputs(supabase).then((inp) => suggestForTraveller({ id: t.id, full_name: t.full_name, traveller_ref: t.traveller_ref, travel_start_date: t.travel_start_date, travel_end_date: t.travel_end_date, application_id: t.portal_application_id }, inp.groups, inp.ungrouped)) : [];
   const completeness = docCompleteness((docs ?? []).map((d) => ({ doc_type: d.doc_type, deleted_at: null })), new Set(groupCovered));
 
   const defaults: TravellerInput = {
@@ -132,24 +132,27 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
         <StatusPill label={labelFor(TRAVELLER_STATUSES, t.status)} tone={TRAVELLER_TONES[t.status]} />
         <TravellerStatusSelect travellerId={t.id} status={t.status} />
         {t.visa_reference && <span className="font-mono text-xs text-mr-body">{t.visa_reference}</span>}
-        {t.source === "b2c_portal" && (
+        {t.application && (
           <>
-            <Chip tone="ink">Customer portal</Chip>
-            <Chip tone={t.portal_status === "submitted" ? "warning" : t.portal_status === "reviewed" ? "success" : "muted"}>{labelFor(PORTAL_STATUSES, t.portal_status ?? "draft")}</Chip>
-            {t.portal_status !== "draft" && <Chip tone={t.portal_ready ? "ink" : "neutral"}>{t.portal_ready ? "Has PAR + hotel" : "Needs PAR / hotel"}</Chip>}
+            <Chip tone="ink">{t.application.kind === "b2b" ? `Agent upload · ${t.application.agency_name ?? t.application.contact_name}` : "Customer portal"}</Chip>
+            <Chip tone={t.application.status === "submitted" ? "warning" : t.application.status === "reviewed" ? "success" : "muted"}>{labelFor(PORTAL_STATUSES, t.application.status)}</Chip>
+            {t.application.status !== "draft" && <Chip tone={t.portal_ready ? "ink" : "neutral"}>{t.portal_ready ? "Has PAR + hotel" : "Needs PAR / hotel"}</Chip>}
           </>
         )}
         <Attribution name={t.creator?.display_name} date={t.created_at} />
       </div>
-      {t.source === "b2c_portal" && (
+      {t.application && (
         <div className="mb-6 flex flex-wrap items-center gap-2">
-          <ApplicationActions travellerId={t.id} portalStatus={t.portal_status} token={t.portal_token} missing={[]} />
+          <ApplicationActions applicationId={t.application.id} status={t.application.status} token={t.application.token} />
+          <Link href="/travel/applications" className="text-xs font-medium text-mr-body hover:text-mr-ink hover:underline">
+            All applications
+          </Link>
         </div>
       )}
       {wantsSuggestions && (
         <section className="mb-6">
           <h2 className="micro-label mb-2">Group suggestion</h2>
-          <GroupSuggestions travellerId={t.id} suggestions={suggestions} />
+          <GroupSuggestions travellerIds={[t.id]} suggestions={suggestions} />
         </section>
       )}
 

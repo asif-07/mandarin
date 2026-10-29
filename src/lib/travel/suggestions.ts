@@ -13,7 +13,7 @@ export const SUGGESTION_TOLERANCE_DAYS = 3;
 export const MIN_GROUP_PAX = 2;
 
 export type SuggestGroup = { id: string; group_ref: string | null; travel_date: string; travel_end_date: string; pax: number; label?: string | null; visa_status?: string | null };
-export type SuggestTraveller = { id: string; full_name: string; traveller_ref: string; travel_start_date: string; travel_end_date: string; source?: string | null };
+export type SuggestTraveller = { id: string; full_name: string; traveller_ref: string; travel_start_date: string; travel_end_date: string; source?: string | null; application_id?: string | null };
 
 export type Suggestion =
   | { kind: "group"; group: SuggestGroup; shiftStart: number; shiftEnd: number; score: number; reason: string }
@@ -40,7 +40,7 @@ export function suggestForTraveller(t: SuggestTraveller, groups: SuggestGroup[],
     const score = Math.abs(shiftStart) + Math.abs(shiftEnd) - Math.min(g.pax, 5) * 0.1;
     out.push({ kind: "group", group: g, shiftStart, shiftEnd, score, reason: `${g.group_ref ?? g.label ?? "Group"} · ${formatDateRange(g.travel_date, g.travel_end_date)} · ${g.pax} pax · ${shiftText(shiftStart, "entry")}, ${shiftText(shiftEnd, "exit")}` });
   }
-  const mates = others.filter((o) => o.id !== t.id && Math.abs(days(t.travel_start_date, o.travel_start_date)) <= tolerance && Math.abs(days(t.travel_end_date, o.travel_end_date)) <= tolerance);
+  const mates = others.filter((o) => o.id !== t.id && (!t.application_id || o.application_id !== t.application_id) && Math.abs(days(t.travel_start_date, o.travel_start_date)) <= tolerance && Math.abs(days(t.travel_end_date, o.travel_end_date)) <= tolerance);
   if (mates.length) {
     const all = [t, ...mates];
     // A shared window: the latest entry and the earliest exit keeps everyone inside their own dates.

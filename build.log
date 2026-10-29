@@ -4,9 +4,7 @@
      · serverActions
 
    Creating an optimized production build ...
-<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (108kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
-<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (259kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
- ✓ Compiled successfully in 39.7s
+ ✓ Compiled successfully in 43s
    Linting and checking validity of types ...
 
 ./src/app/api/partner/groups/[id]/file/route.ts
@@ -43,42 +41,44 @@ Route (app)                                     Size  First Load JS
 ├ ƒ /accounts/receipts                       3.38 kB         256 kB
 ├ ƒ /accounts/receivables                    2.73 kB         218 kB
 ├ ƒ /accounts/reports                          154 B         189 kB
-├ ƒ /api/accounts/export                       235 B         103 kB
-├ ƒ /api/apply                                 235 B         103 kB
-├ ƒ /api/apply/[token]                         235 B         103 kB
-├ ƒ /api/apply/[token]/documents               235 B         103 kB
-├ ƒ /api/apply/[token]/documents/[docId]       235 B         103 kB
-├ ƒ /api/apply/[token]/submit                  235 B         103 kB
-├ ƒ /api/arrivals                              235 B         103 kB
-├ ƒ /api/group-docs/[id]                       235 B         103 kB
-├ ƒ /api/groups/[id]/b2b-pack                  235 B         103 kB
-├ ƒ /api/groups/[id]/bundle                    235 B         103 kB
-├ ƒ /api/groups/[id]/packs                     235 B         103 kB
-├ ƒ /api/groups/[id]/stamped-visa              235 B         103 kB
-├ ƒ /api/groups/[id]/visa                      235 B         103 kB
-├ ƒ /api/health                                235 B         103 kB
-├ ƒ /api/invoices/[id]/pdf                     235 B         103 kB
-├ ƒ /api/leads/export                          235 B         103 kB
-├ ƒ /api/packs/[id]                            235 B         103 kB
-├ ƒ /api/partner/groups/[id]/file              235 B         103 kB
-├ ƒ /api/partner/groups/[id]/pack              235 B         103 kB
-├ ƒ /api/partner/groups/upload                 235 B         103 kB
-├ ƒ /api/partner/login                         235 B         103 kB
-├ ƒ /api/partner/logout                        235 B         103 kB
-├ ƒ /api/scan/login                            235 B         103 kB
-├ ƒ /api/scan/logout                           235 B         103 kB
-├ ƒ /api/scan/voucher/[token]                  235 B         103 kB
-├ ƒ /api/scan/voucher/[token]/redeem           235 B         103 kB
-├ ƒ /api/scan/voucher/[token]/ticket           235 B         103 kB
-├ ƒ /api/travellers/[id]/pack                  235 B         103 kB
-├ ƒ /api/visa-team/groups/[id]/application     235 B         103 kB
-├ ƒ /api/visa-team/groups/[id]/stamped-visa    235 B         103 kB
-├ ƒ /api/visa-team/groups/[id]/visa            235 B         103 kB
-├ ƒ /api/visa-team/login                       235 B         103 kB
-├ ƒ /api/visa-team/logout                      235 B         103 kB
-├ ƒ /api/vouchers/[id]/pdf                     235 B         103 kB
-├ ƒ /apply                                   4.45 kB         168 kB
-├ ƒ /apply/t/[token]                         12.1 kB         185 kB
+├ ƒ /api/accounts/export                       238 B         103 kB
+├ ƒ /api/apply                                 238 B         103 kB
+├ ƒ /api/apply/[token]                         238 B         103 kB
+├ ƒ /api/apply/[token]/documents               238 B         103 kB
+├ ƒ /api/apply/[token]/documents/[docId]       238 B         103 kB
+├ ƒ /api/apply/[token]/passengers              238 B         103 kB
+├ ƒ /api/apply/[token]/passengers/[tid]        238 B         103 kB
+├ ƒ /api/apply/[token]/submit                  238 B         103 kB
+├ ƒ /api/arrivals                              238 B         103 kB
+├ ƒ /api/group-docs/[id]                       238 B         103 kB
+├ ƒ /api/groups/[id]/b2b-pack                  238 B         103 kB
+├ ƒ /api/groups/[id]/bundle                    238 B         103 kB
+├ ƒ /api/groups/[id]/packs                     238 B         103 kB
+├ ƒ /api/groups/[id]/stamped-visa              238 B         103 kB
+├ ƒ /api/groups/[id]/visa                      238 B         103 kB
+├ ƒ /api/health                                238 B         103 kB
+├ ƒ /api/invoices/[id]/pdf                     238 B         103 kB
+├ ƒ /api/leads/export                          238 B         103 kB
+├ ƒ /api/packs/[id]                            238 B         103 kB
+├ ƒ /api/partner/groups/[id]/file              238 B         103 kB
+├ ƒ /api/partner/groups/[id]/pack              238 B         103 kB
+├ ƒ /api/partner/groups/upload                 238 B         103 kB
+├ ƒ /api/partner/login                         238 B         103 kB
+├ ƒ /api/partner/logout                        238 B         103 kB
+├ ƒ /api/scan/login                            238 B         103 kB
+├ ƒ /api/scan/logout                           238 B         103 kB
+├ ƒ /api/scan/voucher/[token]                  238 B         103 kB
+├ ƒ /api/scan/voucher/[token]/redeem           238 B         103 kB
+├ ƒ /api/scan/voucher/[token]/ticket           238 B         103 kB
+├ ƒ /api/travellers/[id]/pack                  238 B         103 kB
+├ ƒ /api/visa-team/groups/[id]/application     238 B         103 kB
+├ ƒ /api/visa-team/groups/[id]/stamped-visa    238 B         103 kB
+├ ƒ /api/visa-team/groups/[id]/visa            238 B         103 kB
+├ ƒ /api/visa-team/login                       238 B         103 kB
+├ ƒ /api/visa-team/logout                      238 B         103 kB
+├ ƒ /api/vouchers/[id]/pdf                     238 B         103 kB
+├ ƒ /apply                                   5.18 kB         169 kB
+├ ƒ /apply/t/[token]                         20.1 kB         248 kB
 ├ ƒ /arrivals                                6.18 kB         154 kB
 ├ ƒ /arrivals/t/[token]                      3.47 kB         118 kB
 ├ ƒ /invoices                                5.07 kB         262 kB
@@ -105,7 +105,7 @@ Route (app)                                     Size  First Load JS
 ├ ƒ /settings/services                        8.2 kB         184 kB
 ├ ƒ /settings/visa-team                      9.63 kB         183 kB
 ├ ƒ /travel                                  5.97 kB         414 kB
-├ ƒ /travel/applications                     7.59 kB         197 kB
+├ ƒ /travel/applications                     7.77 kB         198 kB
 ├ ƒ /travel/arrivals                         7.27 kB         179 kB
 ├ ƒ /travel/b2b                              9.27 kB         422 kB
 ├ ƒ /travel/calendar                           153 B         189 kB
@@ -114,7 +114,7 @@ Route (app)                                     Size  First Load JS
 ├ ƒ /travel/packages                         6.61 kB         238 kB
 ├ ƒ /travel/transfers                         7.7 kB         200 kB
 ├ ƒ /travel/travellers                       9.14 kB         258 kB
-├ ƒ /travel/travellers/[id]                  12.5 kB         369 kB
+├ ƒ /travel/travellers/[id]                  12.7 kB         369 kB
 ├ ƒ /travel/travellers/new                   2.22 kB         285 kB
 ├ ƒ /travel/workflow                         7.67 kB         227 kB
 ├ ƒ /visa-team                               2.25 kB         120 kB
@@ -131,4 +131,3 @@ Route (app)                                     Size  First Load JS
 ○  (Static)   prerendered as static content
 ƒ  (Dynamic)  server-rendered on demand
 
-BUILD_EXIT=0

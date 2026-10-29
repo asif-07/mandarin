@@ -9,19 +9,23 @@ import { createGroupWithTravellers, joinSuggestedGroup } from "@/lib/actions/app
 import { MIN_GROUP_PAX, type Suggestion } from "@/lib/travel/suggestions";
 import { cn } from "@/lib/utils";
 
-/** Merge / pair-up suggestions for one ungrouped traveller, with one-click actions. */
-export function GroupSuggestions({ travellerId, suggestions, compact = false }: { travellerId: string; suggestions: Suggestion[]; compact?: boolean }) {
+/**
+ * Merge / pair-up suggestions for ungrouped travellers (one traveller, or
+ * all the passengers of an application), with one-click actions.
+ */
+export function GroupSuggestions({ travellerIds, suggestions, compact = false, label }: { travellerIds: string[]; suggestions: Suggestion[]; compact?: boolean; label?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const n = travellerIds.length;
 
-  function join(groupId: string, label: string) {
+  function join(groupId: string, groupLabel: string) {
     setBusyKey(groupId);
     startTransition(async () => {
-      const res = await joinSuggestedGroup(travellerId, groupId);
+      const res = await joinSuggestedGroup(travellerIds, groupId);
       setBusyKey(null);
       if (!res.ok) return void toast.error(res.error);
-      toast.success(`Added to ${label}: the traveller now has the group's dates`);
+      toast.success(`${res.data.assigned} traveller${res.data.assigned === 1 ? "" : "s"} added to ${groupLabel} with the group's dates`);
       router.refresh();
     });
   }
@@ -29,7 +33,7 @@ export function GroupSuggestions({ travellerId, suggestions, compact = false }: 
   function pair(ids: string[], dates: { travel_date: string; travel_end_date: string }) {
     setBusyKey("pair");
     startTransition(async () => {
-      const res = await createGroupWithTravellers(ids, dates);
+      const res = await createGroupWithTravellers([...travellerIds, ...ids], dates, label ?? null);
       setBusyKey(null);
       if (!res.ok) return void toast.error(res.error);
       toast.success(`Group ${res.data.group_code} created with ${res.data.assigned} traveller${res.data.assigned === 1 ? "" : "s"}`);
@@ -38,7 +42,7 @@ export function GroupSuggestions({ travellerId, suggestions, compact = false }: 
   }
 
   if (suggestions.length === 0) {
-    return <p className={cn("text-xs text-mr-muted", compact ? "" : "rounded-md border border-dashed border-mr-line px-3 py-2")}>No group on similar dates yet. The group visa needs at least {MIN_GROUP_PAX} travellers: watch for another applicant within 3 days.</p>;
+    return <p className={cn("text-xs text-mr-muted", compact ? "" : "rounded-md border border-dashed border-mr-line px-3 py-2")}>{n >= MIN_GROUP_PAX ? "No other group on similar dates; these travellers can form their own group." : `No group on similar dates yet. The group visa needs at least ${MIN_GROUP_PAX} travellers: watch for another applicant within 3 days.`}</p>;
   }
   return (
     <ul className={cn("space-y-1.5", !compact && "rounded-md border border-mr-ink/30 bg-mr-surface p-2")}>
@@ -53,11 +57,11 @@ export function GroupSuggestions({ travellerId, suggestions, compact = false }: 
             </span>
             {s.kind === "group" ? (
               <Button size="xs" variant="outline" disabled={pending} onClick={() => join(s.group.id, s.group.group_ref ?? "the group")}>
-                {busyKey === s.group.id ? <Loader2 className="animate-spin" /> : null} Add to group
+                {busyKey === s.group.id ? <Loader2 className="animate-spin" /> : null} Add {n > 1 ? `all ${n}` : ""} to group
               </Button>
             ) : (
               <Button size="xs" variant="outline" disabled={pending} onClick={() => pair(s.travellers.map((t) => t.id), { travel_date: s.travel_date, travel_end_date: s.travel_end_date })}>
-                {busyKey === "pair" ? <Loader2 className="animate-spin" /> : null} Create group of {s.travellers.length}
+                {busyKey === "pair" ? <Loader2 className="animate-spin" /> : null} Create group of {n + s.travellers.length}
               </Button>
             )}
           </li>

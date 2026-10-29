@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { newPortalToken } from "@/lib/apply/server";
+import { createPassenger, newPortalToken } from "@/lib/apply/server";
+import { email, optText } from "@/lib/apply/validation";
 import { todayISO } from "@/lib/format";
 
 export const runtime = "nodejs";
@@ -10,29 +11,29 @@ export const dynamic = "force-dynamic";
 
 const schema = z
   .object({
-    full_name: z.string().trim().min(2, "Enter your name as in the passport").max(200),
+    kind: z.enum(["b2c", "b2b"]).default("b2c"),
+    contact_name: z.string().trim().min(2, "Enter the name").max(200),
+    agency_name: optText(200),
     phone: z
       .string()
       .trim()
-      .min(5, "Enter your phone number with country code")
+      .min(5, "Enter the phone number with country code")
       .max(40)
       .refine((v) => isValidPhoneNumber(v), "Enter a valid phone number with country code, e.g. +971 50 123 4567"),
-    email: z
-      .string()
-      .trim()
-      .max(200)
-      .optional()
-      .nullable()
-      .transform((v) => v || null)
-      .refine((v) => !v || z.string().email().safeParse(v).success, "Enter a valid email"),
-    nationality: z.string().trim().max(60).optional().nullable().transform((v) => v || null),
-    travel_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose your entry date"),
-    travel_end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose your exit date"),
+    email,
+    nationality: optText(60),
+    travel_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose the entry date"),
+    travel_end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose the exit date"),
     website: z.string().optional(), // honeypot
   })
-  .refine((v) => v.travel_end_date >= v.travel_start_date, { message: "The exit date must be on or after the entry date", path: ["travel_end_date"] });
+  .refine((v) => v.travel_end_date >= v.travel_start_date, { message: "The exit date must be on or after the entry date", path: ["travel_end_date"] })
+  .refine((v) => v.kind !== "b2b" || !!v.agency_name, { message: "Enter the agency name", path: ["agency_name"] });
 
-/** POST — a customer starts an application (no login). Creates the traveller with a private link token. */
+/**
+ * POST — start an application (no login, no partner code). A customer (b2c)
+ * is created as the first passenger; an agent (b2b) adds passengers by bulk
+ * upload afterwards. Returns the private link token.
+ */
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const parsed = schema.safeParse(body);
@@ -43,23 +44,15 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
   const token = newPortalToken();
-  const year = Number(v.travel_start_date.slice(0, 4));
-  const { data: id, error } = await supabase.rpc("create_traveller", {
-    p_year: year,
-    p_traveller: {
-      full_name: v.full_name,
-      phone: v.phone,
-      email: v.email,
-      nationality: v.nationality,
-      travel_start_date: v.travel_start_date,
-      travel_end_date: v.travel_end_date,
-      status: "documents_pending",
-      notes: "Applied through the customer portal",
-      source: "b2c_portal",
-      portal_token: token,
-      portal_status: "draft",
-    },
-  });
-  if (error || !id) return NextResponse.json({ error: error?.message ?? "Could not start the application" }, { status: 500 });
+  const { data: app, error } = await supabase
+    .from("portal_applications")
+    .insert({ token, kind: v.kind, contact_name: v.contact_name, contact_phone: v.phone, contact_email: v.email, agency_name: v.kind === "b2b" ? v.agency_name : null, nationality: v.nationality, travel_start_date: v.travel_start_date, travel_end_date: v.travel_end_date })
+    .select("id, kind, status, contact_name, contact_email, contact_phone, agency_name, nationality, travel_start_date, travel_end_date, travel_group_id, submitted_at")
+    .single();
+  if (error || !app) return NextResponse.json({ error: error?.message ?? "Could not start the application" }, { status: 500 });
+  if (v.kind === "b2c") {
+    const res = await createPassenger({ ...app, kind: "b2c" }, { full_name: v.contact_name, phone: v.phone, email: v.email, nationality: v.nationality });
+    if ("error" in res) return NextResponse.json({ error: res.error }, { status: 500 });
+  }
   return NextResponse.json({ ok: true, token });
 }

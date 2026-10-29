@@ -75,6 +75,77 @@ export type Database = {
           },
         ]
       }
+      portal_applications: {
+        Row: {
+          id: string
+          token: string
+          kind: string
+          contact_name: string
+          contact_phone: string | null
+          contact_email: string | null
+          agency_name: string | null
+          nationality: string | null
+          travel_start_date: string
+          travel_end_date: string
+          status: string
+          submitted_at: string | null
+          ready: boolean
+          notes: string | null
+          travel_group_id: string | null
+          created_at: string
+          updated_at: string | null
+          last_seen_at: string | null
+        }
+        Insert: {
+          id?: string
+          token: string
+          kind?: string
+          contact_name: string
+          contact_phone?: string | null
+          contact_email?: string | null
+          agency_name?: string | null
+          nationality?: string | null
+          travel_start_date: string
+          travel_end_date: string
+          status?: string
+          submitted_at?: string | null
+          ready?: boolean
+          notes?: string | null
+          travel_group_id?: string | null
+          created_at?: string
+          updated_at?: string | null
+          last_seen_at?: string | null
+        }
+        Update: {
+          id?: string
+          token?: string
+          kind?: string
+          contact_name?: string
+          contact_phone?: string | null
+          contact_email?: string | null
+          agency_name?: string | null
+          nationality?: string | null
+          travel_start_date?: string
+          travel_end_date?: string
+          status?: string
+          submitted_at?: string | null
+          ready?: boolean
+          notes?: string | null
+          travel_group_id?: string | null
+          created_at?: string
+          updated_at?: string | null
+          last_seen_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_applications_travel_group_id_fkey"
+            columns: ["travel_group_id"]
+            isOneToOne: false
+            referencedRelation: "travel_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       arrival_requests: {
         Row: {
           admin_reply: string | null
@@ -1939,6 +2010,7 @@ export type Database = {
           sex: string | null
           passport_expiry: string | null
           passport_ocr: Json | null
+          portal_application_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -1976,6 +2048,7 @@ export type Database = {
           sex?: string | null
           passport_expiry?: string | null
           passport_ocr?: Json | null
+          portal_application_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -2013,8 +2086,16 @@ export type Database = {
           sex?: string | null
           passport_expiry?: string | null
           passport_ocr?: Json | null
+          portal_application_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "travellers_portal_application_id_fkey"
+            columns: ["portal_application_id"]
+            isOneToOne: false
+            referencedRelation: "portal_applications"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "travellers_created_by_fkey"
             columns: ["created_by"]
