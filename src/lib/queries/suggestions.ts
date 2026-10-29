@@ -28,10 +28,13 @@ export type ApplicationPassenger = {
   id: string;
   traveller_ref: string;
   full_name: string;
+  given_name: string | null;
+  surname: string | null;
   passport_number: string | null;
   pan_number: string | null;
   address: string | null;
   nationality: string | null;
+  par_answer: string | null;
   status: string;
   travel_group_id: string | null;
   group_ref: string | null;
@@ -49,6 +52,7 @@ export type ApplicationRow = {
   nationality: string | null;
   travel_start_date: string;
   travel_end_date: string;
+  pax: number | null;
   status: string;
   submitted_at: string | null;
   ready: boolean;
@@ -62,7 +66,7 @@ export type ApplicationRow = {
 export async function listApplications(supabase: Client, opts: { status?: string; kind?: string; q?: string; limit?: number } = {}): Promise<ApplicationRow[]> {
   let q = supabase
     .from("portal_applications")
-    .select("id, token, kind, contact_name, contact_phone, contact_email, agency_name, nationality, travel_start_date, travel_end_date, status, submitted_at, ready, travel_group_id, created_at, group:travel_groups(group_ref), travellers(id, traveller_ref, full_name, passport_number, pan_number, address, nationality, status, travel_group_id, created_at, group:travel_groups(group_ref), traveller_documents(doc_type, deleted_at))")
+    .select("id, token, kind, contact_name, contact_phone, contact_email, agency_name, nationality, travel_start_date, travel_end_date, pax, status, submitted_at, ready, travel_group_id, created_at, group:travel_groups(group_ref), travellers(id, traveller_ref, full_name, given_name, surname, passport_number, pan_number, address, nationality, par_answer, status, travel_group_id, created_at, group:travel_groups(group_ref), traveller_documents(doc_type, deleted_at))")
     .order("submitted_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(opts.limit ?? 200);
@@ -84,6 +88,7 @@ export async function listApplications(supabase: Client, opts: { status?: string
     nationality: a.nationality,
     travel_start_date: a.travel_start_date,
     travel_end_date: a.travel_end_date,
+    pax: a.pax,
     status: a.status,
     submitted_at: a.submitted_at,
     ready: a.ready,
@@ -97,10 +102,13 @@ export async function listApplications(supabase: Client, opts: { status?: string
         id: t.id,
         traveller_ref: t.traveller_ref,
         full_name: t.full_name,
+        given_name: t.given_name,
+        surname: t.surname,
         passport_number: t.passport_number,
         pan_number: t.pan_number,
         address: t.address,
         nationality: t.nationality,
+        par_answer: t.par_answer,
         status: t.status,
         travel_group_id: t.travel_group_id,
         group_ref: t.group?.group_ref ?? null,

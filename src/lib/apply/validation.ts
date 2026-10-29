@@ -37,7 +37,8 @@ export const sex = z
 
 /** Per-passenger details (the fields the passport OCR fills plus address and PAN). */
 export const passengerSchema = z.object({
-  full_name: z.string().trim().min(2, "Enter the name as in the passport").max(200),
+  given_name: z.string().trim().min(1, "Enter the given name as in the passport").max(120),
+  surname: z.string().trim().max(120).optional().nullable().transform((v) => v || null),
   phone,
   email,
   nationality: optText(60),
@@ -48,5 +49,16 @@ export const passengerSchema = z.object({
   address: optText(1000),
   pan_number: panNumber,
   passport_ocr: z.record(z.string(), z.unknown()).optional().nullable(),
+  par_answer: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => v || null)
+    .refine((v) => !v || v === "has_par" || v === "needs_par", "Answer the PAR question"),
 });
 export type PassengerInput = z.input<typeof passengerSchema>;
+
+/** Display name from the passport parts: given names then surname. */
+export function fullName(given: string, surname: string | null | undefined): string {
+  return [given.trim(), (surname ?? "").trim()].filter(Boolean).join(" ");
+}

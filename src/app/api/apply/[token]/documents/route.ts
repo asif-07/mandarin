@@ -32,6 +32,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const travellerId = String(form?.get("traveller_id") ?? "");
   if (!(file instanceof File)) return NextResponse.json({ error: "Choose a file" }, { status: 400 });
   if (!PORTAL_TYPES.has(docType)) return NextResponse.json({ error: "Unknown document type" }, { status: 400 });
+  if (app.passengerId && app.passengerId !== travellerId) return NextResponse.json({ error: "This link is for another passenger" }, { status: 403 });
   if (!(await passengerBelongs(app.id, travellerId))) return NextResponse.json({ error: "Passenger not found" }, { status: 404 });
   if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: "The file is larger than 15 MB" }, { status: 413 });
   let mime = mimeFor(file);
@@ -78,6 +79,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const supabase = createAdminClient();
   const { data: doc } = await supabase.from("traveller_documents").select("id, traveller_id, traveller:travellers!inner(portal_application_id)").eq("id", body.id).is("deleted_at", null).maybeSingle();
   if (!doc || doc.traveller?.portal_application_id !== app.id || !doc.traveller_id) return NextResponse.json({ error: "Document not found" }, { status: 404 });
+  if (app.passengerId && app.passengerId !== doc.traveller_id) return NextResponse.json({ error: "This link is for another passenger" }, { status: 403 });
   const { error } = await supabase.from("traveller_documents").update({ deleted_at: new Date().toISOString() }).eq("id", doc.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const newStatus = await reconcileDocumentStatus(supabase, doc.traveller_id);

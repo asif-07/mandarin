@@ -15,6 +15,7 @@ export const NAV_ITEMS = [
   { href: "/invoices", label: "Invoices", icon: "FileText", adminOnly: false },
   { href: "/leads", label: "Leads", icon: "Users", adminOnly: false },
   { href: "/travel", label: "Travel", icon: "Plane", adminOnly: false },
+  { href: "/travel/applications", label: "Visa application", icon: "FileCheck2", adminOnly: false },
   { href: "/accounts", label: "Accounts", icon: "Wallet", adminOnly: true },
   { href: "/settings", label: "Settings", icon: "Settings", adminOnly: false },
 ] as const;
@@ -236,12 +237,13 @@ export const CHINA_PORTS = [
  */
 export const DOC_TYPES = [
   { value: "par", label: "PAR", mergeOrder: 1, required: true, slot: true, keywords: ["par", "arrival", "record"] },
+  { value: "passport_back", label: "Passport (back page)", mergeOrder: 3, required: false, slot: true, keywords: ["back", "rear", "last page", "address page"] },
   { value: "passport", label: "Passport", mergeOrder: 2, required: true, slot: true, keywords: ["passport", "ppt", "pp"] },
-  { value: "flight_ticket", label: "Flight Ticket", mergeOrder: 3, required: true, slot: true, keywords: ["ticket", "flight", "itinerary", "boarding", "pnr"] },
-  { value: "hotel_booking", label: "Hotel Booking", mergeOrder: 4, required: true, slot: true, keywords: ["hotel", "booking", "reservation", "accommodation"] },
-  { value: "photo", label: "Passport photo", mergeOrder: 5, required: false, slot: true, keywords: ["photo", "picture", "selfie"] },
-  { value: "pan_card", label: "PAN card", mergeOrder: 6, required: false, slot: true, keywords: ["pan"] },
-  { value: "other", label: "Other", mergeOrder: 7, required: false, slot: false, keywords: [] },
+  { value: "flight_ticket", label: "Flight Ticket", mergeOrder: 4, required: true, slot: true, keywords: ["ticket", "flight", "itinerary", "boarding", "pnr"] },
+  { value: "hotel_booking", label: "Hotel Booking", mergeOrder: 5, required: true, slot: true, keywords: ["hotel", "booking", "reservation", "accommodation"] },
+  { value: "photo", label: "Passport photo", mergeOrder: 6, required: false, slot: true, keywords: ["photo", "picture", "selfie"] },
+  { value: "pan_card", label: "PAN card", mergeOrder: 7, required: false, slot: true, keywords: ["pan"] },
+  { value: "other", label: "Other", mergeOrder: 8, required: false, slot: false, keywords: [] },
 ] as const;
 export type DocType = (typeof DOC_TYPES)[number]["value"];
 export const REQUIRED_DOC_TYPES = DOC_TYPES.filter((d) => d.required).map((d) => d.value);

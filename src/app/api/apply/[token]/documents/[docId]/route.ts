@@ -12,8 +12,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const app = await applicationByToken(token);
   if (!app) return NextResponse.json({ error: "This link is not valid" }, { status: 404 });
   const supabase = createAdminClient();
-  const { data: doc } = await supabase.from("traveller_documents").select("storage_path, traveller:travellers!inner(portal_application_id)").eq("id", docId).is("deleted_at", null).maybeSingle();
+  const { data: doc } = await supabase.from("traveller_documents").select("storage_path, traveller_id, traveller:travellers!inner(portal_application_id)").eq("id", docId).is("deleted_at", null).maybeSingle();
   if (!doc || doc.traveller?.portal_application_id !== app.id) return NextResponse.json({ error: "Document not found" }, { status: 404 });
+  if (app.passengerId && app.passengerId !== doc.traveller_id) return NextResponse.json({ error: "This link is for another passenger" }, { status: 403 });
   const { data: signed, error } = await supabase.storage.from(BUCKETS.travellerDocuments).createSignedUrl(doc.storage_path, 120);
   if (error || !signed) return NextResponse.json({ error: "Could not open the file" }, { status: 500 });
   return NextResponse.redirect(signed.signedUrl, { status: 302 });

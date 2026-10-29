@@ -15,6 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { token } = await params;
   const core = await applicationByToken(token);
   if (!core) return NextResponse.json({ error: "This link is not valid" }, { status: 404 });
+  if (core.passengerId) return NextResponse.json({ error: "Only the main applicant submits the application" }, { status: 403 });
   const app = await loadApplicationByToken(token);
   if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404 });
   const c = applicationCompleteness(app);
@@ -33,9 +34,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   for (const p of c.passengers) await supabase.from("travellers").update({ portal_ready: p.completeness.ready }).eq("id", p.id);
 
   const dates = `${formatDate(app.travel_start_date)} to ${formatDate(app.travel_end_date)}`;
-  const who = app.kind === "b2b" ? `${app.agency_name ?? app.contact_name} (agent)` : app.contact_name;
+  const who = app.contact_name;
   const n = app.passengers.length;
-  await notify(supabase, [{ audience: "company" }], null, `${first ? "Documents received" : "Documents updated"}: ${who} · ${n} passenger${n === 1 ? "" : "s"} · ${dates}`, `${app.passengers.map((p) => p.full_name).join(", ")} · ${c.ready ? "PAR and hotel for everyone: can apply directly" : "Needs PAR / hotel from us"}${app.contact_phone ? ` · ${app.contact_phone}` : ""}`);
+  await notify(supabase, [{ audience: "company" }], null, `${first ? "Documents received" : "Documents updated"}: ${who} · ${n} passenger${n === 1 ? "" : "s"} · ${dates}`, `${app.passengers.map((p) => p.full_name).join(", ")}${app.pax ? ` · ${app.pax} travelling together` : ""} · ${c.ready ? "PAR and hotel for everyone: can apply directly" : "Needs PAR / hotel from us"}${app.contact_phone ? ` · ${app.contact_phone}` : ""}`);
 
   if (first && app.contact_email && emailConfigured()) {
     const link = `${request.nextUrl.origin}/apply/t/${token}`;

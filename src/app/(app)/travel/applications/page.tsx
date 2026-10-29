@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Building2, Inbox, User } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { StatCard, StatGrid } from "@/components/shared/stat-card";
@@ -21,10 +21,10 @@ export const metadata: Metadata = { title: "Applications" };
 export const dynamic = "force-dynamic";
 
 /** Documents received through the public /apply link: customers (with co-passengers) and travel agents (bulk). What is missing, and which group to put them in. */
-export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<{ status?: string; kind?: string; q?: string }> }) {
+export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
   const sp = await searchParams;
   const supabase = await createClient();
-  const [rows, inputs] = await Promise.all([listApplications(supabase, { status: sp.status, kind: sp.kind, q: sp.q?.trim() }), loadSuggestionInputs(supabase)]);
+  const [rows, inputs] = await Promise.all([listApplications(supabase, { status: sp.status, q: sp.q?.trim() }), loadSuggestionInputs(supabase)]);
   const stats = {
     submitted: rows.filter((r) => r.status === "submitted").length,
     pax: rows.filter((r) => r.status !== "draft").reduce((n, r) => n + r.passengers.length, 0),
@@ -34,13 +34,12 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
 
   return (
     <>
-      <PageHeader title="Applications" description="Documents received through the public link. Customers upload for themselves and their co-passengers; travel agents bulk upload a group (no partner code asked). Passports are read by OCR; photo and PAN card are mandatory for every passenger." actions={<ApplyLinkButton />} />
+      <PageHeader title="Visa applications" description="144-hour transit visa applications from the public link. Travellers upload for themselves and their co-passengers (or send them a personal link). Passports are read by OCR; passport front and back, photo and PAN card are needed for every passenger; the PAR question tells you who needs a PAR from us." actions={<ApplyLinkButton />} />
       <Suspense>
         <div className="mb-5 flex flex-wrap items-center gap-2">
           <SearchParamInput placeholder="Search contact, agency, phone, email" className="md:w-80" />
           <SelectParam name="status" placeholder="All states" options={PORTAL_STATUSES.map((s) => ({ value: s.value, label: s.label }))} />
-          <SelectParam name="kind" placeholder="Customers and agents" options={[{ value: "b2c", label: "Customers" }, { value: "b2b", label: "Travel agents" }]} />
-          <ClearFilters keys={["q", "status", "kind"]} />
+          <ClearFilters keys={["q", "status"]} />
         </div>
       </Suspense>
       <StatGrid cols={4} className="mb-6">
@@ -51,26 +50,25 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
       </StatGrid>
 
       {rows.length === 0 ? (
-        <EmptyState icon={Inbox} title={sp.q || sp.status || sp.kind ? "No applications match." : "No applications yet. Share the link with travellers and travel agents."} action={!sp.q && !sp.status && !sp.kind && <ApplyLinkButton />} />
+        <EmptyState icon={Inbox} title={sp.q || sp.status ? "No applications match." : "No applications yet. Share the link with travellers."} action={!sp.q && !sp.status && <ApplyLinkButton />} />
       ) : (
         <ul className="space-y-3">
           {rows.map((r) => {
             const ungrouped = r.passengers.filter((p) => !p.travel_group_id);
             const suggestions = ungrouped.length && r.status !== "draft" ? suggestForTraveller({ id: r.id, full_name: r.contact_name, traveller_ref: r.id, travel_start_date: r.travel_start_date, travel_end_date: r.travel_end_date, application_id: r.id }, inputs.groups, inputs.ungrouped.filter((t) => t.application_id !== r.id)) : [];
             const fields = requiredFields(r.kind);
-            const groupLabel = r.kind === "b2b" ? r.agency_name ?? r.contact_name : r.passengers.length > 1 ? `${r.contact_name} +${r.passengers.length - 1}` : r.contact_name;
+            const groupLabel = r.passengers.length > 1 ? `${r.contact_name} +${r.passengers.length - 1}` : r.contact_name;
             return (
               <li key={r.id} className="rounded-lg border border-mr-line bg-white p-4">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <Chip tone={r.kind === "b2b" ? "ink" : "neutral"} icon={r.kind === "b2b" ? <Building2 /> : <User />}>
-                    {r.kind === "b2b" ? "Travel agent" : "Customer"}
-                  </Chip>
-                  <span className="font-medium text-mr-ink">{r.kind === "b2b" ? r.agency_name ?? r.contact_name : r.contact_name}</span>
-                  {r.kind === "b2b" && <span className="text-xs text-mr-muted">contact {r.contact_name}</span>}
+                  <span className="font-medium text-mr-ink">{r.contact_name}</span>
                   <span className="tnum text-sm text-mr-body">{formatDateRange(r.travel_start_date, r.travel_end_date)}</span>
                   <span className="text-sm text-mr-body">
-                    {r.passengers.length} pax{r.nationality ? ` · ${r.nationality}` : ""}
+                    {r.passengers.length} passenger{r.passengers.length === 1 ? "" : "s"}
+                    {r.pax && r.pax !== r.passengers.length ? ` of ${r.pax} travelling together` : ""}
+                    {r.nationality ? ` · ${r.nationality}` : ""}
                   </span>
+                  {(r.pax ?? r.passengers.length) < 2 && <Chip tone="warning">Alone: needs a 2nd traveller</Chip>}
                   <span className="ml-auto flex flex-wrap items-center gap-1.5">
                     <Chip tone={r.status === "submitted" ? "warning" : r.status === "reviewed" ? "success" : "muted"}>{labelFor(PORTAL_STATUSES, r.status)}</Chip>
                     {r.status !== "draft" && <Chip tone={r.ready ? "ink" : "neutral"}>{r.ready ? "PAR + hotel for all: apply directly" : "Needs PAR / hotel from us"}</Chip>}
@@ -98,10 +96,11 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
                           <span className="font-mono text-xs text-mr-muted">{p.traveller_ref}</span>
                           {p.passport_number && <span className="font-mono text-xs text-mr-body">{p.passport_number}</span>}
                           {p.pan_number && <span className="font-mono text-xs text-mr-body">PAN {p.pan_number}</span>}
+                          {p.par_answer === "needs_par" && !p.doc_types.includes("par") && <Chip tone="warning">PAR: we apply</Chip>}
                           <span className="ml-auto flex flex-wrap items-center gap-1">
                             {PORTAL_DOCS.map((d) => (
                               <Chip key={d.type} tone={present.has(d.type) ? "success" : d.need ? "red" : "muted"} title={portalDocLabel(d.type)}>
-                                {portalDocLabel(d.type).replace("Passport-size photo", "Photo").replace("Hotel booking", "Hotel").replace("Flight ticket", "Flight")}
+                                {portalDocLabel(d.type).replace("Passport front (data page)", "Passport").replace("Passport back (address page)", "Passport back").replace("Passport-size photo", "Photo").replace("Hong Kong PAR", "PAR").replace("Hotel booking", "Hotel").replace("Flight ticket", "Flight")}
                               </Chip>
                             ))}
                             {p.group_ref && <Chip tone="success">{p.group_ref}</Chip>}

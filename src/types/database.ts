@@ -95,6 +95,7 @@ export type Database = {
           created_at: string
           updated_at: string | null
           last_seen_at: string | null
+          pax: number | null
         }
         Insert: {
           id?: string
@@ -115,6 +116,7 @@ export type Database = {
           created_at?: string
           updated_at?: string | null
           last_seen_at?: string | null
+          pax?: number | null
         }
         Update: {
           id?: string
@@ -135,6 +137,7 @@ export type Database = {
           created_at?: string
           updated_at?: string | null
           last_seen_at?: string | null
+          pax?: number | null
         }
         Relationships: [
           {
@@ -2011,6 +2014,10 @@ export type Database = {
           passport_expiry: string | null
           passport_ocr: Json | null
           portal_application_id: string | null
+          par_answer: string | null
+          par_requested_at: string | null
+          given_name: string | null
+          surname: string | null
         }
         Insert: {
           created_at?: string | null
@@ -2049,6 +2056,10 @@ export type Database = {
           passport_expiry?: string | null
           passport_ocr?: Json | null
           portal_application_id?: string | null
+          par_answer?: string | null
+          par_requested_at?: string | null
+          given_name?: string | null
+          surname?: string | null
         }
         Update: {
           created_at?: string | null
@@ -2087,6 +2098,10 @@ export type Database = {
           passport_expiry?: string | null
           passport_ocr?: Json | null
           portal_application_id?: string | null
+          par_answer?: string | null
+          par_requested_at?: string | null
+          given_name?: string | null
+          surname?: string | null
         }
         Relationships: [
           {

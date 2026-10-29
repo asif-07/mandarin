@@ -18,6 +18,8 @@ export type PassengerView = {
   id: string;
   traveller_ref: string;
   full_name: string;
+  given_name: string | null;
+  surname: string | null;
   phone: string | null;
   email: string | null;
   nationality: string | null;
@@ -32,6 +34,10 @@ export type PassengerView = {
   status: string;
   group_ref: string | null;
   grouped: boolean;
+  /** "has_par" (uploads it) or "needs_par" (we apply); null until answered. */
+  par_answer: string | null;
+  /** Personal link for this passenger to fill in their own details (co-passenger invite). */
+  invite_token: string | null;
   documents: ApplicantDoc[];
 };
 
@@ -47,6 +53,8 @@ export type ApplicationView = {
   nationality: string | null;
   travel_start_date: string;
   travel_end_date: string;
+  /** How many travel together (asked on the first page; minimum 2 for the group transit visa). */
+  pax: number | null;
   status: string;
   submitted_at: string | null;
   ready: boolean;
@@ -54,12 +62,31 @@ export type ApplicationView = {
   passengers: PassengerView[];
 };
 
+/** 144-hour transit: at most 5 nights / 6 days; exit on the 6th day before 18:00. */
+export const PORTAL_TITLE = "144 hours China transit visa application";
+export const MAX_STAY_NIGHTS = 5;
+export const EXIT_BY_TIME = "6 pm";
+export const MIN_PAX = 2;
+export function maxExitDate(entry: string): string {
+  const d = new Date(`${entry}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + MAX_STAY_NIGHTS);
+  return d.toISOString().slice(0, 10);
+}
+/** Null when the dates respect the 144-hour rule, else the problem. */
+export function checkTransitDates(entry: string, exit: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(entry) || !/^\d{4}-\d{2}-\d{2}$/.test(exit)) return "Choose both dates";
+  if (exit < entry) return "The exit date must be on or after the entry date";
+  if (exit > maxExitDate(entry)) return `Maximum stay is ${MAX_STAY_NIGHTS} nights / ${MAX_STAY_NIGHTS + 1} days: with entry on ${entry} you must exit by ${maxExitDate(entry)} (${EXIT_BY_TIME})`;
+  return null;
+}
+
 /** What the portal asks for per passenger, in order. `need` = must be there before submitting. */
 export const PORTAL_DOCS = [
-  { type: "passport", need: true, title: "Passport", hint: "Photo of the data page (the page with the photo). The details are read from it automatically." },
+  { type: "passport", need: true, title: "Passport front (data page)", hint: "The page with the photo. The details are read from it automatically." },
+  { type: "passport_back", need: true, title: "Passport back (address page)", hint: "The last page with the address and family details." },
   { type: "photo", need: true, title: "Passport-size photo", hint: "Recent colour photo, plain light background, face straight to the camera." },
   { type: "pan_card", need: true, title: "PAN card", hint: "Front side, all details readable. The PAN number is read from it." },
-  { type: "par", need: false, title: "PAR", hint: "If the PAR is already there, upload it and we apply directly. Otherwise we prepare it from the passport." },
+  { type: "par", need: false, title: "Hong Kong PAR", hint: "Pre-Arrival Registration for Hong Kong. If you do not have it, we apply for it." },
   { type: "hotel_booking", need: false, title: "Hotel booking", hint: "Confirmation with the traveller's name and the dates, if booked already." },
   { type: "flight_ticket", need: false, title: "Flight ticket", hint: "E-ticket or itinerary, if booked." },
 ] as const;
@@ -70,10 +97,10 @@ export function portalDocLabel(type: string): string {
 }
 
 /** Profile fields a passenger needs before the application can go. Agents are not asked for the home address. */
-export function requiredFields(kind: ApplicationKind): ("full_name" | "passport_number" | "address" | "pan_number")[] {
-  return kind === "b2b" ? ["full_name", "passport_number", "pan_number"] : ["full_name", "passport_number", "address", "pan_number"];
+export function requiredFields(kind: ApplicationKind): ("given_name" | "surname" | "passport_number" | "address" | "pan_number")[] {
+  return kind === "b2b" ? ["given_name", "surname", "passport_number", "pan_number"] : ["given_name", "surname", "passport_number", "address", "pan_number"];
 }
-export const FIELD_LABELS: Record<string, string> = { full_name: "name", passport_number: "passport number", address: "address", pan_number: "PAN number" };
+export const FIELD_LABELS: Record<string, string> = { full_name: "name", given_name: "given name", surname: "surname", passport_number: "passport number", address: "address", pan_number: "PAN number", par_answer: "PAR question (have it or not)" };
 
 export type Completeness = {
   missingDocs: string[];
@@ -83,10 +110,13 @@ export type Completeness = {
   complete: boolean;
 };
 
-export function passengerCompleteness(p: Pick<PassengerView, "full_name" | "passport_number" | "address" | "pan_number" | "documents">, kind: ApplicationKind): Completeness {
+export function passengerCompleteness(p: Pick<PassengerView, "given_name" | "surname" | "passport_number" | "address" | "pan_number" | "documents" | "par_answer">, kind: ApplicationKind): Completeness {
   const present = new Set(p.documents.map((d) => d.doc_type));
   const missingDocs = PORTAL_DOCS.filter((d) => d.need && !present.has(d.type)).map((d) => d.type);
-  const missingFields = requiredFields(kind).filter((f) => !(p[f] ?? "").toString().trim());
+  // The PAR question must be answered: either the PAR is uploaded, or we were asked to apply for it.
+  if (p.par_answer === "has_par" && !present.has("par")) missingDocs.push("par");
+  const missingFields: string[] = requiredFields(kind).filter((f) => !(p[f] ?? "").toString().trim());
+  if (!p.par_answer && !present.has("par")) missingFields.push("par_answer");
   return { missingDocs, missingFields, ready: present.has("par") && present.has("hotel_booking"), complete: missingDocs.length === 0 && missingFields.length === 0 };
 }
 
@@ -98,6 +128,7 @@ export type ApplicationCompleteness = {
 
 export function applicationCompleteness(a: Pick<ApplicationView, "kind" | "passengers">): ApplicationCompleteness {
   const passengers = a.passengers.map((p) => ({ id: p.id, full_name: p.full_name, completeness: passengerCompleteness(p, a.kind) }));
+  // (kind stays "b2c" for the public page; the agent flow was dropped)
   return {
     canSubmit: passengers.length > 0 && passengers.every((p) => p.completeness.complete),
     ready: passengers.length > 0 && passengers.every((p) => p.completeness.ready),

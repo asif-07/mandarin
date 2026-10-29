@@ -8,26 +8,58 @@ export function newPortalToken(): string {
   return randomBytes(24).toString("base64url");
 }
 
-const APP_COLS = "id, token, kind, contact_name, contact_phone, contact_email, agency_name, nationality, travel_start_date, travel_end_date, status, submitted_at, ready, travel_group_id, group:travel_groups(group_ref)";
-const PAX_COLS = "id, traveller_ref, full_name, phone, email, nationality, passport_number, date_of_birth, sex, passport_expiry, address, pan_number, travel_start_date, travel_end_date, status, travel_group_id, created_at, group:travel_groups(group_ref), traveller_documents(id, doc_type, file_name, file_size, mime_type, storage_path, uploaded_at, deleted_at)";
+const APP_COLS = "id, token, kind, contact_name, contact_phone, contact_email, agency_name, nationality, travel_start_date, travel_end_date, pax, status, submitted_at, ready, travel_group_id, group:travel_groups(group_ref)";
+const PAX_COLS = "id, traveller_ref, full_name, phone, email, nationality, passport_number, date_of_birth, sex, passport_expiry, address, pan_number, travel_start_date, travel_end_date, status, travel_group_id, created_at, par_answer, portal_token, given_name, surname, group:travel_groups(group_ref), traveller_documents(id, doc_type, file_name, file_size, mime_type, storage_path, uploaded_at, deleted_at)";
 
-export type ApplicationCore = { id: string; kind: ApplicationKind; status: string; contact_name: string; contact_email: string | null; contact_phone: string | null; agency_name: string | null; nationality: string | null; travel_start_date: string; travel_end_date: string; travel_group_id: string | null; submitted_at: string | null };
+export type ApplicationCore = { id: string; kind: ApplicationKind; status: string; contact_name: string; contact_email: string | null; contact_phone: string | null; agency_name: string | null; nationality: string | null; travel_start_date: string; travel_end_date: string; pax: number | null; travel_group_id: string | null; submitted_at: string | null };
+const CORE_COLS = "id, kind, status, contact_name, contact_email, contact_phone, agency_name, nationality, travel_start_date, travel_end_date, pax, travel_group_id, submitted_at";
 
-/** The application behind a token, without passengers (for the API routes). */
-export async function applicationByToken(token: string): Promise<ApplicationCore | null> {
+/**
+ * The application behind a token (for the API routes). Two kinds of token
+ * open an application: the application's own link, and a co-passenger's
+ * personal invite link, which is limited to that one passenger
+ * (`passengerId` set): they can fill in and upload their own documents and
+ * see nothing of the others.
+ */
+export async function applicationByToken(token: string): Promise<(ApplicationCore & { passengerId: string | null }) | null> {
   if (!token || token.length < 16 || token.length > 64) return null;
   const supabase = createAdminClient();
-  const { data } = await supabase.from("portal_applications").select("id, kind, status, contact_name, contact_email, contact_phone, agency_name, nationality, travel_start_date, travel_end_date, travel_group_id, submitted_at").eq("token", token).maybeSingle();
-  return data ? { ...data, kind: data.kind === "b2b" ? "b2b" : "b2c" } : null;
+  const { data } = await supabase.from("portal_applications").select(CORE_COLS).eq("token", token).maybeSingle();
+  if (data) return { ...data, kind: data.kind === "b2b" ? "b2b" : "b2c", passengerId: null };
+  const { data: p } = await supabase.from("travellers").select("id, portal_application_id").eq("portal_token", token).not("portal_application_id", "is", null).maybeSingle();
+  if (!p?.portal_application_id) return null;
+  const { data: app } = await supabase.from("portal_applications").select(CORE_COLS).eq("id", p.portal_application_id).maybeSingle();
+  if (!app) return null;
+  return { ...app, kind: app.kind === "b2b" ? "b2b" : "b2c", passengerId: p.id };
+}
+
+/** Issue (or reuse) the personal invite token for one passenger. */
+export async function issuePassengerToken(travellerId: string): Promise<string | null> {
+  const supabase = createAdminClient();
+  const { data } = await supabase.from("travellers").select("portal_token").eq("id", travellerId).maybeSingle();
+  if (data?.portal_token) return data.portal_token;
+  const token = newPortalToken();
+  const { error } = await supabase.from("travellers").update({ portal_token: token }).eq("id", travellerId);
+  return error ? null : token;
 }
 
 /** Full view for the customer's page: passengers with their documents and signed image previews (1 hour). */
-export async function loadApplicationByToken(token: string): Promise<ApplicationView | null> {
+export async function loadApplicationByToken(token: string, opts: { onlyPassengerId?: string | null } = {}): Promise<ApplicationView | null> {
   if (!token || token.length < 16 || token.length > 64) return null;
   const supabase = createAdminClient();
-  const { data: a } = await supabase.from("portal_applications").select(APP_COLS).eq("token", token).maybeSingle();
+  let { data: a } = await supabase.from("portal_applications").select(APP_COLS).eq("token", token).maybeSingle();
+  let only = opts.onlyPassengerId ?? null;
+  if (!a) {
+    // A co-passenger's personal link: the application through the passenger, limited to them.
+    const { data: p } = await supabase.from("travellers").select("id, portal_application_id").eq("portal_token", token).not("portal_application_id", "is", null).maybeSingle();
+    if (!p?.portal_application_id) return null;
+    ({ data: a } = await supabase.from("portal_applications").select(APP_COLS).eq("id", p.portal_application_id).maybeSingle());
+    only = p.id;
+  }
   if (!a) return null;
-  const { data: pax } = await supabase.from("travellers").select(PAX_COLS).eq("portal_application_id", a.id).neq("status", "cancelled").order("created_at");
+  let paxQuery = supabase.from("travellers").select(PAX_COLS).eq("portal_application_id", a.id).neq("status", "cancelled").order("created_at");
+  if (only) paxQuery = paxQuery.eq("id", only);
+  const { data: pax } = await paxQuery;
   const docs = (pax ?? []).flatMap((p) => p.traveller_documents.filter((d) => !d.deleted_at));
   const imagePaths = docs.filter((d) => d.mime_type.startsWith("image/")).map((d) => d.storage_path);
   const { data: signed } = imagePaths.length ? await supabase.storage.from(BUCKETS.travellerDocuments).createSignedUrls(imagePaths, 3600) : { data: [] as { path: string | null; signedUrl: string }[] };
@@ -44,6 +76,7 @@ export async function loadApplicationByToken(token: string): Promise<Application
     nationality: a.nationality,
     travel_start_date: a.travel_start_date,
     travel_end_date: a.travel_end_date,
+    pax: a.pax,
     status: a.status,
     submitted_at: a.submitted_at,
     ready: a.ready,
@@ -62,6 +95,8 @@ function toPassenger(p: any, urlByPath: Map<string | null, string | null>): Pass
     id: p.id,
     traveller_ref: p.traveller_ref,
     full_name: p.full_name,
+    given_name: p.given_name ?? null,
+    surname: p.surname ?? null,
     phone: p.phone,
     email: p.email,
     nationality: p.nationality,
@@ -76,6 +111,8 @@ function toPassenger(p: any, urlByPath: Map<string | null, string | null>): Pass
     status: p.status,
     group_ref: p.group?.group_ref ?? null,
     grouped: !!p.travel_group_id,
+    par_answer: p.par_answer ?? null,
+    invite_token: p.portal_token ?? null,
     documents,
   };
 }
@@ -98,7 +135,7 @@ export async function passengerBelongs(applicationId: string, travellerId: strin
 }
 
 /** Create one passenger on an application (traveller row with the application's dates). */
-export async function createPassenger(app: ApplicationCore, input: { full_name: string; phone?: string | null; email?: string | null; nationality?: string | null; passport_number?: string | null; date_of_birth?: string | null; sex?: string | null; passport_expiry?: string | null; address?: string | null; pan_number?: string | null }): Promise<{ id: string } | { error: string }> {
+export async function createPassenger(app: ApplicationCore, input: { full_name: string; given_name?: string | null; surname?: string | null; phone?: string | null; email?: string | null; nationality?: string | null; passport_number?: string | null; date_of_birth?: string | null; sex?: string | null; passport_expiry?: string | null; address?: string | null; pan_number?: string | null }): Promise<{ id: string } | { error: string }> {
   const supabase = createAdminClient();
   const year = Number(app.travel_start_date.slice(0, 4));
   const { data: id, error } = await supabase.rpc("create_traveller", {
@@ -123,7 +160,7 @@ export async function createPassenger(app: ApplicationCore, input: { full_name: 
     },
   });
   if (error || !id) return { error: error?.message ?? "Could not add the passenger" };
-  const { error: linkErr } = await supabase.from("travellers").update({ portal_application_id: app.id }).eq("id", id);
+  const { error: linkErr } = await supabase.from("travellers").update({ portal_application_id: app.id, given_name: input.given_name ?? null, surname: input.surname ?? null }).eq("id", id);
   if (linkErr) return { error: linkErr.message };
   return { id };
 }

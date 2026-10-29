@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Loader2, Save, ScanLine, Trash2 } from "lucide-react";
+import { ChevronDown, Link2, Loader2, Save, ScanLine, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,8 @@ import { nationalityLabel, type MrzResult } from "@/lib/apply/mrz";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-type Details = Pick<PassengerView, "full_name" | "phone" | "email" | "nationality" | "passport_number" | "date_of_birth" | "sex" | "passport_expiry" | "address" | "pan_number">;
-const KEYS: (keyof Details)[] = ["full_name", "phone", "email", "nationality", "passport_number", "date_of_birth", "sex", "passport_expiry", "address", "pan_number"];
+type Details = Pick<PassengerView, "given_name" | "surname" | "phone" | "email" | "nationality" | "passport_number" | "date_of_birth" | "sex" | "passport_expiry" | "address" | "pan_number" | "par_answer">;
+const KEYS: (keyof Details)[] = ["given_name", "surname", "phone", "email", "nationality", "passport_number", "date_of_birth", "sex", "passport_expiry", "address", "pan_number", "par_answer"];
 function pick(p: PassengerView): Details {
   return Object.fromEntries(KEYS.map((k) => [k, p[k] ?? ""])) as unknown as Details;
 }
@@ -30,15 +30,19 @@ export async function savePassengerDetails(token: string, travellerId: string, d
   return body.passenger;
 }
 
+const spec = (type: string) => PORTAL_DOCS.find((d) => d.type === type)!;
+
 /**
- * One passenger: passport slot with OCR, details, photo + PAN card (PAN number
- * read from the card), optional PAR / hotel / flight. Collapsible so a group
- * of twenty stays readable.
+ * One passenger, in the order the application works: passport front and
+ * back (read by OCR), the Hong Kong PAR question, the details, photo and
+ * PAN card (PAN number read from the card), optional hotel and flight.
  */
-export function PassengerCard({ token, kind, passenger, index, open, onToggle, onChange, onRemove, canRemove }: { token: string; kind: ApplicationKind; passenger: PassengerView; index: number; open: boolean; onToggle: () => void; onChange: (p: PassengerView) => void; onRemove: () => void; canRemove: boolean }) {
+export function PassengerCard({ token, kind, passenger, index, open, onToggle, onChange, onRemove, canRemove, canInvite, alwaysOpen = false }: { token: string; kind: ApplicationKind; passenger: PassengerView; index: number; open: boolean; onToggle: () => void; onChange: (p: PassengerView) => void; onRemove: () => void; canRemove: boolean; canInvite?: boolean; alwaysOpen?: boolean }) {
   const [details, setDetails] = useState<Details>(() => pick(passenger));
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(passenger.invite_token && typeof window !== "undefined" ? `${window.location.origin}/apply/p/${passenger.invite_token}` : null);
   const [ocr, setOcr] = useState<{ label: string; pct: number } | null>(null);
   const [ocrResult, setOcrResult] = useState<MrzResult | null>(null);
   const [ocrPending, setOcrPending] = useState<MrzResult | null>(null);
@@ -46,6 +50,8 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
   const dirty = KEYS.some((k) => (details[k] ?? "") !== (savedDetails[k] ?? ""));
   const c = passengerCompleteness({ ...passenger, ...details, documents: passenger.documents }, kind);
   const present = new Set(passenger.documents.map((d) => d.doc_type));
+  const passportIn = present.has("passport") && present.has("passport_back");
+  const isOpen = alwaysOpen || open;
 
   function set<K extends keyof Details>(k: K, v: Details[K]) {
     setDetails((d) => ({ ...d, [k]: v }));
@@ -91,7 +97,8 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
   function applyOcr(r: MrzResult) {
     setDetails((d) => ({
       ...d,
-      full_name: r.full_name || d.full_name,
+      given_name: r.given_names || d.given_name,
+      surname: r.surname || d.surname,
       passport_number: r.passport_number || d.passport_number,
       nationality: r.nationality ? nationalityLabel(r.nationality) : d.nationality,
       date_of_birth: r.date_of_birth ?? d.date_of_birth,
@@ -102,18 +109,25 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
     toast.success("Passport details filled in. Check them and save.");
   }
 
-  async function save() {
+  async function save(extra: Partial<Details> = {}) {
     setSaving(true);
     try {
-      const p = await savePassengerDetails(token, passenger.id, { ...details, passport_ocr: ocrResult ? { ...ocrResult, read_at: new Date().toISOString() } : undefined });
+      const next = { ...details, ...extra };
+      const p = await savePassengerDetails(token, passenger.id, { ...next, passport_ocr: ocrResult ? { ...ocrResult, read_at: new Date().toISOString() } : undefined });
       onChange(p);
       setDetails(pick(p));
-      toast.success("Details saved");
+      toast.success("Saved");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save");
     } finally {
       setSaving(false);
     }
+  }
+
+  async function answerPar(answer: "has_par" | "needs_par") {
+    set("par_answer", answer);
+    if (!details.given_name) return; // saved together with the details later
+    await save({ par_answer: answer });
   }
 
   async function remove() {
@@ -129,23 +143,41 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
     }
   }
 
-  const required = PORTAL_DOCS.filter((d) => d.need);
-  const optional = PORTAL_DOCS.filter((d) => !d.need);
+  async function invite() {
+    setInviting(true);
+    try {
+      const res = await fetch(`/api/apply/${token}/passengers/${passenger.id}/invite`, { method: "POST" });
+      const body = (await res.json().catch(() => ({}))) as { error?: string; link?: string };
+      if (!res.ok || !body.link) return void toast.error(body.error ?? "Could not create the link");
+      setInviteLink(body.link);
+      await navigator.clipboard.writeText(body.link).catch(() => undefined);
+      toast.success("Personal link copied. Send it to them: they fill in their own details and upload their documents.");
+    } finally {
+      setInviting(false);
+    }
+  }
 
   return (
     <div className={cn("rounded-lg border bg-white", c.complete ? "border-mr-success/40" : "border-mr-line")}>
-      <button type="button" onClick={onToggle} className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left" aria-expanded={open}>
-        <span className="flex size-6 items-center justify-center rounded-full bg-mr-ink text-xs font-semibold text-white">{index + 1}</span>
-        <span className="font-medium text-mr-ink">{passenger.full_name}</span>
-        {passenger.passport_number && <span className="font-mono text-xs text-mr-muted">{passenger.passport_number}</span>}
-        <span className={cn("ml-auto text-xs", c.complete ? "text-mr-success" : "text-mr-warning")}>{c.complete ? (c.ready ? "Complete · PAR + hotel in" : "Complete") : `Missing: ${missingSummary(c)}`}</span>
-        <ChevronDown className={cn("size-4 text-mr-muted transition-transform", open && "rotate-180")} />
-      </button>
-      {open && (
-        <div className="space-y-5 border-t border-mr-line px-4 py-4">
+      {!alwaysOpen && (
+        <button type="button" onClick={onToggle} className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left" aria-expanded={open}>
+          <span className="flex size-6 items-center justify-center rounded-full bg-mr-ink text-xs font-semibold text-white">{index + 1}</span>
+          <span className="font-medium text-mr-ink">{passenger.full_name}</span>
+          {passenger.passport_number && <span className="font-mono text-xs text-mr-muted">{passenger.passport_number}</span>}
+          <span className={cn("ml-auto text-xs", c.complete ? "text-mr-success" : "text-mr-warning")}>{c.complete ? (c.ready ? "Complete · PAR + hotel in" : "Complete") : `Missing: ${missingSummary(c)}`}</span>
+          <ChevronDown className={cn("size-4 text-mr-muted transition-transform", open && "rotate-180")} />
+        </button>
+      )}
+      {isOpen && (
+        <div className={cn("space-y-5 px-4 py-4", !alwaysOpen && "border-t border-mr-line")}>
+          {/* 1. Passport front + back */}
           <section>
-            <h3 className="mb-2 text-sm font-semibold">Passport</h3>
-            <DocSlot token={token} travellerId={passenger.id} spec={required[0]!} doc={passenger.documents.find((d) => d.doc_type === "passport")} onUploaded={docUploaded} onRemoved={docRemoved} onUploadedFile={(f) => void runOcr(f)} />
+            <h3 className="mb-1 text-sm font-semibold">1. Passport (front and back)</h3>
+            <p className="mb-2 text-xs text-mr-muted">Clear photos of the data page and the back page. The details are read from the front page; nothing is sent anywhere for that.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <DocSlot token={token} travellerId={passenger.id} spec={spec("passport")} doc={passenger.documents.find((d) => d.doc_type === "passport")} onUploaded={docUploaded} onRemoved={docRemoved} onUploadedFile={(f) => void runOcr(f)} />
+              <DocSlot token={token} travellerId={passenger.id} spec={spec("passport_back")} doc={passenger.documents.find((d) => d.doc_type === "passport_back")} onUploaded={docUploaded} onRemoved={docRemoved} />
+            </div>
             {ocr && (
               <div className="mt-3 flex items-center gap-3 text-sm text-mr-body">
                 <ScanLine className="size-4 animate-pulse" /> {ocr.label}… <Progress value={ocr.pct} className="h-1.5 w-40" />
@@ -155,7 +187,7 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
               <div className="mt-3 rounded-md border border-mr-ink bg-mr-surface p-3 text-sm">
                 <p className="font-medium text-mr-ink">We read the passport{ocrPending.valid ? "" : " (some characters were unclear, please check carefully)"}:</p>
                 <p className="mt-1 text-mr-body">
-                  {ocrPending.full_name} · {ocrPending.passport_number} · {nationalityLabel(ocrPending.nationality)} · born {ocrPending.date_of_birth ? formatDate(ocrPending.date_of_birth) : "?"} · {ocrPending.sex ?? "?"} · expires {ocrPending.expiry ? formatDate(ocrPending.expiry) : "?"}
+                  {ocrPending.given_names} {ocrPending.surname} · {ocrPending.passport_number} · {nationalityLabel(ocrPending.nationality)} · born {ocrPending.date_of_birth ? formatDate(ocrPending.date_of_birth) : "?"} · {ocrPending.sex ?? "?"} · expires {ocrPending.expiry ? formatDate(ocrPending.expiry) : "?"}
                 </p>
                 <div className="mt-2 flex gap-2">
                   <Button type="button" size="sm" onClick={() => applyOcr(ocrPending)}>
@@ -175,11 +207,37 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
             )}
           </section>
 
+          {/* 2. PAR question */}
+          <section className={cn("rounded-md border p-3", passportIn ? "border-mr-ink/30 bg-mr-surface" : "border-mr-line")}>
+            <h3 className="text-sm font-semibold">2. Do you have the Hong Kong Pre-Arrival Registration (PAR)?</h3>
+            <p className="mb-2 text-xs text-mr-muted">{passportIn ? "Choose one." : "Upload the passport first, then answer here."}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button type="button" onClick={() => void answerPar("has_par")} className={cn("rounded-md border p-2.5 text-left text-sm", details.par_answer === "has_par" ? "border-mr-ink bg-white" : "border-mr-line bg-white hover:bg-mr-surface")} aria-pressed={details.par_answer === "has_par"}>
+                <span className="block font-medium text-mr-ink">Yes, I have the PAR</span>
+                <span className="block text-xs text-mr-muted">Upload it below.</span>
+              </button>
+              <button type="button" onClick={() => void answerPar("needs_par")} className={cn("rounded-md border p-2.5 text-left text-sm", details.par_answer === "needs_par" ? "border-mr-ink bg-white" : "border-mr-line bg-white hover:bg-mr-surface")} aria-pressed={details.par_answer === "needs_par"}>
+                <span className="block font-medium text-mr-ink">No, I do not have it</span>
+                <span className="block text-xs text-mr-muted">We apply for the PAR for you; our PAR team is informed.</span>
+              </button>
+            </div>
+            {details.par_answer === "has_par" && (
+              <div className="mt-3">
+                <DocSlot token={token} travellerId={passenger.id} spec={spec("par")} doc={passenger.documents.find((d) => d.doc_type === "par")} onUploaded={docUploaded} onRemoved={docRemoved} compact />
+              </div>
+            )}
+            {details.par_answer === "needs_par" && <p className="mt-2 text-xs text-mr-success">Noted: we will apply for the PAR{details.given_name ? "" : " once the details below are saved"}.</p>}
+          </section>
+
+          {/* 3. Details */}
           <section>
-            <h3 className="mb-2 text-sm font-semibold">Details</h3>
+            <h3 className="mb-2 text-sm font-semibold">3. Details</h3>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Full name (as in passport) *" id={`n-${passenger.id}`} className="sm:col-span-2">
-                <Input id={`n-${passenger.id}`} value={details.full_name} onChange={(e) => set("full_name", e.target.value)} />
+              <Field label="Given name (as in passport) *" id={`gn-${passenger.id}`}>
+                <Input id={`gn-${passenger.id}`} value={details.given_name ?? ""} onChange={(e) => set("given_name", e.target.value)} />
+              </Field>
+              <Field label="Surname (as in passport) *" id={`sn-${passenger.id}`}>
+                <Input id={`sn-${passenger.id}`} value={details.surname ?? ""} onChange={(e) => set("surname", e.target.value)} />
               </Field>
               <Field label="Passport number *" id={`pn-${passenger.id}`}>
                 <Input id={`pn-${passenger.id}`} className="uppercase" autoCapitalize="characters" value={details.passport_number ?? ""} onChange={(e) => set("passport_number", e.target.value.toUpperCase())} />
@@ -209,54 +267,64 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
               <Field label="PAN number *" id={`pan-${passenger.id}`}>
                 <Input id={`pan-${passenger.id}`} className="uppercase" placeholder="ABCDE1234F" autoCapitalize="characters" value={details.pan_number ?? ""} onChange={(e) => set("pan_number", e.target.value.toUpperCase())} />
               </Field>
-              <Field label={kind === "b2b" ? "Address" : "Address *"} id={`ad-${passenger.id}`} className="sm:col-span-2">
+              <Field label="Address *" id={`ad-${passenger.id}`} className="sm:col-span-2">
                 <Textarea id={`ad-${passenger.id}`} rows={2} value={details.address ?? ""} onChange={(e) => set("address", e.target.value)} placeholder="House / flat, street, city, country" />
               </Field>
-              {kind === "b2c" && (
-                <>
-                  <Field label="Phone (WhatsApp)" id={`ph-${passenger.id}`}>
-                    <Input id={`ph-${passenger.id}`} type="tel" value={details.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
-                  </Field>
-                  <Field label="Email" id={`em-${passenger.id}`}>
-                    <Input id={`em-${passenger.id}`} type="email" value={details.email ?? ""} onChange={(e) => set("email", e.target.value)} />
-                  </Field>
-                </>
-              )}
+              <Field label="Phone (WhatsApp)" id={`ph-${passenger.id}`}>
+                <Input id={`ph-${passenger.id}`} type="tel" value={details.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
+              </Field>
+              <Field label="Email" id={`em-${passenger.id}`}>
+                <Input id={`em-${passenger.id}`} type="email" value={details.email ?? ""} onChange={(e) => set("email", e.target.value)} />
+              </Field>
             </div>
             <div className="mt-3 flex items-center gap-2">
-              <Button type="button" size="sm" onClick={save} disabled={!dirty || saving}>
+              <Button type="button" size="sm" onClick={() => void save()} disabled={!dirty || saving}>
                 {saving ? <Loader2 className="animate-spin" /> : <Save />} Save details
               </Button>
               {dirty && <span className="text-xs text-mr-warning">Unsaved changes</span>}
             </div>
           </section>
 
+          {/* 4. Photo + PAN */}
           <section>
-            <h3 className="mb-2 text-sm font-semibold">Photo and PAN card</h3>
+            <h3 className="mb-2 text-sm font-semibold">4. Passport photo and PAN card</h3>
             <div className="grid gap-3 sm:grid-cols-2">
-              {required.slice(1).map((spec) => (
-                <DocSlot key={spec.type} token={token} travellerId={passenger.id} spec={spec} doc={passenger.documents.find((d) => d.doc_type === spec.type)} onUploaded={docUploaded} onRemoved={docRemoved} onUploadedFile={spec.type === "pan_card" ? (f) => void runPanOcr(f) : undefined} />
-              ))}
+              <DocSlot token={token} travellerId={passenger.id} spec={spec("photo")} doc={passenger.documents.find((d) => d.doc_type === "photo")} onUploaded={docUploaded} onRemoved={docRemoved} />
+              <DocSlot token={token} travellerId={passenger.id} spec={spec("pan_card")} doc={passenger.documents.find((d) => d.doc_type === "pan_card")} onUploaded={docUploaded} onRemoved={docRemoved} onUploadedFile={(f) => void runPanOcr(f)} />
             </div>
           </section>
 
+          {/* 5. Optional */}
           <section>
-            <h3 className="mb-1 text-sm font-semibold">PAR, hotel, flight (optional)</h3>
-            <p className="mb-2 text-xs text-mr-muted">
-              With <strong>PAR and hotel booking</strong> uploaded we apply for the visa directly. Otherwise we prepare them from the passport.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {optional.map((spec) => (
-                <DocSlot key={spec.type} token={token} travellerId={passenger.id} spec={spec} doc={passenger.documents.find((d) => d.doc_type === spec.type)} onUploaded={docUploaded} onRemoved={docRemoved} compact />
-              ))}
+            <h3 className="mb-1 text-sm font-semibold">5. Hotel and flight (optional)</h3>
+            <p className="mb-2 text-xs text-mr-muted">If already booked. With PAR and hotel booking in, we apply for the visa directly.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <DocSlot token={token} travellerId={passenger.id} spec={spec("hotel_booking")} doc={passenger.documents.find((d) => d.doc_type === "hotel_booking")} onUploaded={docUploaded} onRemoved={docRemoved} compact />
+              <DocSlot token={token} travellerId={passenger.id} spec={spec("flight_ticket")} doc={passenger.documents.find((d) => d.doc_type === "flight_ticket")} onUploaded={docUploaded} onRemoved={docRemoved} compact />
             </div>
           </section>
 
-          {canRemove && (
-            <div className="flex justify-end">
-              <Button type="button" variant="ghost" size="sm" className="text-mr-red" onClick={remove} disabled={removing || passenger.grouped} title={passenger.grouped ? "Already placed in a travel group" : undefined}>
-                {removing ? <Loader2 className="animate-spin" /> : <Trash2 />} Remove passenger
-              </Button>
+          {(canInvite || canRemove) && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-mr-line pt-3">
+              {canInvite ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={invite} disabled={inviting}>
+                    {inviting ? <Loader2 className="animate-spin" /> : <Link2 />} {inviteLink ? "Copy their personal link" : "Let them fill in their own details"}
+                  </Button>
+                  {inviteLink && (
+                    <a href={`https://wa.me/?text=${encodeURIComponent(`Please fill in your details and upload your passport, photo and PAN card for our China visa: ${inviteLink}`)}`} target="_blank" rel="noopener" className="text-xs font-medium text-mr-body underline">
+                      Share on WhatsApp
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <span />
+              )}
+              {canRemove && (
+                <Button type="button" variant="ghost" size="sm" className="text-mr-red" onClick={remove} disabled={removing || passenger.grouped} title={passenger.grouped ? "Already placed in a travel group" : undefined}>
+                  {removing ? <Loader2 className="animate-spin" /> : <Trash2 />} Remove
+                </Button>
+              )}
             </div>
           )}
         </div>

@@ -203,10 +203,10 @@ export default async function DashboardPage() {
         )}
       </Section>
 
-      <Section id="applications" title="Customer applications" icon={<UserPlus />} hint={openApplications.length ? `${openApplications.length} submitted, not yet reviewed` : "nothing waiting"} link={{ href: "/travel/applications", label: "All applications" }}>
+      <Section id="applications" title="Visa applications" icon={<UserPlus />} hint={openApplications.length ? `${openApplications.length} submitted, not yet reviewed` : "nothing waiting"} link={{ href: "/travel/applications", label: "All applications" }}>
         {recentApplications.length === 0 ? (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-mr-line px-4 py-4">
-            <p className="text-sm text-mr-muted">Share the link with travellers and travel agents: they upload passports, photos and PAN cards, and land here to be grouped.</p>
+            <p className="text-sm text-mr-muted">Share the link with travellers: they upload passports, photos and PAN cards, answer the PAR question, and land here to be grouped.</p>
             <ApplyLinkButton />
           </div>
         ) : (
@@ -214,9 +214,8 @@ export default async function DashboardPage() {
             {recentApplications.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
                 <Link href="/travel/applications" className="text-sm font-medium text-mr-ink hover:underline">
-                  {a.kind === "b2b" ? (a.agency_name ?? a.contact_name) : a.contact_name}
+                  {a.contact_name}
                 </Link>
-                <Chip tone={a.kind === "b2b" ? "ink" : "neutral"}>{a.kind === "b2b" ? "Agent" : "Customer"}</Chip>
                 <span className="tnum text-sm text-mr-body">{formatDateRange(a.travel_start_date, a.travel_end_date)}</span>
                 <span className="text-xs text-mr-muted">{a.passengers.length} pax</span>
                 <span className="ml-auto flex items-center gap-1.5">
