@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { DocSlot } from "@/components/apply/doc-slot";
-import { readPanNumber, readPassportMrz } from "@/components/apply/passport-ocr";
+import { canReadLocally, fetchStoredImage, readPanNumber, readPassportMrz } from "@/components/apply/passport-ocr";
 import { missingSummary, passengerCompleteness, PORTAL_DOCS, type ApplicantDoc, type ApplicationKind, type PassengerView } from "@/lib/apply/shared";
 import { nationalityLabel, type MrzResult } from "@/lib/apply/mrz";
 import { formatDate } from "@/lib/format";
@@ -44,6 +44,7 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
   const [inviting, setInviting] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(passenger.invite_token && typeof window !== "undefined" ? `${window.location.origin}/apply/p/${passenger.invite_token}` : null);
   const [ocr, setOcr] = useState<{ label: string; pct: number } | null>(null);
+  const [ocrError, setOcrError] = useState<string | null>(null);
   const [ocrResult, setOcrResult] = useState<MrzResult | null>(null);
   const [ocrPending, setOcrPending] = useState<MrzResult | null>(null);
   const savedDetails = pick(passenger);
@@ -63,26 +64,47 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
     onChange({ ...passenger, documents: passenger.documents.filter((d) => d.id !== id) });
   }
 
-  async function runOcr(file: File) {
-    setOcr({ label: "Preparing", pct: 2 });
+  /**
+   * Read the passport: from the chosen file when the browser can decode it,
+   * otherwise (HEIC from an iPhone, PDF) from the stored copy, which the
+   * server converted to JPEG. `storedUrl` alone re-reads the uploaded file.
+   */
+  async function runOcr(file: File | null, storedUrl?: string | null) {
+    setOcr({ label: "Preparing", pct: 1 });
+    setOcrError(null);
     setOcrResult(null);
+    setOcrPending(null);
     try {
-      const result = await readPassportMrz(file, (label, pct) => setOcr({ label, pct }));
-      if (!result) return void toast.message(file.type === "application/pdf" ? "PDF uploaded. Please type the passport details." : "Could not read the passport automatically. Please type the details.", { duration: 6000 });
+      let src: Blob | null = file && canReadLocally(file) ? file : null;
+      if (!src && storedUrl) {
+        setOcr({ label: "Fetching the uploaded image", pct: 2 });
+        src = await fetchStoredImage(storedUrl);
+      }
+      if (!src) {
+        setOcrError(file?.type === "application/pdf" ? "A PDF cannot be read here. Please type the passport details below." : "This photo format cannot be read here. Please type the passport details below.");
+        return;
+      }
+      const result = await readPassportMrz(src, (label, pct) => setOcr({ label, pct }));
+      if (!result) {
+        setOcrError("Could not find the two machine-readable lines at the bottom of the passport. Take the photo straight, with the whole page in frame and no glare, and try again. Or type the details below.");
+        return;
+      }
       setOcrResult(result);
       setOcrPending(result);
     } catch (e) {
-      toast.message(`Passport reading is not available (${e instanceof Error ? e.message : "error"}). Please type the details.`);
+      setOcrError(`Passport reading failed: ${e instanceof Error ? e.message : "unknown error"}. Check the connection and try again, or type the details below.`);
     } finally {
       setOcr(null);
     }
   }
 
-  async function runPanOcr(file: File) {
+  async function runPanOcr(file: File, storedUrl?: string | null) {
     if (details.pan_number) return;
-    setOcr({ label: "Reading PAN card", pct: 10 });
+    setOcr({ label: "Reading PAN card", pct: 5 });
     try {
-      const pan = await readPanNumber(file, (label, pct) => setOcr({ label, pct }));
+      const src: Blob | null = canReadLocally(file) ? file : storedUrl ? await fetchStoredImage(storedUrl).catch(() => null) : null;
+      if (!src) return;
+      const pan = await readPanNumber(src, (label, pct) => setOcr({ label, pct }));
       if (pan) {
         set("pan_number", pan);
         toast.success(`PAN number read from the card: ${pan}. Please check and save.`);
@@ -175,12 +197,25 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
             <h3 className="mb-1 text-sm font-semibold">1. Passport (front and back)</h3>
             <p className="mb-2 text-xs text-mr-muted">Clear photos of the data page and the back page. The details are read from the front page; nothing is sent anywhere for that.</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <DocSlot token={token} travellerId={passenger.id} spec={spec("passport")} doc={passenger.documents.find((d) => d.doc_type === "passport")} onUploaded={docUploaded} onRemoved={docRemoved} onUploadedFile={(f) => void runOcr(f)} />
+              <DocSlot token={token} travellerId={passenger.id} spec={spec("passport")} doc={passenger.documents.find((d) => d.doc_type === "passport")} onUploaded={docUploaded} onRemoved={docRemoved} onUploadedFile={(f, d) => void runOcr(f, d.preview_url)} />
               <DocSlot token={token} travellerId={passenger.id} spec={spec("passport_back")} doc={passenger.documents.find((d) => d.doc_type === "passport_back")} onUploaded={docUploaded} onRemoved={docRemoved} />
             </div>
             {ocr && (
-              <div className="mt-3 flex items-center gap-3 text-sm text-mr-body">
-                <ScanLine className="size-4 animate-pulse" /> {ocr.label}… <Progress value={ocr.pct} className="h-1.5 w-40" />
+              <div className="mt-3 rounded-md border border-mr-line bg-mr-surface p-3 text-sm text-mr-body">
+                <div className="flex items-center gap-3">
+                  <ScanLine className="size-4 animate-pulse" /> {ocr.label}… <Progress value={ocr.pct} className="h-1.5 w-40" />
+                </div>
+                <p className="mt-1 text-xs text-mr-muted">The first read downloads the reader (about 15 MB) once; later reads are quick. Keep this page open.</p>
+              </div>
+            )}
+            {ocrError && !ocr && (
+              <div className="mt-3 rounded-md border border-mr-warning/40 bg-mr-warning/5 p-3 text-sm text-mr-body">
+                <p>{ocrError}</p>
+                {present.has("passport") && (
+                  <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => void runOcr(null, passenger.documents.find((d) => d.doc_type === "passport")?.preview_url ?? null)}>
+                    <ScanLine /> Try reading again
+                  </Button>
+                )}
               </div>
             )}
             {ocrPending && (
@@ -199,11 +234,16 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
                 </div>
               </div>
             )}
-            {present.has("passport") && !ocr && !ocrPending && (
-              <label className="mt-2 inline-flex cursor-pointer items-center gap-1 text-xs text-mr-body hover:text-mr-ink">
-                <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && void runOcr(e.target.files[0])} />
-                <ScanLine className="size-3" /> Read the details again from a photo (without uploading)
-              </label>
+            {present.has("passport") && !ocr && !ocrPending && !ocrError && (
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                <button type="button" className="inline-flex items-center gap-1 text-mr-body hover:text-mr-ink" onClick={() => void runOcr(null, passenger.documents.find((d) => d.doc_type === "passport")?.preview_url ?? null)}>
+                  <ScanLine className="size-3" /> Read the details from the uploaded passport
+                </button>
+                <label className="inline-flex cursor-pointer items-center gap-1 text-mr-body hover:text-mr-ink">
+                  <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && void runOcr(e.target.files[0])} />
+                  <ScanLine className="size-3" /> …or from another photo (without uploading)
+                </label>
+              </div>
             )}
           </section>
 
@@ -290,7 +330,7 @@ export function PassengerCard({ token, kind, passenger, index, open, onToggle, o
             <h3 className="mb-2 text-sm font-semibold">4. Passport photo and PAN card</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <DocSlot token={token} travellerId={passenger.id} spec={spec("photo")} doc={passenger.documents.find((d) => d.doc_type === "photo")} onUploaded={docUploaded} onRemoved={docRemoved} />
-              <DocSlot token={token} travellerId={passenger.id} spec={spec("pan_card")} doc={passenger.documents.find((d) => d.doc_type === "pan_card")} onUploaded={docUploaded} onRemoved={docRemoved} onUploadedFile={(f) => void runPanOcr(f)} />
+              <DocSlot token={token} travellerId={passenger.id} spec={spec("pan_card")} doc={passenger.documents.find((d) => d.doc_type === "pan_card")} onUploaded={docUploaded} onRemoved={docRemoved} onUploadedFile={(f, d) => void runPanOcr(f, d.preview_url)} />
             </div>
           </section>
 

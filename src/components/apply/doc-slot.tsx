@@ -22,7 +22,7 @@ export async function uploadPortalDocument(token: string, travellerId: string, d
 }
 
 /** One upload slot on a passenger card. */
-export function DocSlot({ token, travellerId, spec, doc, onUploaded, onRemoved, onUploadedFile, compact = false }: { token: string; travellerId: string; spec: (typeof PORTAL_DOCS)[number]; doc?: ApplicantDoc; onUploaded: (doc: ApplicantDoc) => void; onRemoved: (docId: string) => void; onUploadedFile?: (file: File) => void; compact?: boolean }) {
+export function DocSlot({ token, travellerId, spec, doc, onUploaded, onRemoved, onUploadedFile, compact = false }: { token: string; travellerId: string; spec: (typeof PORTAL_DOCS)[number]; doc?: ApplicantDoc; onUploaded: (doc: ApplicantDoc) => void; onRemoved: (docId: string) => void; onUploadedFile?: (file: File, doc: ApplicantDoc) => void; compact?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
@@ -33,7 +33,7 @@ export function DocSlot({ token, travellerId, spec, doc, onUploaded, onRemoved, 
       const d = await uploadPortalDocument(token, travellerId, spec.type, file);
       onUploaded(d);
       toast.success(`${spec.title} uploaded`);
-      onUploadedFile?.(file);
+      onUploadedFile?.(file, d);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
     } finally {

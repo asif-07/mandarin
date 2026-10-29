@@ -4,7 +4,7 @@
      · serverActions
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 44s
+ ✓ Compiled successfully in 39.0s
    Linting and checking validity of types ...
 
 ./src/app/api/partner/groups/[id]/file/route.ts
@@ -107,7 +107,7 @@ Route (app)                                        Size  First Load JS
 ├ ƒ /settings/services                           8.2 kB         184 kB
 ├ ƒ /settings/visa-team                         9.63 kB         183 kB
 ├ ƒ /travel                                     5.97 kB         415 kB
-├ ƒ /travel/applications                        7.78 kB         198 kB
+├ ƒ /travel/applications                        7.77 kB         198 kB
 ├ ƒ /travel/arrivals                            7.27 kB         179 kB
 ├ ƒ /travel/b2b                                 9.27 kB         422 kB
 ├ ƒ /travel/calendar                              153 B         189 kB
