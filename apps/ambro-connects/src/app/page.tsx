@@ -13,7 +13,7 @@ import {
   Plane,
   ShieldCheck,
 } from "lucide-react";
-const city = "/guangzhou.jpg";
+const ambroPortrait = "/brand/ambro-portrait.webp";
 export default function Home() {
   return (
     <>
@@ -42,7 +42,9 @@ export default function Home() {
             </Link>
           </div>
           <div className="hero-credit">
-            <span className="credit-seal">MR</span>
+            <span className="credit-seal">
+              <img src={ambroPortrait} alt="" width={40} height={40} />
+            </span>
             <div>
               A network by <strong>Ambro</strong>
               <span>Hamras · Mandarin Roots</span>
@@ -58,20 +60,19 @@ export default function Home() {
         <div className="hero-visual">
           <div className="hero-photo">
             <img
-              src={city}
-              alt="Guangzhou skyline and Canton Tower at sunset"
+              src={ambroPortrait}
+              alt="Hamras, known as Ambro, casually holding a coffee and phone on a tree-lined street"
+              width={1100}
+              height={1375}
               fetchPriority="high"
             />
             <div className="photo-shade" />
-            <span className="photo-location">
-              <MapPin size={14} /> Guangzhou, China
-            </span>
             <div className="photo-title">
-              A new place.
+              Meet Ambro.
               <br />
-              <em>A familiar connection.</em>
+              <em>Your China connection.</em>
             </div>
-            <span className="photo-number">01 / CHINA</span>
+            <span className="photo-number">HAMRAS · MANDARIN ROOTS</span>
           </div>
           <div className="floating-label">
             <span className="mini-icon">
@@ -83,16 +84,6 @@ export default function Home() {
               <strong>Global connections.</strong>
             </div>
             <MoveUpRight size={21} />
-          </div>
-          <div className="hero-note">
-            <span className="note-star">✳</span>
-            <p>
-              For the curious.
-              <br />
-              The ambitious.
-              <br />
-              <strong>The well connected.</strong>
-            </p>
           </div>
         </div>
       </section>
@@ -172,7 +163,12 @@ export default function Home() {
           <div className="orbit o2" />
           <div className="orbit o3" />
           <div className="story-center">
-            a<span>↗</span>
+            <img
+              src="/brand/ambro-connects-symbol.png"
+              alt=""
+              width={80}
+              height={80}
+            />
           </div>
           <span className="orbit-pill pill1">
             <MapPin size={16} /> Based in China

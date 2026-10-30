@@ -33,7 +33,7 @@ The first administrator is configured in a private database bootstrap record. Th
 
 The user requested publication for review while arranging email. Supabase's default mail sender is limited to organization team addresses. Configure custom SMTP before inviting the public, then remove the preview notice from the signup form. Email confirmation is intentionally enabled. No external signup/confirmation email was used for QA.
 
-Confirm the business support contact, payment instructions, cancellation/refund arrangements, trip eligibility and retention policy before paid public launch. Policies currently explain actual app behavior and identify the pending launch details. Add approved photos and biography for Hamras when supplied. Do not use stock photos as his portrait.
+Confirm the business support contact, payment instructions, cancellation/refund arrangements, trip eligibility and retention policy before paid public launch. Policies currently explain actual app behavior and identify the pending launch details. The homepage now uses an identity-preserving, AI-cleaned edit of the user-supplied black-polo photo of Hamras. The transparent PNG logo, symbol and app icons are custom brand assets. Asset provenance and prompts are in `../../docs/ambro-connects-brand-assets.md`.
 
 The directory starts empty; no invented members, ratings or testimonials are seeded. Saved profiles currently stay on the browser/device, as the UI states. A dedicated social post feed, in-app chat, block/report workflow and payment gateway are future extensions; the current social experience is profile discovery, portfolios, requests and reviews.
 

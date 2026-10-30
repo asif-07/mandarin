@@ -16,15 +16,13 @@ import { useState } from "react";
 export function Brand() {
   return (
     <span className="brand">
-      <span className="brand-symbol" aria-hidden="true">
-        a<span>↗</span>
-      </span>
-      <span>
-        ambro
-        <span className="brand-second">
-          connects<span className="brand-dot">.</span>
-        </span>
-      </span>
+      <img
+        className="brand-image"
+        src="/brand/ambro-connects-logo-web.png"
+        alt="Ambro Connects"
+        width={640}
+        height={158}
+      />
     </span>
   );
 }

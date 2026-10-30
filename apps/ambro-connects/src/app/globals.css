@@ -104,41 +104,19 @@ select:focus {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-size: 22px;
-  font-weight: 750;
   line-height: 1;
-  letter-spacing: -1px;
-  font-family: Manrope, Arial, sans-serif;
+  flex-shrink: 0;
 }
-.brand-second {
+.brand-image {
+  width: 168px;
+  height: auto;
   display: block;
-  font-size: 17px;
-  letter-spacing: -0.7px;
-  margin-top: 3px;
 }
-.brand-dot {
-  color: var(--orange);
-}
-.brand-symbol {
-  background: var(--orange);
-  color: #fff;
-  font-size: 41px;
-  width: 41px;
-  height: 46px;
-  border-radius: 11px 11px 11px 2px;
-  position: relative;
-  padding: 1px 8px 0;
-  line-height: 1;
-  font-weight: 600;
-  letter-spacing: -5px;
-}
-.brand-symbol > span {
-  font-size: 24px;
-  position: absolute;
-  top: 2px;
-  right: 3px;
-  letter-spacing: -2px;
+.header-inner > a {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 .desktop-nav {
   display: flex;
@@ -337,7 +315,7 @@ select:focus {
 }
 .hero-photo {
   height: 100%;
-  border-radius: 150px 12px 12px 12px;
+  border-radius: 96px 14px 14px 14px;
   overflow: hidden;
   position: relative;
   background: #b9bbb1;
@@ -346,25 +324,12 @@ select:focus {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 48% 50%;
+  object-position: 50% 22%;
 }
 .photo-shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 30%, #101c1aa1);
-}
-.photo-location {
-  position: absolute;
-  top: 26px;
-  right: 24px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #ffffffdf;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 7px 11px;
-  border-radius: 30px;
+  background: linear-gradient(180deg, transparent 45%, #101c1ad9);
 }
 .photo-title {
   position: absolute;
@@ -389,8 +354,8 @@ select:focus {
 }
 .floating-label {
   position: absolute;
-  top: 63px;
-  left: -28px;
+  top: -8px;
+  left: -8px;
   display: flex;
   align-items: center;
   gap: 15px;
@@ -414,29 +379,6 @@ select:focus {
 .floating-label > svg {
   margin-left: 12px;
   color: var(--orange);
-}
-.hero-note {
-  position: absolute;
-  right: -17px;
-  bottom: -2px;
-  background: #e6eabf;
-  width: 156px;
-  padding: 19px 22px;
-  transform: rotate(5deg);
-  border-radius: 5px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 7px 14px #0000000a;
-}
-.note-star {
-  font-size: 36px;
-  line-height: 1;
-  color: var(--green);
-}
-.hero-note p {
-  font-size: 12px;
-  line-height: 1.6;
 }
 .community-strip {
   border-block: 1px solid var(--line);
@@ -569,24 +511,22 @@ select:focus {
   height: 470px;
 }
 .story-center {
-  width: 92px;
-  height: 92px;
-  border-radius: 25px;
-  background: var(--green);
-  color: #f4f3e9;
-  font-family: Manrope, Arial, sans-serif;
-  font-size: 89px;
-  line-height: 1;
-  padding: 0 14px;
-  letter-spacing: -9px;
+  width: 110px;
+  height: 110px;
+  border-radius: 28px;
+  padding: 15px;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  border: 1px solid #d7dccb;
   position: relative;
   transform: rotate(-8deg);
+  box-shadow: 0 7px 16px #183f3509;
 }
-.story-center > span {
-  font-size: 47px;
-  position: absolute;
-  top: 1px;
-  right: 6px;
+.story-center img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
 }
 .orbit-pill {
   position: absolute;
@@ -1739,20 +1679,6 @@ select:focus {
     font-size: 19px;
     gap: 8px;
   }
-  .brand-symbol {
-    height: 39px;
-    width: 35px;
-    font-size: 35px;
-    padding-left: 7px;
-    border-radius: 9px 9px 9px 2px;
-  }
-  .brand-symbol > span {
-    font-size: 21px;
-    right: 2px;
-  }
-  .brand-second {
-    font-size: 14px;
-  }
   .desktop-nav,
   .header-actions .sign-in {
     display: none;
@@ -1824,19 +1750,6 @@ select:focus {
     width: 33px;
     height: 33px;
   }
-  .hero-note {
-    right: 0;
-    bottom: 0;
-    width: 134px;
-    padding: 14px 17px;
-    gap: 9px;
-  }
-  .hero-note p {
-    font-size: 10px;
-  }
-  .note-star {
-    font-size: 30px;
-  }
   .photo-title {
     font-size: 28px;
     left: 23px;
@@ -1844,11 +1757,6 @@ select:focus {
   }
   .photo-title em {
     font-size: 28px;
-  }
-  .photo-location {
-    font-size: 8px;
-    right: 17px;
-    top: 20px;
   }
   .community-strip > .container {
     min-height: 83px;
@@ -2361,13 +2269,85 @@ select:focus {
   outline-offset: 2px;
 }
 @media (min-width: 761px) and (max-width: 1000px) {
-  .desktop-nav { display: none; }
-  .menu-toggle { display: grid; place-items: center; }
-  .header-actions { margin-left: auto; }
+  .desktop-nav {
+    display: none;
+  }
+  .menu-toggle {
+    display: grid;
+    place-items: center;
+  }
+  .header-actions {
+    margin-left: auto;
+  }
 }
 @media (min-width: 761px) and (max-width: 900px) {
-  .hero { grid-template-columns: 1fr; gap: 38px; padding-top: 44px; padding-bottom: 50px; }
-  .hero h1 { font-size: 57px; letter-spacing: -3px; }
-  .hero-description { max-width: 460px; }
-  .hero-visual { width: 100%; max-width: 560px; height: 500px; justify-self: center; }
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 38px;
+    padding-top: 44px;
+    padding-bottom: 50px;
+  }
+  .hero h1 {
+    font-size: 57px;
+    letter-spacing: -3px;
+  }
+  .hero-description {
+    max-width: 460px;
+  }
+  .hero-visual {
+    width: 100%;
+    max-width: 560px;
+    height: 500px;
+    justify-self: center;
+  }
+}
+
+.credit-seal {
+  border: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.credit-seal img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  object-position: 50% 18%;
+  transform: scale(1.8);
+  transform-origin: 50% 24%;
+}
+@media (max-width: 760px) {
+  .brand-image {
+    width: 128px;
+    height: auto;
+  }
+  .hero-photo {
+    border-top-left-radius: 76px;
+  }
+  .hero-photo > img {
+    object-position: 50% 18%;
+  }
+  .floating-label {
+    top: -10px;
+    left: 2px;
+  }
+  .photo-title {
+    font-size: 26px;
+    bottom: 57px;
+  }
+  .photo-title em {
+    font-size: 26px;
+  }
+  .photo-number {
+    font-size: 8px;
+    letter-spacing: 1.3px;
+  }
+  .story-center {
+    width: 88px;
+    height: 88px;
+    padding: 10px;
+  }
+  .story-center img {
+    width: 66px;
+    height: 66px;
+  }
 }
