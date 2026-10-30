@@ -106,8 +106,8 @@ export function UsageGuide() {
                 <h3>Open the team dashboard.</h3>
                 <p>
                   Go to <Link href="/admin">Open approvals</Link>, or use{" "}
-                  <strong>Open team dashboard</strong> in My space. You’ll see
-                  the Memberships, Profiles and Reviews queues.
+                  <strong>Team approvals</strong> in Profile or the navigation
+                  menu. You’ll see the Memberships, Profiles and Reviews queues.
                 </p>
               </div>
             </li>
@@ -310,15 +310,16 @@ export function UsageGuide() {
             <ol>
               <li>Register as a China member and verify your email.</li>
               <li>
-                Open <Link href="/account">My space</Link>. Add your photo,
-                city, company, introduction, specialties, languages,
-                achievements and previous work. Choose{" "}
-                <strong>Save profile</strong>.
+                Open <Link href="/account">Profile</Link>. Your name is already
+                filled in. Use <strong>Edit profile</strong> to add your photo,
+                city and company. Edit About, Work and Achievements from their
+                own cards, then choose <strong>Save changes</strong>.
               </li>
               <li>
-                Arrange the <strong>1,000 RMB yearly payment</strong> with
-                Mandarin Roots. Enter its reference under Your membership and
-                choose <strong>Submit for approval</strong>.
+                Open the <strong>Membership</strong> tab and arrange the{" "}
+                <strong>1,000 RMB yearly payment</strong> with Mandarin Roots.
+                Enter its reference and choose{" "}
+                <strong>Submit for approval</strong>.
               </li>
               <li>
                 Once your profile is approved and membership is active, you can
@@ -333,18 +334,22 @@ export function UsageGuide() {
             <ol>
               <li>Register as a Global member and verify your email.</li>
               <li>
-                Open <Link href="/account">My space</Link>, complete Full name,
-                City and About you, add your business interests under
-                Specialties, then choose <strong>Save profile</strong>.
+                Open <Link href="/account">Profile</Link> to see your profile.
+                Your name is already filled in. Use{" "}
+                <strong>Edit profile</strong> for your photo and city, then edit
+                the About card to add your introduction and interests. Choose{" "}
+                <strong>Save changes</strong> when ready.
               </li>
               <li>
-                To receive requests, turn on{" "}
-                <strong>Show my Global profile in the public network</strong>.
-                Listing requires profile approval and active membership. Leave
+                To receive requests, open{" "}
+                <strong>Settings → Manage profile visibility</strong> and turn
+                on <strong>Show my Global profile in the public network</strong>
+                . Listing requires profile approval and active membership. Leave
                 it off to browse and send requests without a public listing.
               </li>
               <li>
-                Choose <strong>100 RMB / month</strong>, or{" "}
+                In the <strong>Membership</strong> tab, choose{" "}
+                <strong>100 RMB / month</strong>, or{" "}
                 <strong>I’m joining an Ambro trip</strong> for the eligible
                 complimentary year. Arrange payment or confirm your trip with
                 Mandarin Roots.
@@ -457,11 +462,12 @@ export function UsageGuide() {
           <summary>Where can members see approval status?</summary>
           <div>
             <p>
-              Open <Link href="/account">My space</Link> and look at Your
-              membership. It shows the profile review status, whether membership
-              is active and, after approval, the membership end date. A
-              submitted reference shows as awaiting approval until the team
-              makes a decision.
+              Open{" "}
+              <Link href="/account?tab=membership">Profile → Membership</Link>.
+              It shows the profile review status, whether membership is active
+              and, after approval, the membership end date. A submitted
+              reference shows as awaiting approval until the team makes a
+              decision.
             </p>
           </div>
         </details>
@@ -484,7 +490,7 @@ export function UsageGuide() {
           <div>
             <p>
               Your profile also needs team approval. Check its review status in
-              My space and read any team feedback. If you recently edited an
+              Profile and read any team feedback. If you recently edited an
               approved profile, it returns to review and appears in discovery
               again after approval, provided your membership is still active.
             </p>
@@ -495,7 +501,7 @@ export function UsageGuide() {
             Sign in to the team dashboard <span aria-hidden="true">↗</span>
           </Link>
           <Link className="guide-text-link" href="/account">
-            Go to My space <span aria-hidden="true">↗</span>
+            Go to Profile <span aria-hidden="true">↗</span>
           </Link>
         </div>
       </section>

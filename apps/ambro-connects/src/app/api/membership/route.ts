@@ -11,7 +11,15 @@ import {
 export async function POST(request: Request) {
   try {
     const body = await jsonBody(request);
-    const { supabase } = await authenticated();
+    const { supabase, user } = await authenticated();
+    if (
+      body.expected_user_id !== undefined &&
+      body.expected_user_id !== user.id
+    )
+      throw new ApiError(
+        "Your signed-in account changed. Reload your profile before submitting membership details.",
+        409,
+      );
     if (
       !["china_yearly", "global_monthly", "trip_year"].includes(
         String(body.plan),

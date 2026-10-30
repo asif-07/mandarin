@@ -16,7 +16,16 @@ export async function POST(request: Request) {
       throw new ApiError(
         "Please agree to share your account email when this member accepts your request.",
       );
-    const { supabase } = await authenticated();
+    const { supabase, user } = await authenticated();
+    if (
+      body.expected_user_id !== undefined &&
+      body.expected_user_id !== user.id
+    ) {
+      throw new ApiError(
+        "Your signed-in account changed. Reload before continuing.",
+        409,
+      );
+    }
     const { data, error } = await supabase.rpc("request_connection", {
       target: uuidValue(body.recipient_id, "Recipient ID"),
       introduction: stringValue(body.message, "Introduction", 2000),

@@ -5,8 +5,13 @@
  * production: run npm run build, then npm run start. npm run dev also serves
  * pages here, but dev HMR WebSocket upgrades are intentionally not proxied.
  * Open /__qa/admin, /__qa/global,
- * /__qa/china, /__qa/expired or /__qa/anonymous on http://127.0.0.1:3011.
+ * /__qa/china, /__qa/expired, /__qa/suspended or /__qa/anonymous on http://127.0.0.1:3011.
  * Add ?reset=1 for fresh fixtures, &next=/connections for a different start page.
+ * Add &images=empty to clear the selected actor's photos for strict draft-cache
+ * QA; reset=1 restores the default local SVG artwork. next=/join tests the real
+ * client session redirect rather than faking that behavior in this proxy.
+ * me_error=503 simulates session-service failure; selecting a scenario without
+ * that flag clears the fault. Repeated /api/me reads remain deterministic.
  * EVERY /api request is handled here; unsupported writes return 501. Incoming
  * cookies/authorization and upstream Set-Cookie are never forwarded.
  */
@@ -16,7 +21,7 @@ const { randomUUID } = require("node:crypto");
 const HOST = "127.0.0.1";
 const PORT = 3011;
 const UPSTREAM = { hostname: "127.0.0.1", port: 3010 };
-const SCENARIOS = ["admin", "global", "china", "expired", "anonymous"];
+const SCENARIOS = ["admin", "global", "china", "expired", "suspended", "anonymous"];
 const uid = (n) => `e0000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const timestamp = (offset) =>
   new Date(Date.now() + offset * 86400000).toISOString();
@@ -86,9 +91,15 @@ function initialState() {
     }
     if (extras.expired) {
       value.membership.active = false;
-      value.membership.current.expires_at = timestamp(-3);
-      value.membership.current.starts_at = timestamp(-34);
+      // The real /api/me contract exposes only a current active period.
+      value.membership.current = null;
       value.profile.network_visible = false;
+    }
+    if (extras.suspended) {
+      value.membership.active = false;
+      value.membership.moderation_status = "suspended";
+      value.membership.moderation_reason =
+        "Local QA suspension for review. No real account is affected.";
     }
     if (extras.admin) {
       value.user.is_admin = true;
@@ -98,12 +109,7 @@ function initialState() {
     return value;
   }
   actor(1, "Administrator", "global", { admin: true });
-  const globalActor = actor(2, "Global Member", "global");
-  globalActor.profile.avatar_url = "";
-  globalActor.profile.cover_url = "";
-  globalActor.profile.portfolio.forEach((item) => {
-    item.image_url = "";
-  });
+  actor(2, "Global Member", "global");
   actor(3, "China Member", "china");
   actor(4, "Expired Member", "global", { expired: true });
   actor(5, "Global Partner", "global");
@@ -113,6 +119,7 @@ function initialState() {
   actor(9, "Pending China Applicant", "china", { pending: true });
   actor(10, "Pending Global Applicant", "global", { pending: true });
   actor(15, "Pending Trip Applicant", "global", { pending: true });
+  actor(16, "Suspended Member", "global", { suspended: true });
   const requests = [
     {
       id: uid(301),
@@ -235,7 +242,7 @@ function scenarioFor(req) {
 function currentActor(req) {
   const scenario = scenarioFor(req);
   return state.actors.get(
-    uid({ admin: 1, global: 2, china: 3, expired: 4 }[scenario]),
+    uid({ admin: 1, global: 2, china: 3, expired: 4, suspended: 16 }[scenario]),
   );
 }
 function connectionFor(item, viewer) {
@@ -336,7 +343,11 @@ async function api(req, res, url) {
     path = url.pathname,
     method = req.method;
   if (method === "GET") {
-    if (path === "/api/me") return send(res, 200, me(actor));
+    if (path === "/api/me") {
+      if ((req.headers.cookie || "").split(";").some((item) => item.trim() === "ambro_qa_me_error=503"))
+        return send(res, 503, { error: "Local QA session service unavailable. No real Auth service was called." });
+      return send(res, 200, me(actor));
+    }
     if (path === "/api/profile") {
       requireActor(actor);
       return send(res, 200, { profile: actor.profile });
@@ -410,11 +421,28 @@ async function api(req, res, url) {
     });
   }
   // All API writes terminate in this branch; no upstream request is ever made.
-  if (path === "/api/upload")
+  if (path === "/api/upload") {
+    requireActor(actor);
+    if (method === "POST" && req.headers["content-type"]?.startsWith("multipart/form-data")) {
+      const chunks = [];
+      let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > 4_300_000) return send(res, 413, { error: "Photos must be smaller than 4 MB." });
+        chunks.push(chunk);
+      }
+      const multipart = await new Request(`http://${HOST}:${PORT}/api/upload`, {
+        method: "POST", headers: { "content-type": req.headers["content-type"] }, body: Buffer.concat(chunks),
+      }).formData();
+      const expectedUserId = multipart.get("expected_user_id");
+      if (expectedUserId !== null && expectedUserId !== actor.user.id)
+        return send(res, 409, { error: "Your signed-in account changed. Reload your profile before uploading a photo." });
+    }
     return send(res, 501, {
       error:
         "Photo uploads are disabled in local QA. No image was sent to the live service.",
     });
+  }
   const supported = new Set([
     "POST /api/auth",
     "PUT /api/profile",
@@ -438,7 +466,7 @@ async function api(req, res, url) {
         { ok: true },
         {
           "Set-Cookie":
-            "ambro_qa_scenario=anonymous; Path=/; HttpOnly; SameSite=Lax",
+            ["ambro_qa_scenario=anonymous; Path=/; HttpOnly; SameSite=Lax", "ambro_qa_me_error=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"],
         },
       );
     return send(res, 501, {
@@ -448,6 +476,23 @@ async function api(req, res, url) {
   }
   if (path === "/api/profile" && method === "PUT") {
     requireActor(actor);
+    if (data.id !== undefined && data.id !== actor.user.id)
+      return send(res, 409, {
+        error: "Your signed-in account changed. Reload your profile before saving.",
+      });
+    const required = [
+      "full_name", "bio", "city", "company", "specialties", "languages",
+      "avatar_url", "cover_url", "achievements", "portfolio",
+    ];
+    if (required.some((key) => !Object.hasOwn(data, key)))
+      return send(res, 400, {
+        error: "Local QA mirrors the full profile PUT contract. Send all profile fields so unrelated sections are preserved.",
+      });
+    if (["specialties", "languages", "achievements", "portfolio"].some((key) => !Array.isArray(data[key])))
+      return send(res, 400, { error: "Check the profile list fields." });
+    if (data.network_visible !== undefined && typeof data.network_visible !== "boolean")
+      return send(res, 400, { error: "Choose whether to show your profile in the network." });
+    const previous = structuredClone(actor.profile);
     for (const key of [
       "full_name",
       "bio",
@@ -463,10 +508,13 @@ async function api(req, res, url) {
     ])
       if (Object.hasOwn(data, key)) actor.profile[key] = data[key];
     actor.profile.updated_at = timestamp(0);
-    if (
-      actor.membership.member_type === "china" ||
-      actor.profile.network_visible
-    ) {
+    const changed = required.some((key) => JSON.stringify(previous[key]) !== JSON.stringify(actor.profile[key]));
+    const status = actor.membership.moderation_status;
+    if (["approved", "rejected"].includes(status) && (
+      (actor.membership.member_type === "china" && (changed || status === "rejected")) ||
+      (actor.membership.member_type === "global" && (status === "rejected" ||
+        (actor.profile.network_visible && (!previous.network_visible || changed))))
+    )) {
       actor.membership.moderation_status = "pending";
       actor.membership.active = false;
     }
@@ -474,6 +522,8 @@ async function api(req, res, url) {
   }
   if (path === "/api/membership" && method === "POST") {
     requireActor(actor);
+    if (data.expected_user_id !== undefined && data.expected_user_id !== actor.user.id)
+      return send(res, 409, { error: "Your signed-in account changed. Reload your profile before submitting membership details." });
     if (actor.membership.requests.some((item) => item.status === "pending"))
       return send(res, 400, {
         error: "You already have a membership request awaiting review.",
@@ -494,6 +544,8 @@ async function api(req, res, url) {
   }
   if (path === "/api/connections" && method === "POST") {
     requireActor(actor);
+    if (data.expected_user_id !== undefined && data.expected_user_id !== actor.user.id)
+      return send(res, 409, { error: "Your signed-in account changed. Reload before continuing." });
     if (actor.membership.member_type !== "global" || !actor.membership.active)
       return send(res, 400, {
         error: "An active Global membership is required to connect.",
@@ -692,9 +744,17 @@ const server = http.createServer(async (req, res) => {
       const scenario = url.pathname.split("/")[2];
       if (!SCENARIOS.includes(scenario))
         return send(res, 404, {
-          error: "Choose admin, global, china, expired or anonymous.",
+          error: "Choose admin, global, china, expired, suspended or anonymous.",
         });
       if (url.searchParams.get("reset") === "1") state = initialState();
+      if (url.searchParams.get("images") === "empty") {
+        const selected = state.actors.get(uid({ admin: 1, global: 2, china: 3, expired: 4, suspended: 16 }[scenario]));
+        if (selected) {
+          selected.profile.avatar_url = "";
+          selected.profile.cover_url = "";
+          selected.profile.portfolio.forEach((item) => { item.image_url = ""; });
+        }
+      }
       const next = url.searchParams.get("next");
       const destination = [
         "/admin",
@@ -702,6 +762,8 @@ const server = http.createServer(async (req, res) => {
         "/connections",
         "/discover",
         "/login",
+        "/join",
+        "/auth/reset",
         "/how-to-use",
       ].includes(next)
         ? next
@@ -712,7 +774,12 @@ const server = http.createServer(async (req, res) => {
             : "/account";
       res.writeHead(303, {
         Location: destination,
-        "Set-Cookie": `ambro_qa_scenario=${scenario}; Path=/; HttpOnly; SameSite=Lax`,
+        "Set-Cookie": [
+          `ambro_qa_scenario=${scenario}; Path=/; HttpOnly; SameSite=Lax`,
+          url.searchParams.get("me_error") === "503"
+            ? "ambro_qa_me_error=503; Path=/; HttpOnly; SameSite=Lax"
+            : "ambro_qa_me_error=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+        ],
         "Cache-Control": "no-store",
         "X-Ambro-QA": "in-memory",
       });
@@ -770,6 +837,6 @@ const server = http.createServer(async (req, res) => {
 });
 server.listen(PORT, HOST, () =>
   console.log(
-    `Local QA only: http://${HOST}:${PORT}/__qa/admin?reset=1\nScenarios: /__qa/global /__qa/china /__qa/expired /__qa/anonymous\nEvery /api request is in memory. No cookies or API writes are forwarded.`,
+    `Local QA only: http://${HOST}:${PORT}/__qa/admin?reset=1\nScenarios: /__qa/global /__qa/china /__qa/expired /__qa/suspended /__qa/anonymous\nEvery /api request is in memory. No cookies or API writes are forwarded.`,
   ),
 );

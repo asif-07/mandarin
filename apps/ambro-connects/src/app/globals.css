@@ -44,6 +44,9 @@ select {
 }
 button {
   cursor: pointer;
+  color: inherit;
+  -webkit-appearance: none;
+  appearance: none;
 }
 img {
   max-width: 100%;
@@ -734,6 +737,10 @@ select:focus {
   font-size: 11px;
 }
 .trip-benefit a {
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
   padding: 8px;
   margin-left: auto;
 }

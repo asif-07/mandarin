@@ -9,20 +9,95 @@ import {
   Globe2,
   ArrowLeft,
   Check,
+  Bookmark,
+  Building2,
+  BriefcaseBusiness,
+  Languages,
+  Award,
+  Users,
 } from "lucide-react";
 import { Avatar, publicProfileText } from "./discover";
-import type { PublicMember, Review, MeResponse } from "@/lib/types";
+import type { PublicMember, Review } from "@/lib/types";
+import { useMemberSession } from "./member-session";
 import "./mobile-directory.css";
+import "./social-profile.css";
 export function MemberProfile({ id }: { id: string }) {
   const [member, setMember] = useState<PublicMember | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [me, setMe] = useState<MeResponse | null>(null);
-  const [membershipError, setMembershipError] = useState("");
+  const {
+    data: me,
+    status: sessionStatus,
+    refresh: refreshSession,
+  } = useMemberSession();
+  const membershipError =
+    sessionStatus === "error"
+      ? "Your account could not be checked. Try again to continue."
+      : "";
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [introduction, setIntroduction] = useState("");
+  const [emailConsent, setEmailConsent] = useState(false);
+  useEffect(() => {
+    setIntroduction("");
+    setEmailConsent(false);
+    setSent(false);
+    setError("");
+  }, [id, me?.user?.id]);
   const [busy, setBusy] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [activeSection, setActiveSection] = useState("profile-about");
+  useEffect(() => {
+    const updateSection = () => {
+      const next = window.location.hash.slice(1);
+      if (
+        ["profile-about", "profile-experience", "profile-reviews"].includes(
+          next,
+        )
+      )
+        setActiveSection(next);
+    };
+    updateSection();
+    window.addEventListener("hashchange", updateSection);
+    return () => window.removeEventListener("hashchange", updateSection);
+  }, [id]);
+  const [saved, setSaved] = useState(false);
+  const [saveNotice, setSaveNotice] = useState("");
+  useEffect(() => {
+    setSaveNotice("");
+    try {
+      const stored: unknown = JSON.parse(
+        localStorage.getItem("ambro-saved") || "[]",
+      );
+      setSaved(Array.isArray(stored) && stored.includes(id));
+    } catch {
+      setSaved(false);
+    }
+  }, [id]);
+  function toggleSaved() {
+    try {
+      const stored: unknown = JSON.parse(
+        localStorage.getItem("ambro-saved") || "[]",
+      );
+      const ids = Array.isArray(stored)
+        ? stored.filter((value): value is string => typeof value === "string")
+        : [];
+      const next = ids.includes(id)
+        ? ids.filter((value) => value !== id)
+        : [...ids, id];
+      localStorage.setItem("ambro-saved", JSON.stringify(next));
+      setSaved(next.includes(id));
+      setSaveNotice(
+        next.includes(id)
+          ? "Saved on this device."
+          : "Removed from saved profiles.",
+      );
+    } catch {
+      setSaveNotice(
+        "Your browser couldn’t save this profile. Please try again.",
+      );
+    }
+  }
   const requestPending = useRef(false);
   const requestFeedback = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -39,9 +114,7 @@ export function MemberProfile({ id }: { id: string }) {
     setLoading(true);
     setMember(null);
     setReviews([]);
-    setMe(null);
     setError("");
-    setMembershipError("");
     setSent(false);
     const c = new AbortController();
     Promise.all([
@@ -62,19 +135,6 @@ export function MemberProfile({ id }: { id: string }) {
         setMember(d.member);
         setReviews(d.reviews || []);
       }),
-      fetch("/api/me", { signal: c.signal })
-        .then(async (r) => {
-          const data = await r.json();
-          if (!r.ok)
-            throw new Error(data.error || "Could not load your membership.");
-          setMe(data);
-        })
-        .catch((e) => {
-          if (e.name !== "AbortError")
-            setMembershipError(
-              "Your membership could not be loaded. Please refresh to try again.",
-            );
-        }),
     ])
       .catch((e) => {
         if (e.name !== "AbortError") setError(e.message);
@@ -90,6 +150,7 @@ export function MemberProfile({ id }: { id: string }) {
     if (
       !member ||
       member.is_demo ||
+      sessionStatus !== "authenticated" ||
       !me?.membership?.active ||
       me.membership.member_type !== "global" ||
       me.user?.id === member.id
@@ -104,11 +165,25 @@ export function MemberProfile({ id }: { id: string }) {
     setBusy(true);
     setError("");
     try {
+      const expectedUserId = me.user?.id;
+      const currentSession = await refreshSession();
+      if (!expectedUserId || currentSession?.user?.id !== expectedUserId)
+        throw new Error(
+          "Your signed-in account changed. Check your account before sending.",
+        );
+      if (
+        !currentSession.membership?.active ||
+        currentSession.membership.member_type !== "global"
+      )
+        throw new Error(
+          "An active Global membership is needed to send an introduction.",
+        );
       const r = await fetch("/api/connections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recipient_id: id,
+          expected_user_id: expectedUserId,
           message: f.get("message"),
           consent: f.get("consent") === "on",
         }),
@@ -156,6 +231,7 @@ export function MemberProfile({ id }: { id: string }) {
       </div>
     );
   const eligible =
+    sessionStatus === "authenticated" &&
     me?.membership?.active &&
     me.membership.member_type === "global" &&
     !member.is_demo &&
@@ -174,87 +250,118 @@ export function MemberProfile({ id }: { id: string }) {
   const primaryAction = member.is_demo
     ? {
         href: "",
-        label: "Demo · introductions unavailable",
+        label: "Demo profile",
         note: "Fictional example. This profile cannot receive requests.",
         disabled: true,
       }
-    : ownProfile
-      ? {
-          href: "/account",
-          label: "Edit my profile",
-          note: "Manage the details you share with the network.",
-          disabled: false,
-        }
-      : sent || existingConnection
+    : sessionStatus === "loading"
+      ? { href: "", label: "Checking account…", note: "", disabled: true }
+      : ownProfile
         ? {
-            href: "/connections",
-            label: "View this connection",
-            note:
-              existingConnection?.status === "accepted"
-                ? "You’re connected. Continue the conversation privately."
-                : "Follow your introduction and its response.",
+            href: "/account?edit=intro",
+            label: "Edit profile",
+            note: "Manage the details you share with the network.",
             disabled: false,
           }
-        : me?.membership?.member_type === "china"
+        : sent || existingConnection
           ? {
               href: "/connections",
-              label: "View received requests",
-              note: "You can explore profiles and receive Global introductions.",
+              label: "View this connection",
+              note:
+                existingConnection?.status === "accepted"
+                  ? "You’re connected. Continue the conversation privately."
+                  : "Follow your introduction and its response.",
               disabled: false,
             }
-          : membershipError
+          : me?.membership?.member_type === "china"
             ? {
-                href: "#profile-introduction",
-                label: "Check my access",
-                note: "Your membership could not be checked. Try again below.",
+                href: "/connections",
+                label: "View received requests",
+                note: "You can explore profiles and receive Global introductions.",
                 disabled: false,
               }
-            : eligible
+            : membershipError
               ? {
                   href: "#profile-introduction",
-                  label: `Introduce yourself to ${firstName}`,
-                  note: "Start with your plans. Email is shared only after mutual consent.",
+                  label: "Check my access",
+                  note: "Your membership could not be checked. Try again below.",
                   disabled: false,
                 }
-              : {
-                  href: me?.user ? "/account" : "/join?type=global",
-                  label: me?.user
-                    ? "View my membership"
-                    : "Join Global to connect",
-                  note: "An active Global membership lets you send introductions.",
-                  disabled: false,
-                };
+              : eligible
+                ? {
+                    href: "#profile-introduction",
+                    label: "Connect",
+                    note: "Start with your plans. Email is shared only after mutual consent.",
+                    disabled: false,
+                  }
+                : {
+                    href: me?.user
+                      ? "/account?tab=membership"
+                      : "/join?type=global",
+                    label: me?.user
+                      ? "View my membership"
+                      : "Join Global to connect",
+                    note: "An active Global membership lets you send introductions.",
+                    disabled: false,
+                  };
   return (
-    <div className="mobile-member-page">
-      <div className="container profile-back-row">
+    <div className="mobile-member-page social-profile-page">
+      <div className="container profile-back-row social-back-row">
         <Link className="text-link" href="/discover">
-          <ArrowLeft size={16} /> Back to your network
+          <ArrowLeft size={18} /> Discover
         </Link>
         {member.is_demo ? (
-          <div className="network-demo-notice profile-demo-notice">
-            <span className="demo-label">Demo profile</span>
-            <p>
-              Fictional {isGlobal ? "Global" : "China"} profile. Images and
-              experience are illustrative; introductions are disabled.
-            </p>
-          </div>
-        ) : null}
+          <span className="demo-label">Fictional demo profile</span>
+        ) : (
+          <span className="social-profile-caption">Member profile</span>
+        )}
       </div>
       <div className="container profile-layout">
-        <div>
-          <section className="panel profile-hero">
+        <div className="social-profile-main">
+          <section
+            className="panel profile-hero social-identity-card"
+            aria-label={`${name}’s profile`}
+          >
             <div className="profile-cover">
-              {member.cover_url && <img src={member.cover_url} alt="" />}
+              {member.cover_url ? (
+                <img src={member.cover_url} alt="" />
+              ) : (
+                <div className="social-cover-pattern" aria-hidden="true" />
+              )}
             </div>
             <div className="profile-overview">
-              <Avatar member={member} />
+              <div className="social-identity-top">
+                <Avatar member={member} />
+                <span
+                  className={`member-network-badge member-network-${member.member_type}`}
+                >
+                  {isGlobal ? "Global connect" : "China connect"}
+                </span>
+              </div>
               <h1>{name}</h1>
+              {member.company ? (
+                <p className="social-headline">
+                  <Building2 size={17} /> {publicProfileText(member.company)}
+                </p>
+              ) : null}
               <p className="member-meta">
-                <MapPin size={14} />
-                {publicProfileText(member.city)}
-                {member.company && <> · {publicProfileText(member.company)}</>}
+                <MapPin size={16} />{" "}
+                {publicProfileText(member.city) || "Location not shared"}
               </p>
-              <div className="profile-primary-action">
+              {member.specialties.length ? (
+                <p className="social-specialty-line">
+                  {member.specialties
+                    .slice(0, 3)
+                    .map(publicProfileText)
+                    .join(" · ")}
+                </p>
+              ) : null}
+              {!member.is_demo && member.verified ? (
+                <p className="social-reviewed">
+                  <ShieldCheck size={15} /> Profile reviewed by the team
+                </p>
+              ) : null}
+              <div className="social-profile-actions">
                 {primaryAction.disabled ? (
                   <button type="button" className="btn btn-ghost" disabled>
                     {primaryAction.label}
@@ -265,172 +372,243 @@ export function MemberProfile({ id }: { id: string }) {
                     <ArrowUpRight size={17} />
                   </Link>
                 )}
-                <p>{primaryAction.note}</p>
-              </div>
-              <nav className="profile-section-nav" aria-label="On this profile">
-                <a href="#profile-about">About</a>
-                <a href="#profile-experience">Experience</a>
-                <a href="#profile-reviews">Reviews</a>
-                {eligible && !sent && !existingConnection ? (
-                  <a href="#profile-introduction">
-                    Introduce yourself <ArrowUpRight size={13} />
-                  </a>
-                ) : null}
-              </nav>
-              <div className="profile-badges" style={{ marginTop: 18 }}>
-                <span
-                  className={`member-network-badge member-network-${member.member_type}`}
-                >
-                  {isGlobal ? "Global connect" : "China connect"}
-                </span>
-                {member.is_demo ? (
-                  <span className="demo-label">Demo profile</span>
-                ) : member.verified ? (
-                  <span className="chip">
-                    <ShieldCheck size={13} /> Profile reviewed
-                  </span>
-                ) : null}
-                {member.languages.map((l) => (
-                  <span key={l} className="chip">
-                    {publicProfileText(l)}
-                  </span>
-                ))}
-              </div>
-              {member.is_demo ? (
-                <div className="profile-demo-stats">
-                  Sample profile · no real reviews or completed connections
-                </div>
-              ) : (
-                <div className="profile-stats">
-                  <div>
-                    <strong>
-                      {member.rating ? `${member.rating} / 5` : "New here"}
-                    </strong>
-                    {member.review_count
-                      ? `${member.review_count} member reviews`
-                      : "No reviews yet"}
-                  </div>
-                  <div>
-                    <strong>{member.completed_connections}</strong>Completed
-                    connections
-                  </div>
-                </div>
-              )}
-              <div
-                className="profile-about profile-scroll-target"
-                id="profile-about"
-                tabIndex={-1}
-              >
-                <h2>A little about me.</h2>
-                <p>{publicProfileText(member.bio)}</p>
-              </div>
-              <div className="profile-about">
-                <h2>
-                  {isGlobal ? "Interests & experience." : "Where I can help."}
-                </h2>
-                <div className="member-tags">
-                  {member.specialties.map((s) => (
-                    <span className="chip" key={s}>
-                      {publicProfileText(s)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              {member.achievements.length > 0 && (
-                <div className="profile-about">
-                  <h2>Milestones & achievements.</h2>
-                  <p
-                    className="muted"
-                    style={{ fontSize: 11, marginBottom: 13 }}
+                {!ownProfile ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost social-save-profile"
+                    aria-pressed={saved}
+                    onClick={toggleSaved}
+                    aria-label={saved ? `Unsave ${name}` : `Save ${name}`}
                   >
-                    {member.is_demo
-                      ? "Illustrative examples for this demo profile."
-                      : "Shared by this member."}
-                  </p>
-                  <ul className="achievement-list">
-                    {member.achievements.map((a) => (
-                      <li key={a}>
-                        <Check size={16} />
-                        {publicProfileText(a)}
-                      </li>
-                    ))}
-                  </ul>
+                    <Bookmark
+                      size={18}
+                      fill={saved ? "currentColor" : "none"}
+                    />
+                    <span>{saved ? "Saved" : "Save"}</span>
+                  </button>
+                ) : null}
+              </div>
+              <p className="social-action-context">{primaryAction.note}</p>
+              <div
+                className="social-save-notice"
+                role="status"
+                aria-live="polite"
+              >
+                {saveNotice}
+              </div>
+              {!member.is_demo ? (
+                <div className="social-profile-metrics">
+                  <a
+                    href="#profile-reviews"
+                    aria-current={
+                      activeSection === "profile-reviews"
+                        ? "location"
+                        : undefined
+                    }
+                    onClick={() => setActiveSection("profile-reviews")}
+                  >
+                    <Star size={17} />
+                    <span>
+                      <strong>
+                        {member.rating
+                          ? `${member.rating} / 5`
+                          : "No rating yet"}
+                      </strong>
+                      {member.review_count}{" "}
+                      {member.review_count === 1 ? "review" : "reviews"}
+                    </span>
+                  </a>
+                  <div>
+                    <Users size={17} />
+                    <span>
+                      <strong>{member.completed_connections}</strong>Completed
+                      connections
+                    </span>
+                  </div>
                 </div>
-              )}
+              ) : null}
+              <nav className="profile-section-nav" aria-label="On this profile">
+                <a
+                  href="#profile-about"
+                  aria-current={
+                    activeSection === "profile-about" ? "location" : undefined
+                  }
+                  onClick={() => setActiveSection("profile-about")}
+                >
+                  About
+                </a>
+                <a
+                  href="#profile-experience"
+                  aria-current={
+                    activeSection === "profile-experience"
+                      ? "location"
+                      : undefined
+                  }
+                  onClick={() => setActiveSection("profile-experience")}
+                >
+                  Work
+                </a>
+                <a
+                  href="#profile-reviews"
+                  aria-current={
+                    activeSection === "profile-reviews" ? "location" : undefined
+                  }
+                  onClick={() => setActiveSection("profile-reviews")}
+                >
+                  Reviews
+                </a>
+              </nav>
             </div>
           </section>
           <section
-            className="panel profile-work profile-scroll-target"
+            className="panel social-content-card profile-scroll-target"
+            id="profile-about"
+            tabIndex={-1}
+            aria-labelledby="profile-about-heading"
+          >
+            <h2 id="profile-about-heading">About</h2>
+            <p className="social-bio">
+              {publicProfileText(member.bio) ||
+                "This member is still adding their story."}
+            </p>
+          </section>
+          <section
+            className="panel social-content-card"
+            aria-labelledby="profile-expertise-heading"
+          >
+            <h2 id="profile-expertise-heading">
+              <BriefcaseBusiness size={19} />{" "}
+              {isGlobal ? "Interests & expertise" : "Expertise"}
+            </h2>
+            {member.specialties.length ? (
+              <div className="member-tags">
+                {member.specialties.map((item) => (
+                  <span className="chip" key={item}>
+                    {publicProfileText(item)}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">Specialties haven’t been added yet.</p>
+            )}
+            {member.languages.length ? (
+              <div className="social-languages">
+                <h3>
+                  <Languages size={17} /> Languages
+                </h3>
+                <p>{member.languages.map(publicProfileText).join(" · ")}</p>
+              </div>
+            ) : null}
+          </section>
+          <section
+            className="panel profile-work social-content-card profile-scroll-target"
             id="profile-experience"
             tabIndex={-1}
             aria-labelledby="profile-experience-heading"
           >
-            <h2 id="profile-experience-heading">
-              {isGlobal
-                ? "Projects & previous experience."
-                : "A glimpse of my work."}
-            </h2>
-            <p className="muted" style={{ fontSize: 11, marginBottom: 20 }}>
-              {member.is_demo
-                ? "These projects are fictional examples of how members can share their work."
-                : "Portfolio and project details are provided by the member."}
-            </p>
+            <div className="social-section-heading">
+              <h2 id="profile-experience-heading">Work & experience</h2>
+              <span>
+                {member.portfolio.length}{" "}
+                {member.portfolio.length === 1 ? "project" : "projects"}
+              </span>
+            </div>
+            {member.is_demo ? (
+              <p className="social-section-note">
+                Fictional projects, shown as examples.
+              </p>
+            ) : (
+              <p className="social-section-note">
+                Projects shared by this member.
+              </p>
+            )}
             {member.portfolio.length ? (
               <div className="portfolio-grid">
-                {member.portfolio.map((p, i) => (
-                  <article key={`${p.title}-${i}`} className="portfolio-card">
-                    {p.image_url && (
+                {member.portfolio.map((project, index) => (
+                  <article
+                    key={`${project.title}-${index}`}
+                    className="portfolio-card"
+                  >
+                    {project.image_url ? (
                       <img
-                        src={p.image_url}
-                        alt={publicProfileText(p.title)}
+                        src={project.image_url}
+                        alt={publicProfileText(project.title)}
                         loading="lazy"
                       />
-                    )}
+                    ) : null}
                     <div>
-                      <h3>{publicProfileText(p.title)}</h3>
-                      <p>{publicProfileText(p.description)}</p>
+                      <h3>{publicProfileText(project.title)}</h3>
+                      <p>{publicProfileText(project.description)}</p>
                     </div>
                   </article>
                 ))}
               </div>
             ) : (
               <p className="review-empty">
-                More of their story is on the way. Ask about their experience
-                when you connect.
+                No projects shared yet. You can ask about their experience when
+                you connect.
               </p>
             )}
           </section>
+          {member.achievements.length ? (
+            <section
+              className="panel social-content-card"
+              aria-labelledby="profile-achievements-heading"
+            >
+              <h2 id="profile-achievements-heading">
+                <Award size={19} /> Highlights
+              </h2>
+              <ul className="achievement-list">
+                {member.achievements.map((achievement) => (
+                  <li key={achievement}>
+                    <Check size={16} />
+                    {publicProfileText(achievement)}
+                  </li>
+                ))}
+              </ul>
+              <p className="social-section-note">
+                {member.is_demo
+                  ? "Illustrative demo content."
+                  : "Achievements are shared by this member."}
+              </p>
+            </section>
+          ) : null}
           <section
-            className="panel profile-reviews profile-scroll-target"
+            className="panel profile-reviews social-content-card profile-scroll-target"
             id="profile-reviews"
             tabIndex={-1}
             aria-labelledby="profile-reviews-heading"
           >
-            <h2 id="profile-reviews-heading">
-              {member.is_demo
-                ? "How reviews will work."
-                : "From real connections."}
-            </h2>
+            <div className="social-section-heading">
+              <h2 id="profile-reviews-heading">Member reviews</h2>
+              {visibleReviews.length ? (
+                <span>
+                  <Star size={15} /> {member.rating} / 5
+                </span>
+              ) : null}
+            </div>
             {visibleReviews.length ? (
-              visibleReviews.map((r) => (
-                <article className="review" key={r.id}>
+              visibleReviews.map((review) => (
+                <article className="review" key={review.id}>
                   <div>
                     <strong>
-                      {publicProfileText(r.reviewer_name || "Global member")}
+                      {publicProfileText(
+                        review.reviewer_name || "Global member",
+                      )}
                     </strong>
                     <span
                       className="stars"
-                      aria-label={`${r.rating} out of 5 stars`}
+                      aria-label={`${review.rating} out of 5 stars`}
                     >
-                      {Array.from({ length: r.rating }, (_, i) => (
-                        <Star key={i} size={13} fill="currentColor" />
+                      {Array.from({ length: review.rating }, (_, index) => (
+                        <Star key={index} size={13} fill="currentColor" />
                       ))}
                     </span>
                   </div>
-                  <p>{publicProfileText(r.body)}</p>
+                  <p>{publicProfileText(review.body)}</p>
                   <small className="muted">
                     Completed connection ·{" "}
-                    {new Date(r.created_at).toLocaleDateString("en", {
+                    {new Date(review.created_at).toLocaleDateString("en", {
                       month: "short",
                       year: "numeric",
                     })}
@@ -440,7 +618,7 @@ export function MemberProfile({ id }: { id: string }) {
             ) : (
               <p className="review-empty">
                 {member.is_demo
-                  ? "Demo profiles have no member reviews. On real profiles, reviews appear only after a completed connection and team moderation."
+                  ? "Demo profiles have no real reviews. Real member reviews follow a completed connection and team moderation."
                   : "No reviews yet. Reviews appear after a completed connection and team review."}
               </p>
             )}
@@ -452,22 +630,13 @@ export function MemberProfile({ id }: { id: string }) {
           tabIndex={-1}
           aria-labelledby="profile-introduction-heading"
         >
-          <p className="eyebrow">
-            {member.is_demo
-              ? "EXPLORE THE POSSIBILITIES"
-              : "START WITH A HELLO"}
-          </p>
-          <h2 id="profile-introduction-heading" style={{ marginTop: 12 }}>
-            {member.is_demo
-              ? "A preview of a connection."
-              : isGlobal
-                ? "A shared ambition?"
-                : "Something in common?"}
+          <h2 id="profile-introduction-heading">
+            {member.is_demo ? "About this demo" : "Connect with " + firstName}
           </h2>
           <p>
             {member.is_demo
               ? "See how a member can introduce their interests, experience and work to the network."
-              : `Tell ${firstName} what you have in mind. A specific introduction goes a long way.`}
+              : `Introduce yourself and share what you’d like to work on together.`}
           </p>
           {member.is_demo ? (
             <div className="profile-demo-action">
@@ -483,14 +652,29 @@ export function MemberProfile({ id }: { id: string }) {
                 Explore the network <ArrowUpRight size={16} />
               </Link>
             </div>
+          ) : sessionStatus === "loading" ? (
+            <p className="profile-view-only" role="status">
+              Checking your account…
+            </p>
+          ) : membershipError ? (
+            <div className="profile-view-only" role="alert">
+              <p>{membershipError}</p>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() => void refreshSession()}
+              >
+                Try again
+              </button>
+            </div>
           ) : ownProfile ? (
             <div className="profile-view-only">
               <p>
                 This is your public profile. Manage the details you share from
                 My space.
               </p>
-              <Link className="btn btn-ghost" href="/account">
-                Edit my profile <ArrowUpRight size={16} />
+              <Link className="btn btn-ghost" href="/account?edit=intro">
+                Edit profile <ArrowUpRight size={16} />
               </Link>
             </div>
           ) : sent || existingConnection ? (
@@ -527,21 +711,6 @@ export function MemberProfile({ id }: { id: string }) {
                 View received requests <ArrowUpRight size={16} />
               </Link>
             </div>
-          ) : membershipError ? (
-            <div
-              className="status error"
-              role="alert"
-              style={{ marginTop: 20 }}
-            >
-              {membershipError}
-              <button
-                className="btn btn-ghost"
-                style={{ marginTop: 12 }}
-                onClick={() => setLoadAttempt((attempt) => attempt + 1)}
-              >
-                Try again
-              </button>
-            </div>
           ) : eligible ? (
             <form onSubmit={connect} aria-busy={busy}>
               <fieldset
@@ -554,6 +723,8 @@ export function MemberProfile({ id }: { id: string }) {
                   <textarea
                     name="message"
                     id="introduction-message"
+                    value={introduction}
+                    onChange={(event) => setIntroduction(event.target.value)}
                     aria-describedby="introduction-guidance"
                     required
                     minLength={10}
@@ -566,7 +737,13 @@ export function MemberProfile({ id }: { id: string }) {
                   At least 10 characters.
                 </p>
                 <label className="check-label">
-                  <input name="consent" type="checkbox" required />
+                  <input
+                    name="consent"
+                    type="checkbox"
+                    required
+                    checked={emailConsent}
+                    onChange={(event) => setEmailConsent(event.target.checked)}
+                  />
                   <span>
                     I agree to share my account email with this member if they
                     accept my request.
@@ -591,7 +768,9 @@ export function MemberProfile({ id }: { id: string }) {
           ) : (
             <>
               <Link
-                href={me?.user ? "/account" : "/join?type=global"}
+                href={
+                  me?.user ? "/account?tab=membership" : "/join?type=global"
+                }
                 className="btn btn-primary"
               >
                 {me?.user ? "View my membership" : "Join Global to connect"}

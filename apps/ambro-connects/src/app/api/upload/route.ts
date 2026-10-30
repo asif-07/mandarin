@@ -41,6 +41,12 @@ export async function POST(request: Request) {
       throw new ApiError("Photos must be smaller than 4 MB.", 413);
     const { supabase, user } = await authenticated();
     const form = await request.formData();
+    const expectedUserId = form.get("expected_user_id");
+    if (expectedUserId !== null && expectedUserId !== user.id)
+      throw new ApiError(
+        "Your signed-in account changed. Reload your profile before uploading a photo.",
+        409,
+      );
     const file = form.get("file");
     const kind = form.get("kind");
     if (!["avatar", "cover", "portfolio"].includes(String(kind)))

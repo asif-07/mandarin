@@ -1,0 +1,417 @@
+.social-profile-page {
+  padding-bottom: 32px;
+}
+.social-profile-page .social-back-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.social-profile-caption {
+  font-size: 12px;
+  color: var(--muted);
+}
+.social-profile-page .profile-layout {
+  padding-top: 14px;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+.social-profile-main {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+.social-identity-card {
+  border-radius: 22px;
+}
+.social-profile-page .profile-cover {
+  height: 210px;
+  position: relative;
+  background: #d9e4d7;
+  overflow: hidden;
+}
+.social-cover-pattern {
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse at 85% 5%, #b8c7ab 0%, transparent 52%),
+    linear-gradient(135deg, #cad8c5, #e8eddf 55%, #d5b69f);
+}
+.social-cover-pattern::after {
+  content: "";
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  border: 50px solid #fff4;
+  right: -60px;
+  top: -180px;
+}
+.social-identity-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 18px;
+}
+.social-profile-page .social-identity-top > .avatar {
+  width: 112px;
+  height: 112px;
+  border: 5px solid #fff;
+  position: relative;
+  margin-top: -56px;
+  font-size: 36px;
+  flex-shrink: 0;
+}
+.social-identity-top > .member-network-badge {
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+.social-profile-page .profile-overview {
+  padding: 0 28px 0;
+}
+.social-profile-page .profile-overview h1 {
+  margin: 16px 0 10px;
+  font-size: 32px;
+  line-height: 1.16;
+  letter-spacing: -1.2px;
+  overflow-wrap: anywhere;
+}
+.social-headline,
+.social-reviewed,
+.social-profile-page .profile-overview > .member-meta {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.social-headline svg,
+.social-reviewed svg,
+.social-profile-page .member-meta svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.social-headline {
+  color: var(--ink);
+  margin-bottom: 5px;
+}
+.social-profile-page .profile-overview > .member-meta {
+  color: var(--muted);
+}
+.social-specialty-line {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+.social-reviewed {
+  color: var(--green);
+  font-size: 12px;
+  margin-top: 12px;
+}
+.social-profile-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.social-profile-actions > .btn {
+  min-height: 46px;
+  font-size: 14px;
+  border-radius: 12px;
+}
+.social-profile-actions > .btn:first-child {
+  flex: 1;
+}
+.social-save-profile {
+  flex-shrink: 0;
+}
+.social-save-profile[aria-pressed="true"] {
+  background: var(--soft);
+  border-color: #a8b99f;
+  color: var(--green);
+}
+.social-profile-actions > button:disabled {
+  opacity: 1;
+  background: #f2eee5;
+  color: #77684f;
+  border-color: #e5dece;
+}
+.social-action-context {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.social-save-notice {
+  font-size: 12px;
+  color: var(--green);
+  line-height: 1.6;
+}
+.social-save-notice:not(:empty) {
+  margin-top: 8px;
+}
+.social-profile-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+  padding-top: 18px;
+}
+.social-profile-metrics > * {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 0;
+}
+.social-profile-metrics > a {
+  min-height: 44px;
+}
+.social-profile-metrics strong {
+  display: block;
+  color: var(--green);
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+.social-profile-metrics svg {
+  flex-shrink: 0;
+  color: var(--green);
+  margin-top: 2px;
+}
+.social-profile-page .profile-section-nav {
+  border: 0;
+  padding: 4px 0 0;
+  margin-top: 18px;
+  gap: 24px;
+}
+.social-profile-page .profile-section-nav > a {
+  min-height: 48px;
+  padding: 8px 0 12px;
+  font-size: 14px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+}
+.social-profile-page .profile-section-nav > a[aria-current="location"] {
+  border-bottom-color: var(--green);
+  font-weight: 700;
+}
+.social-profile-page .profile-section-nav > a:hover {
+  border-bottom-color: #a9baa0;
+}
+.social-content-card {
+  padding: 24px 28px;
+  border-radius: 20px;
+  margin: 0;
+}
+.social-profile-page .social-content-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.5px;
+  margin: 0 0 16px;
+}
+.social-content-card .social-bio {
+  font-size: 15px;
+  line-height: 1.85;
+  color: #4b594b;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.social-languages {
+  padding-top: 18px;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.social-languages h3 {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 650;
+}
+.social-languages p {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.social-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.social-section-heading > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--muted);
+  padding-top: 5px;
+}
+.social-section-note {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: -4px 0 18px;
+}
+.social-content-card .achievement-list {
+  gap: 14px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.social-content-card .achievement-list + .social-section-note {
+  margin: 16px 0 0;
+}
+.social-profile-page .profile-sidebar {
+  padding: 24px;
+  top: 24px;
+  border-radius: 20px;
+}
+.social-profile-page .profile-sidebar h2 {
+  font-size: 22px;
+  letter-spacing: -0.6px;
+  line-height: 1.35;
+  margin: 0 0 12px;
+}
+.social-profile-page .profile-sidebar p {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.social-profile-page .profile-work,
+.social-profile-page .profile-reviews {
+  margin: 0;
+}
+.social-profile-page .portfolio-card {
+  border-radius: 14px;
+}
+.social-profile-page .portfolio-card h3 {
+  font-size: 16px;
+  line-height: 1.45;
+}
+.social-profile-page .portfolio-card p {
+  font-size: 14px;
+  line-height: 1.75;
+}
+.social-profile-page .review-empty {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.social-profile-page .profile-introduction-fields > .btn {
+  font-size: 14px;
+}
+
+@media (max-width: 1000px) {
+  .social-profile-page .profile-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .social-profile-page .profile-sidebar {
+    position: static;
+  }
+}
+@media (max-width: 760px) {
+  .social-profile-page {
+    padding-bottom: calc(
+      var(--mobile-nav-height) + env(safe-area-inset-bottom) + 24px
+    );
+  }
+  .social-profile-page .profile-back-row {
+    padding-top: 8px;
+  }
+  .social-profile-page .profile-layout {
+    padding-top: 4px;
+    gap: 18px;
+  }
+  .social-profile-page .profile-cover {
+    height: 154px;
+  }
+  .social-profile-page .profile-overview {
+    padding-inline: 20px;
+  }
+  .social-profile-page .social-identity-top > .avatar {
+    width: 92px;
+    height: 92px;
+    margin-top: -46px;
+    border-width: 4px;
+    font-size: 30px;
+  }
+  .social-profile-page .profile-overview h1 {
+    font-size: 29px;
+    margin-block: 16px 9px;
+  }
+  .social-profile-page .social-profile-actions > .btn {
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  .social-profile-page .social-save-profile {
+    gap: 8px;
+  }
+  .social-profile-page .profile-section-nav > a {
+    min-height: 48px;
+    font-size: 14px;
+    padding-inline: 0;
+  }
+  .social-profile-main {
+    gap: 14px;
+  }
+  .social-content-card {
+    padding: 22px 20px;
+  }
+  .social-profile-page .social-content-card h2 {
+    font-size: 20px;
+  }
+  .social-content-card .social-bio {
+    font-size: 15px;
+  }
+  .social-profile-page .portfolio-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .social-profile-page .portfolio-card img {
+    aspect-ratio: 1.65;
+  }
+  .social-profile-page .profile-sidebar {
+    padding: 22px 20px;
+  }
+  .social-profile-page .profile-sidebar textarea {
+    font-size: 16px;
+  }
+  .social-profile-page .profile-sidebar .check-label {
+    font-size: 14px;
+  }
+  .social-profile-metrics {
+    gap: 10px;
+  }
+  .social-profile-metrics > * {
+    font-size: 11px;
+  }
+  .social-profile-metrics strong {
+    font-size: 14px;
+  }
+}
+@media (max-width: 359px) {
+  .social-profile-page .social-save-profile {
+    padding-inline: 12px;
+  }
+  .social-save-profile span {
+    display: none;
+  }
+  .social-identity-top > .member-network-badge {
+    font-size: 10px;
+  }
+  .social-profile-page .profile-overview h1 {
+    font-size: 27px;
+  }
+}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MemberLink } from "@/components/member-link";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -270,9 +271,13 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <Link href="/join?type=global" className="btn btn-dark">
-              Join Global <ArrowUpRight size={18} />
-            </Link>
+            <MemberLink
+              href="/join?type=global"
+              className="btn btn-dark"
+              icon={<ArrowUpRight size={18} />}
+            >
+              Join Global
+            </MemberLink>
             <div className="trip-benefit">
               <Plane size={22} />
               <p>
@@ -281,12 +286,17 @@ export default function Home() {
                 Your first 12 months are on us with an eligible Mandarin Roots
                 trip, after booking verification.
               </p>
-              <Link
+              <MemberLink
                 href="/join?type=global&plan=trip_year"
-                aria-label="Claim trip membership benefit"
+                memberHref="/account?tab=membership"
+                memberLabel="View trip benefit"
+                ariaLabel="Claim trip membership benefit"
+                className="trip-benefit-link"
+                iconOnly
+                icon={<ArrowUpRight size={20} />}
               >
-                <ArrowUpRight size={20} />
-              </Link>
+                {null}
+              </MemberLink>
             </div>
           </article>
           <article className="pricing-card china-card">
@@ -322,9 +332,13 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <Link href="/join?type=china" className="btn btn-light">
-              Join China <ArrowUpRight size={18} />
-            </Link>
+            <MemberLink
+              href="/join?type=china"
+              className="btn btn-light"
+              icon={<ArrowUpRight size={18} />}
+            >
+              Join China
+            </MemberLink>
             <div className="china-footnote">
               <ShieldCheck size={20} />
               <p>
@@ -354,9 +368,15 @@ export default function Home() {
               Mandarin Roots. Ambro Connects brings that spirit into a community
               that stays with you long after the trip.
             </p>
-            <Link href="/join" className="text-link">
-              Be part of the next chapter <ArrowUpRight size={18} />
-            </Link>
+            <MemberLink
+              href="/join"
+              memberHref="/discover"
+              memberLabel="Explore your network"
+              className="text-link"
+              icon={<ArrowUpRight size={18} />}
+            >
+              Be part of the next chapter
+            </MemberLink>
           </div>
           <div className="founder-mark">
             <span>“</span>
@@ -417,9 +437,15 @@ export default function Home() {
           <p className="eyebrow">YOUR NEXT CHAPTER STARTS WITH A HELLO.</p>
           <h2>Make China feel closer.</h2>
         </div>
-        <Link href="/join" className="btn btn-dark">
-          Find your circle <ArrowUpRight size={19} />
-        </Link>
+        <MemberLink
+          href="/join"
+          memberHref="/discover"
+          memberLabel="Explore your network"
+          className="btn btn-dark"
+          icon={<ArrowUpRight size={19} />}
+        >
+          Find your circle
+        </MemberLink>
       </section>
     </>
   );

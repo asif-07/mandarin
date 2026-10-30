@@ -9,12 +9,51 @@ import {
   ShieldCheck,
   Users,
   Plane,
+  UserRound,
+  RefreshCw,
 } from "lucide-react";
+import { useMemberSession } from "./member-session";
 import "./mobile-forms.css";
+
+function safeMemberDestination(next: string | null, isAdmin: boolean) {
+  if (
+    !next ||
+    !next.startsWith("/") ||
+    next.startsWith("//") ||
+    /[\\\u0000-\u001f\u007f]/.test(next)
+  )
+    return "/account";
+  try {
+    const url = new URL(next, "https://ambro.invalid");
+    if (url.origin !== "https://ambro.invalid") return "/account";
+    const publicPaths = [
+      "/",
+      "/account",
+      "/discover",
+      "/connections",
+      "/how-to-use",
+      "/community",
+      "/privacy",
+      "/terms",
+    ];
+    const memberProfile = /^\/members\/[0-9a-f-]{36}$/i.test(url.pathname);
+    if (
+      !publicPaths.includes(url.pathname) &&
+      !memberProfile &&
+      !(url.pathname === "/admin" && isAdmin)
+    )
+      return "/account";
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/account";
+  }
+}
 
 export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
   const search = useSearchParams();
   const router = useRouter();
+  const { data: session, status: sessionStatus, refresh } = useMemberSession();
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [type, setType] = useState(
     search.get("type") === "china" ? "china" : "global",
   );
@@ -35,9 +74,39 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
   const joining = mode === "join";
   const reset = mode === "reset";
   const teamLogin = mode === "login" && search.get("next") === "/admin";
+  const destination = safeMemberDestination(
+    search.get("next"),
+    session?.user?.is_admin === true,
+  );
+  useEffect(() => {
+    if (reset) return;
+    let active = true;
+    void refresh().finally(() => {
+      if (active) setSessionChecked(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [reset, refresh]);
+  useEffect(() => {
+    if (
+      !reset &&
+      sessionChecked &&
+      sessionStatus === "authenticated" &&
+      session?.user
+    )
+      router.replace(destination);
+  }, [
+    reset,
+    sessionChecked,
+    sessionStatus,
+    session?.user,
+    destination,
+    router,
+  ]);
   useEffect(() => {
     if (error) errorRef.current?.focus();
-  }, [error]);
+  }, [error, sessionChecked, sessionStatus]);
   useEffect(() => {
     if (!notice) return;
     const active = document.activeElement;
@@ -48,6 +117,7 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy) return;
+    if (!reset && sessionStatus !== "anonymous") return;
     setBusy(true);
     setError("");
     setNotice("");
@@ -91,9 +161,26 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
           data.message ||
             "Check your email to confirm your account, then sign in to finish your profile and membership request.",
         );
-        if (data.confirmation_required === false) router.push("/account");
+        if (data.confirmation_required === false) {
+          const verified = await refresh();
+          if (!verified?.user)
+            throw new Error(
+              "Your account could not be verified. Please try signing in again.",
+            );
+          router.replace(
+            safeMemberDestination(search.get("next"), verified.user.is_admin),
+          );
+          router.refresh();
+        }
       } else {
-        router.push(teamLogin || data.user?.is_admin ? "/admin" : "/account");
+        const verified = await refresh();
+        if (!verified?.user)
+          throw new Error(
+            "Your account could not be verified. Please try signing in again.",
+          );
+        router.replace(
+          safeMemberDestination(search.get("next"), verified.user.is_admin),
+        );
         router.refresh();
       }
     } catch (err) {
@@ -102,6 +189,49 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
       setBusy(false);
     }
   }
+  if (
+    !reset &&
+    (!sessionChecked ||
+      sessionStatus === "loading" ||
+      sessionStatus === "authenticated")
+  )
+    return (
+      <div className="container auth-session-gate" role="status">
+        <span className="auth-session-indicator">
+          <UserRound size={21} />
+        </span>
+        <h1>
+          {sessionStatus === "authenticated"
+            ? "Opening your profile…"
+            : "Checking your account…"}
+        </h1>
+        <p>
+          {sessionStatus === "authenticated"
+            ? "You’re already signed in. Taking you back to your space."
+            : "One moment while we check whether you’re already signed in."}
+        </p>
+      </div>
+    );
+  if (!reset && sessionStatus === "error")
+    return (
+      <div className="container auth-session-gate" role="alert">
+        <span className="auth-session-indicator">
+          <UserRound size={21} />
+        </span>
+        <h1>We couldn’t check your account.</h1>
+        <p>
+          Try again to continue with your existing account or create a new one.
+        </p>
+        <button
+          className="btn btn-dark"
+          type="button"
+          onClick={() => void refresh()}
+        >
+          <RefreshCw size={16} />
+          Try again
+        </button>
+      </div>
+    );
   return (
     <div className="container auth-layout">
       <section className="auth-panel" aria-labelledby="auth-form-heading">
@@ -360,8 +490,13 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
               Use your team account. Admin access uses the same password and
               does not require a paid membership.
             </p>
-            <Link href="/admin">Open approvals ↗</Link>
-            <Link href="/how-to-use#team">How to use the admin portal ↗</Link>
+            <Link href="/admin">
+              Open approvals <ArrowUpRight size={16} aria-hidden="true" />
+            </Link>
+            <Link href="/how-to-use#team">
+              How to use the admin portal{" "}
+              <ArrowUpRight size={16} aria-hidden="true" />
+            </Link>
           </div>
         ) : null}
       </section>

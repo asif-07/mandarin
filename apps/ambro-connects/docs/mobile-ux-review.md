@@ -2,6 +2,10 @@
 
 Reviewed on 30 October 2026. This pass improves the browser app; native Android APK and iOS packaging remain future work.
 
+## Profile and signed-in navigation follow-up
+
+The member area now opens on a photo-led professional profile with About, expertise, work and achievements cards. Section editors retain existing details; membership and private account settings have their own tabs. The header shows the signed-in member’s avatar, and existing members visiting Join or Sign in are redirected without registration fields. Guest registration is unchanged. Profile saves preserve all other sections, and account-bound mutation checks prevent stale profile data from being submitted under another signed-in identity.
+
 ## Changes
 
 - Navigation now supports mobile touch targets, safe-area spacing, keyboard focus and tablet menu transitions.
@@ -20,6 +24,8 @@ The home, login, join, discover, how-to-use, privacy, member profile, account, c
 The tablet menu was checked at 820 px, including resizing to 1100 px.
 
 Protected interactions were checked through fictional, in-memory local QA scenarios: leaving and returning to a profile draft; restoring, discarding and saving it; retaining an unfinished payment reference; submitting membership details while preserving profile edits; accepting connections; submitting reviews; profile approval and rejection validation; and hiding or showing demo profiles. **These mobile flow checks made no real database or Auth writes.** They verify UI behavior, not email delivery or live payment processing.
+
+The profile follow-up also passed 28 checks across the owner profile, Intro, About, Work, Membership, Settings and public profile at the same four phone widths. Existing admin, Global, China, expired and suspended accounts redirected from Join to Profile with no registration inputs or header Join link; confirmed guests retained signup, and failed session checks offered retry. Section save, editor Back, draft leave/return, membership reference retention, membership submission with a profile draft, and a real-member introduction were exercised with the isolated fixtures.
 
 ## Repeat the local checks
 

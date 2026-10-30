@@ -5,6 +5,8 @@ import {
   response,
   serverSupabase,
 } from "@/lib/supabase";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
+import { ApiError } from "@/lib/supabase";
 import type {
   Connection,
   Membership,
@@ -28,7 +30,19 @@ export async function GET() {
     const supabase = await serverSupabase();
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
+    if (
+      authError &&
+      (isAuthRetryableFetchError(authError) ||
+        authError.status === 429 ||
+        (authError.status ?? 0) >= 500)
+    ) {
+      throw new ApiError(
+        "Your session could not be checked. Please try again.",
+        503,
+      );
+    }
     if (!user)
       return response({
         configured: true,

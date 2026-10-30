@@ -44,6 +44,11 @@ export async function PUT(request: Request) {
   try {
     const body = await jsonBody(request);
     const { supabase, user } = await authenticated();
+    if (body.id !== undefined && body.id !== user.id)
+      throw new ApiError(
+        "Your signed-in account changed. Reload your profile before saving.",
+        409,
+      );
     if (
       body.network_visible !== undefined &&
       typeof body.network_visible !== "boolean"

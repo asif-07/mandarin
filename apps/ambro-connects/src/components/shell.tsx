@@ -11,8 +11,11 @@ import {
   X,
   ArrowRight,
   Home,
+  RefreshCw,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { MemberSessionProvider, useMemberSession } from "./member-session";
+import "./member-session.css";
 
 export function Brand() {
   return (
@@ -28,7 +31,34 @@ export function Brand() {
   );
 }
 export function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <MemberSessionProvider>
+      <ShellContent>{children}</ShellContent>
+    </MemberSessionProvider>
+  );
+}
+
+function ShellContent({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const { data: session, status, refresh } = useMemberSession();
+  const signedIn = status === "authenticated" && Boolean(session?.user);
+  const anonymous = status === "anonymous";
+  const isAdmin = signedIn && session?.user?.is_admin;
+  const name =
+    typeof session?.profile?.full_name === "string"
+      ? session.profile.full_name.trim()
+      : "";
+  const photo =
+    typeof session?.profile?.avatar_url === "string"
+      ? session.profile.avatar_url
+      : "";
+  const initials =
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("") || "A";
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -97,7 +127,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const links = [
     { href: "/discover", label: "Discover", icon: Compass },
     { href: "/connections", label: "Connections", icon: Users },
-    { href: "/account", label: "My space", icon: UserRound },
+    {
+      href: "/account",
+      label: signedIn ? "Profile" : "Account",
+      icon: UserRound,
+    },
   ];
   const activeTab = (href: string) =>
     href === "/"
@@ -132,24 +166,68 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               How to use
             </Link>
-            <Link href="/#memberships">Memberships</Link>
-            <Link href="/connections">Connections</Link>
-          </nav>
-          <div className="header-actions">
-            <Link href="/account" className="sign-in">
-              My space
+            <Link href={signedIn ? "/account?tab=membership" : "/#memberships"}>
+              Memberships
             </Link>
             <Link
-              href="/join"
-              className="btn btn-dark small header-join"
-              aria-label="Join the circle"
+              href={isAdmin ? "/admin" : "/connections"}
+              className={
+                path === (isAdmin ? "/admin" : "/connections") ? "active" : ""
+              }
             >
-              <span className="header-join-label">Join the circle</span>
-              <span className="header-join-short" aria-hidden="true">
-                Join
-              </span>{" "}
-              <ArrowUpRight size={16} />
+              {isAdmin ? "Team approvals" : "Connections"}
             </Link>
+          </nav>
+          <div className="header-actions">
+            {signedIn ? (
+              <Link
+                href="/account"
+                className="header-member-button"
+                aria-label="Open your profile"
+              >
+                <span className="header-member-avatar">
+                  {photo ? <img src={photo} alt="" /> : <span>{initials}</span>}
+                </span>
+                <span className="header-member-copy">
+                  <strong>{name.split(" ")[0] || "My profile"}</strong>
+                  <small>{isAdmin ? "My profile · Team" : "My profile"}</small>
+                </span>
+              </Link>
+            ) : anonymous ? (
+              <>
+                <Link href="/login" className="sign-in">
+                  Sign in
+                </Link>
+                <Link
+                  href="/join"
+                  className="btn btn-dark small header-join"
+                  aria-label="Join the circle"
+                >
+                  <span className="header-join-label">Join the circle</span>
+                  <span className="header-join-short" aria-hidden="true">
+                    Join
+                  </span>{" "}
+                  <ArrowUpRight size={16} />
+                </Link>
+              </>
+            ) : status === "loading" ? (
+              <span className="header-session-loading" role="status">
+                <UserRound size={20} aria-hidden="true" />
+                <span className="session-visually-hidden">
+                  Checking your account…
+                </span>
+              </span>
+            ) : (
+              <button
+                className="header-session-retry"
+                type="button"
+                onClick={() => void refresh()}
+                aria-label="Retry account check"
+              >
+                <RefreshCw size={19} />
+                <span>Retry</span>
+              </button>
+            )}
           </div>
           <button
             ref={menuButton}
@@ -170,10 +248,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
           >
             {[
               ...links,
-              { href: "/#memberships", label: "Memberships", icon: Globe2 },
+              {
+                href: signedIn ? "/account?tab=membership" : "/#memberships",
+                label: "Memberships",
+                icon: Globe2,
+              },
               { href: "/how-to-use", label: "How to use", icon: Compass },
-              { href: "/admin", label: "Team approvals", icon: Users },
-              { href: "/login", label: "Sign in", icon: UserRound },
+              ...(isAdmin
+                ? [{ href: "/admin", label: "Team approvals", icon: Users }]
+                : []),
+              ...(anonymous
+                ? [
+                    { href: "/login", label: "Sign in", icon: UserRound },
+                    { href: "/join", label: "Join the circle", icon: Globe2 },
+                  ]
+                : []),
             ].map((l) => (
               <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>
                 {l.label}
@@ -210,15 +299,34 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link href="/discover">
               Find your people <ArrowUpRight size={16} />
             </Link>
-            <Link href="/join?type=china">
-              Become a China connect <ArrowUpRight size={16} />
+            <Link
+              href={
+                signedIn
+                  ? "/account"
+                  : anonymous
+                    ? "/join?type=china"
+                    : "/discover"
+              }
+            >
+              {signedIn
+                ? "My profile"
+                : anonymous
+                  ? "Become a China connect"
+                  : "Explore the community"}{" "}
+              <ArrowUpRight size={16} />
             </Link>
             <Link href="/how-to-use">
               How to use <ArrowUpRight size={16} />
             </Link>
-            <Link href="/admin">
-              Team approvals <ArrowUpRight size={16} />
-            </Link>
+            {isAdmin ? (
+              <Link href="/admin">
+                Team approvals <ArrowUpRight size={16} />
+              </Link>
+            ) : anonymous ? (
+              <Link href="/login?next=/admin">
+                Team sign in <ArrowUpRight size={16} />
+              </Link>
+            ) : null}
           </div>
         </div>
         <div className="container footer-bottom">
@@ -242,7 +350,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           ({ href, label, icon: Icon }) => (
             <Link
               key={href}
-              href={href}
+              href={href === "/account" && anonymous ? "/login" : href}
               className={activeTab(href) ? "active" : ""}
               aria-current={activeTab(href) ? "page" : undefined}
             >
