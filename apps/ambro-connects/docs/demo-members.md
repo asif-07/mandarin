@@ -54,6 +54,8 @@ First apply the reviewed migration that creates the separate `public.demo_member
 
 The seed is deliberately separate from automatic schema migrations and requires an explicit execution step. It has not been applied by generating this pack. It sets these 30 demo rows to `enabled = true`. Reapplying the seed restores their content and makes them visible again; do not run it as part of normal production builds.
 
+The pack was explicitly applied to the Ambro Connects project for the October 30 review release, after the demo-aware interface was published. Live checks confirmed 20 China profiles, four per segment, and 10 Global profiles; no Auth accounts were created. The public API returns demo flags and zero fabricated review metrics.
+
 The table contract uses the normal profile columns, plus `member_type` and `enabled`. Global city strings include their country; there is no separate country column. The portfolio JSON shape is `{ "title": "...", "description": "...", "image_url": "/demo/...svg" }`.
 
 ## Hide or remove safely

@@ -2375,6 +2375,11 @@ select:focus {
 }
 
 /* Shared directory and profile states for China, Global and demo profiles. */
+.member-cover img[src^="/demo/"],
+.profile-cover img[src^="/demo/"] {
+  object-position: left center;
+}
+
 .network-switcher {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2530,6 +2535,9 @@ select:focus {
   border-top: 1px solid var(--line);
 }
 @media (max-width: 760px) {
+  .discovery-banner {
+    display: none;
+  }
   .network-switcher button {
     min-height: 45px;
     gap: 7px;
