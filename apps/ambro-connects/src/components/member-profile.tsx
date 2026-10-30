@@ -10,7 +10,7 @@ import {
   ArrowLeft,
   Check,
 } from "lucide-react";
-import { Avatar } from "./discover";
+import { Avatar, publicProfileText } from "./discover";
 import type { PublicMember, Review, MeResponse } from "@/lib/types";
 export function MemberProfile({ id }: { id: string }) {
   const [member, setMember] = useState<PublicMember | null>(null);
@@ -22,6 +22,13 @@ export function MemberProfile({ id }: { id: string }) {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
+    setLoading(true);
+    setMember(null);
+    setReviews([]);
+    setMe(null);
+    setError("");
+    setMembershipError("");
+    setSent(false);
     const c = new AbortController();
     Promise.all([
       fetch(`/api/members/${encodeURIComponent(id)}`, {
@@ -57,6 +64,18 @@ export function MemberProfile({ id }: { id: string }) {
   }, [id]);
   async function connect(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (
+      !member ||
+      member.is_demo ||
+      !me?.membership?.active ||
+      me.membership.member_type !== "global" ||
+      me.user?.id === member.id
+    ) {
+      setError(
+        "An active Global membership is needed to introduce yourself to a real member.",
+      );
+      return;
+    }
     setBusy(true);
     setError("");
     const f = new FormData(e.currentTarget);
@@ -103,13 +122,38 @@ export function MemberProfile({ id }: { id: string }) {
       </div>
     );
   const eligible =
-    me?.membership?.active && me.membership.member_type === "global";
+    me?.membership?.active &&
+    me.membership.member_type === "global" &&
+    !member.is_demo &&
+    me.user?.id !== member.id;
+  const ownProfile = me?.user?.id === member.id;
+  const existingConnection = me?.connections.find(
+    (connection) =>
+      (connection.status === "pending" || connection.status === "accepted") &&
+      (connection.sender_id === member.id ||
+        connection.recipient_id === member.id),
+  );
+  const name = publicProfileText(member.full_name);
+  const firstName = name.split(" ")[0];
+  const isGlobal = member.member_type === "global";
+  const visibleReviews = member.is_demo ? [] : reviews;
   return (
     <>
       <div className="container" style={{ paddingTop: 24 }}>
         <Link className="text-link" href="/discover">
           <ArrowLeft size={16} /> Back to your network
         </Link>
+        {member.is_demo ? (
+          <div className="network-demo-notice profile-demo-notice">
+            <span className="demo-label">Demo profile</span>
+            <p>
+              This is a fictional example of an{" "}
+              {isGlobal ? "Ambro Connect Global" : "Ambro Connect China"}{" "}
+              profile. Images, projects and experience are illustrative. This
+              profile cannot receive introductions.
+            </p>
+          </div>
+        ) : null}
       </div>
       <div className="container profile-layout">
         <div>
@@ -119,46 +163,63 @@ export function MemberProfile({ id }: { id: string }) {
             </div>
             <div className="profile-overview">
               <Avatar member={member} />
-              <h1>{member.full_name}</h1>
+              <h1>{name}</h1>
               <p className="member-meta">
                 <MapPin size={14} />
-                {member.city}
-                {member.company && <> · {member.company}</>}
+                {publicProfileText(member.city)}
+                {member.company && <> · {publicProfileText(member.company)}</>}
               </p>
               <div className="profile-badges" style={{ marginTop: 18 }}>
-                <span className="chip">
-                  <ShieldCheck size={13} /> Profile reviewed
+                <span
+                  className={`member-network-badge member-network-${member.member_type}`}
+                >
+                  {isGlobal ? "Global connect" : "China connect"}
                 </span>
+                {member.is_demo ? (
+                  <span className="demo-label">Demo profile</span>
+                ) : member.verified ? (
+                  <span className="chip">
+                    <ShieldCheck size={13} /> Profile reviewed
+                  </span>
+                ) : null}
                 {member.languages.map((l) => (
                   <span key={l} className="chip">
-                    {l}
+                    {publicProfileText(l)}
                   </span>
                 ))}
               </div>
-              <div className="profile-stats">
-                <div>
-                  <strong>
-                    {member.rating ? `${member.rating} / 5` : "New here"}
-                  </strong>
-                  {member.review_count
-                    ? `${member.review_count} member reviews`
-                    : "No reviews yet"}
+              {member.is_demo ? (
+                <div className="profile-demo-stats">
+                  Sample profile · no real reviews or completed connections
                 </div>
-                <div>
-                  <strong>{member.completed_connections}</strong>Completed
-                  connections
+              ) : (
+                <div className="profile-stats">
+                  <div>
+                    <strong>
+                      {member.rating ? `${member.rating} / 5` : "New here"}
+                    </strong>
+                    {member.review_count
+                      ? `${member.review_count} member reviews`
+                      : "No reviews yet"}
+                  </div>
+                  <div>
+                    <strong>{member.completed_connections}</strong>Completed
+                    connections
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="profile-about">
                 <h2>A little about me.</h2>
-                <p>{member.bio}</p>
+                <p>{publicProfileText(member.bio)}</p>
               </div>
               <div className="profile-about">
-                <h2>Where I can help.</h2>
+                <h2>
+                  {isGlobal ? "Interests & experience." : "Where I can help."}
+                </h2>
                 <div className="member-tags">
                   {member.specialties.map((s) => (
                     <span className="chip" key={s}>
-                      {s}
+                      {publicProfileText(s)}
                     </span>
                   ))}
                 </div>
@@ -170,13 +231,15 @@ export function MemberProfile({ id }: { id: string }) {
                     className="muted"
                     style={{ fontSize: 11, marginBottom: 13 }}
                   >
-                    Shared by this member.
+                    {member.is_demo
+                      ? "Illustrative examples for this demo profile."
+                      : "Shared by this member."}
                   </p>
                   <ul className="achievement-list">
                     {member.achievements.map((a) => (
                       <li key={a}>
                         <Check size={16} />
-                        {a}
+                        {publicProfileText(a)}
                       </li>
                     ))}
                   </ul>
@@ -185,20 +248,30 @@ export function MemberProfile({ id }: { id: string }) {
             </div>
           </section>
           <section className="panel profile-work">
-            <h2>A glimpse of my work.</h2>
+            <h2>
+              {isGlobal
+                ? "Projects & previous experience."
+                : "A glimpse of my work."}
+            </h2>
             <p className="muted" style={{ fontSize: 11, marginBottom: 20 }}>
-              Portfolio and project details are provided by the member.
+              {member.is_demo
+                ? "These projects are fictional examples of how members can share their work."
+                : "Portfolio and project details are provided by the member."}
             </p>
             {member.portfolio.length ? (
               <div className="portfolio-grid">
                 {member.portfolio.map((p, i) => (
                   <article key={`${p.title}-${i}`} className="portfolio-card">
                     {p.image_url && (
-                      <img src={p.image_url} alt={p.title} loading="lazy" />
+                      <img
+                        src={p.image_url}
+                        alt={publicProfileText(p.title)}
+                        loading="lazy"
+                      />
                     )}
                     <div>
-                      <h3>{p.title}</h3>
-                      <p>{p.description}</p>
+                      <h3>{publicProfileText(p.title)}</h3>
+                      <p>{publicProfileText(p.description)}</p>
                     </div>
                   </article>
                 ))}
@@ -211,12 +284,18 @@ export function MemberProfile({ id }: { id: string }) {
             )}
           </section>
           <section className="panel profile-reviews">
-            <h2>From real connections.</h2>
-            {reviews.length ? (
-              reviews.map((r) => (
+            <h2>
+              {member.is_demo
+                ? "How reviews will work."
+                : "From real connections."}
+            </h2>
+            {visibleReviews.length ? (
+              visibleReviews.map((r) => (
                 <article className="review" key={r.id}>
                   <div>
-                    <strong>{r.reviewer_name || "Global member"}</strong>
+                    <strong>
+                      {publicProfileText(r.reviewer_name || "Global member")}
+                    </strong>
                     <span
                       className="stars"
                       aria-label={`${r.rating} out of 5 stars`}
@@ -226,7 +305,7 @@ export function MemberProfile({ id }: { id: string }) {
                       ))}
                     </span>
                   </div>
-                  <p>{r.body}</p>
+                  <p>{publicProfileText(r.body)}</p>
                   <small className="muted">
                     Completed connection ·{" "}
                     {new Date(r.created_at).toLocaleDateString("en", {
@@ -238,32 +317,85 @@ export function MemberProfile({ id }: { id: string }) {
               ))
             ) : (
               <p className="review-empty">
-                No reviews yet. Reviews appear after a completed connection and
-                team review.
+                {member.is_demo
+                  ? "Demo profiles have no member reviews. On real profiles, reviews appear only after a completed connection and team moderation."
+                  : "No reviews yet. Reviews appear after a completed connection and team review."}
               </p>
             )}
           </section>
         </div>
         <aside className="panel profile-sidebar">
-          <p className="eyebrow">START WITH A HELLO</p>
-          <h2 style={{ marginTop: 12 }}>Something in common?</h2>
-          <p>
-            Tell {member.full_name.split(" ")[0]} what you have in mind. A
-            specific introduction goes a long way.
+          <p className="eyebrow">
+            {member.is_demo
+              ? "EXPLORE THE POSSIBILITIES"
+              : "START WITH A HELLO"}
           </p>
-          {sent ? (
+          <h2 style={{ marginTop: 12 }}>
+            {member.is_demo
+              ? "A preview of a connection."
+              : isGlobal
+                ? "A shared ambition?"
+                : "Something in common?"}
+          </h2>
+          <p>
+            {member.is_demo
+              ? "See how a member can introduce their interests, experience and work to the network."
+              : `Tell ${firstName} what you have in mind. A specific introduction goes a long way.`}
+          </p>
+          {member.is_demo ? (
+            <div className="profile-demo-action">
+              <button className="btn btn-ghost" type="button" disabled>
+                Introductions unavailable
+              </button>
+              <p>
+                This is a demo profile, not a real member. You can send
+                introductions to eligible real members after activating a Global
+                membership.
+              </p>
+              <Link className="text-link" href="/discover">
+                Explore the network <ArrowUpRight size={16} />
+              </Link>
+            </div>
+          ) : ownProfile ? (
+            <div className="profile-view-only">
+              <p>
+                This is your public profile. Manage the details you share from
+                My space.
+              </p>
+              <Link className="btn btn-ghost" href="/account">
+                Edit my profile <ArrowUpRight size={16} />
+              </Link>
+            </div>
+          ) : sent || existingConnection ? (
             <div
               className="status success"
               role="status"
               style={{ marginTop: 20 }}
             >
-              <strong>Your introduction is on its way.</strong>
+              <strong>
+                {sent || existingConnection?.status === "pending"
+                  ? "There’s already an introduction here."
+                  : existingConnection?.status === "declined"
+                    ? "Your earlier introduction was declined."
+                    : "You’ve already made a connection."}
+              </strong>
               <p>
-                Follow its status in Connections. Email details are shared if it
-                is accepted.
+                Follow its status in Connections. Email details are shared only
+                after both people agree.
               </p>
               <Link className="text-link" href="/connections">
                 View my connections <ArrowUpRight size={16} />
+              </Link>
+            </div>
+          ) : me?.membership?.member_type === "china" ? (
+            <div className="profile-view-only">
+              <p>
+                You can explore every profile. Global members start
+                introductions; as a China member, you can receive and respond to
+                their requests.
+              </p>
+              <Link className="btn btn-ghost" href="/connections">
+                View received requests <ArrowUpRight size={16} />
               </Link>
             </div>
           ) : membershipError ? (
@@ -320,15 +452,16 @@ export function MemberProfile({ id }: { id: string }) {
                 <ArrowUpRight size={16} />
               </Link>
               <p style={{ fontSize: 10, marginTop: 15 }}>
-                {me?.membership?.member_type === "china"
-                  ? "China members receive introductions from Global members."
-                  : "An active Global membership is needed to send connection requests."}
+                An active Global membership is needed to send introductions to
+                China or Global members.
               </p>
             </>
           )}
           <p className="profile-trust-note">
-            <ShieldCheck size={16} /> Email details remain private until both
-            people agree. Profile review is not a guarantee of business results.
+            <ShieldCheck size={16} />{" "}
+            {member.is_demo
+              ? "Demo content is illustrative and does not represent a verified member or business."
+              : "Email details remain private until both people agree. Profile review is not a guarantee of business results."}
           </p>
         </aside>
       </div>

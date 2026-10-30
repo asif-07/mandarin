@@ -2373,3 +2373,197 @@ select:focus {
     height: 66px;
   }
 }
+
+/* Shared directory and profile states for China, Global and demo profiles. */
+.network-switcher {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  padding: 5px;
+  background: #e9ede2;
+  border: 1px solid #dfe4d6;
+  border-radius: 11px;
+  margin-bottom: 12px;
+}
+.network-switcher button {
+  min-height: 46px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #73806b;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.network-switcher button[aria-pressed="true"] {
+  background: var(--green);
+  color: #f7f8ee;
+  box-shadow: 0 2px 6px #183f3512;
+}
+.network-switcher button small {
+  min-width: 19px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 9px;
+  background: #d9e2d0;
+  color: #53664c;
+}
+.network-switcher button[aria-pressed="true"] small {
+  background: #ffffff1c;
+  color: #d6dfbd;
+}
+.network-context {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+  margin-bottom: 21px;
+}
+.network-demo-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 17px 18px;
+  background: #f4eee1;
+  border: 1px solid #e7dbc1;
+  border-radius: 11px;
+  margin-top: 19px;
+  margin-bottom: 22px;
+}
+.network-demo-notice > p {
+  font-size: 11px;
+  line-height: 1.75;
+  color: #7c6b51;
+}
+.demo-label {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 5px 9px;
+  background: #fffaf0;
+  border: 1px solid #d9cbaa;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: #806742;
+  letter-spacing: 0.025em;
+}
+.member-demo-label {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  box-shadow: 0 2px 5px #30271408;
+}
+.member-network-row {
+  margin-top: 9px;
+}
+.member-network-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.4;
+  border: 1px solid transparent;
+}
+.member-network-china {
+  color: #43663a;
+  background: #edf2e6;
+  border-color: #dce5d0;
+}
+.member-network-global {
+  color: #856844;
+  background: #f4ecdf;
+  border-color: #e9decc;
+}
+.member-card .member-meta {
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.member-card .member-actions {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.member-card .member-actions > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+.profile-demo-notice {
+  margin-top: 18px;
+  margin-bottom: 0;
+}
+.profile-demo-stats {
+  margin-top: 23px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  font-size: 11px;
+  color: #8a765a;
+}
+.profile-demo-action,
+.profile-view-only {
+  display: grid;
+  gap: 16px;
+  margin-top: 23px;
+}
+.profile-demo-action .btn,
+.profile-view-only .btn {
+  width: 100%;
+  font-size: 11px;
+}
+.profile-demo-action > p {
+  font-size: 11px;
+  line-height: 1.8;
+}
+.profile-demo-action button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
+.profile-view-only {
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 760px) {
+  .network-switcher button {
+    min-height: 45px;
+    gap: 7px;
+    font-size: 11px;
+    padding: 8px;
+  }
+  .network-switcher button > svg {
+    width: 13px;
+    flex-shrink: 0;
+  }
+  .network-switcher button small {
+    min-width: 17px;
+    font-size: 8px;
+    padding: 2px 4px;
+  }
+  .network-context {
+    font-size: 10px;
+    margin-bottom: 18px;
+  }
+  .network-demo-notice {
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    margin-bottom: 19px;
+  }
+  .network-demo-notice > p {
+    font-size: 10px;
+  }
+  .demo-label,
+  .member-network-badge {
+    font-size: 8px;
+  }
+  .member-demo-label {
+    top: 13px;
+    left: 13px;
+  }
+}

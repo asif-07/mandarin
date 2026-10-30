@@ -17,7 +17,7 @@ end $$;
 update public.profiles set bio='Business introduction',city='Guangzhou',company='Security test',specialties=array['Sourcing'] where id='a0000000-0000-4000-8000-000000000002';
 set local role anon;
 do $$ begin
-  if exists(select 1 from public.member_directory) then raise exception 'Unapproved profile publicly visible'; end if;
+  if exists(select 1 from public.member_directory where id='a0000000-0000-4000-8000-000000000002') then raise exception 'Unapproved profile publicly visible'; end if;
   begin perform * from public.member_accounts; raise exception 'Anonymous private accounts readable'; exception when insufficient_privilege then null; end;
   begin perform * from private.admin_bootstrap_emails; raise exception 'Bootstrap allowlist leaked'; exception when insufficient_privilege then null; end;
   begin perform public.request_membership('global_monthly','fake',''); raise exception 'Anonymous mutation allowed'; exception when insufficient_privilege then null; end;
@@ -56,7 +56,7 @@ set local role authenticated;
 do $$ begin
   begin perform public.request_connection('a0000000-0000-4000-8000-000000000002','I need help with sourcing',false); raise exception 'Sender consent bypassed'; exception when raise_exception then if sqlerrm <> 'Agree to share your account email when this member accepts your request.' then raise; end if; end;
   perform public.request_connection('a0000000-0000-4000-8000-000000000002','I need help with sourcing',true);
-  if (select count(*) from public.member_directory) <> 1 then raise exception 'Active China profile not discoverable'; end if;
+  if (select count(*) from public.member_directory where id='a0000000-0000-4000-8000-000000000002') <> 1 then raise exception 'Active China profile not discoverable'; end if;
   if (select public.connection_contact(id) from public.connections where sender_id=auth.uid()) is not null then raise exception 'Contact leaked before acceptance'; end if;
   begin perform public.change_connection((select id from public.connections where sender_id=auth.uid()),'accepted',true); raise exception 'Sender accepted own request'; exception when raise_exception then if sqlerrm <> 'Only the recipient can update this connection.' then raise; end if; end;
   begin perform public.submit_review((select id from public.connections where sender_id=auth.uid()),5,'Premature review should fail'); raise exception 'Uncompleted review allowed'; exception when raise_exception then if sqlerrm <> 'You can review only your own completed connections.' then raise; end if; end;
@@ -105,7 +105,7 @@ reset role;
 select set_config('request.jwt.claims','{}',true);
 set local role anon;
 do $$ begin
-  if (select rating from public.member_directory) <> 5 or (select review_count from public.member_directory) <> 1 or (select completed_connections from public.member_directory) <> 1 then raise exception 'Public trust statistics incorrect'; end if;
+  if (select rating from public.member_directory where id='a0000000-0000-4000-8000-000000000002') <> 5 or (select review_count from public.member_directory where id='a0000000-0000-4000-8000-000000000002') <> 1 or (select completed_connections from public.member_directory where id='a0000000-0000-4000-8000-000000000002') <> 1 then raise exception 'Public trust statistics incorrect'; end if;
 end $$;
 reset role;
 select set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
@@ -113,7 +113,7 @@ set local role authenticated;
 update public.profiles set company='Edited after approval' where id=auth.uid();
 do $$ begin
   if (select moderation_status from public.member_accounts where user_id=auth.uid()) <> 'pending' then raise exception 'Profile edit did not reset approval'; end if;
-  if exists(select 1 from public.member_directory) then raise exception 'Unreviewed edit remained public'; end if;
+  if exists(select 1 from public.member_directory where id='a0000000-0000-4000-8000-000000000002') then raise exception 'Unreviewed edit remained public'; end if;
 end $$;
 reset role;
 update public.member_accounts set moderation_status='rejected',moderation_reason='Please correct the company' where user_id='a0000000-0000-4000-8000-000000000002';

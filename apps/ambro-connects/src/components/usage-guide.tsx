@@ -142,8 +142,8 @@ export function UsageGuide() {
             Three queues. One careful check at a time.
           </h2>
           <p>
-            For a new China member, check their profile first, then their
-            membership request. These are two separate approvals.
+            For a new member, check their profile first, then their membership
+            request. These are two separate approvals.
           </p>
         </div>
         <div className="guide-review-grid">
@@ -223,7 +223,7 @@ export function UsageGuide() {
         </div>
         <div className="guide-two-gates">
           <div>
-            <span className="eyebrow">When does a China profile go live?</span>
+            <span className="eyebrow">When does a member profile go live?</span>
             <h3>
               Approved profile <span aria-hidden="true">+</span> active
               membership.
@@ -231,8 +231,11 @@ export function UsageGuide() {
           </div>
           <p>
             Both are required for discovery and managing connection requests.
-            Editing an approved China profile returns it to profile review; its
-            paid membership period remains recorded.
+            Global members must also turn on public network visibility in My
+            space. Editing a China or published Global profile returns it to
+            profile review; its paid membership period remains recorded.
+            Connection access pauses during profile review; hiding a pending
+            Global profile does not restore access before approval.
           </p>
         </div>
         <details className="guide-disclosure">
@@ -244,10 +247,10 @@ export function UsageGuide() {
               what is missing or could not be confirmed.
             </p>
             <p>
-              For a rejected China profile, the member can read the team’s note
-              in My space, correct the details and save the profile to request
-              another review. For a rejected membership request, they can read
-              the reason under <strong>Recent requests</strong>, then submit a
+              For a rejected profile, the member can read the team’s note in My
+              space, correct the details and save the profile to request another
+              review. For a rejected membership request, they can read the
+              reason under <strong>Recent requests</strong>, then submit a
               corrected reference.
             </p>
             <p>
@@ -335,6 +338,12 @@ export function UsageGuide() {
                 Specialties, then choose <strong>Save profile</strong>.
               </li>
               <li>
+                To receive requests, turn on{" "}
+                <strong>Show my Global profile in the public network</strong>.
+                Listing requires profile approval and active membership. Leave
+                it off to browse and send requests without a public listing.
+              </li>
+              <li>
                 Choose <strong>100 RMB / month</strong>, or{" "}
                 <strong>I’m joining an Ambro trip</strong> for the eligible
                 complimentary year. Arrange payment or confirm your trip with
@@ -370,8 +379,8 @@ export function UsageGuide() {
             <span aria-hidden="true">01</span>
             <h3>Find your person.</h3>
             <p>
-              Global members browse China profiles, photos, specialties,
-              previous work and approved reviews in Discover.
+              Members can browse China and visible Global profiles, photos,
+              specialties, previous work and approved reviews in Discover.
             </p>
           </li>
           <li>
@@ -380,15 +389,17 @@ export function UsageGuide() {
             <p>
               Open a profile and explain what you need. Give consent to share
               your account email if the request is accepted. Follow it in{" "}
-              <Link href="/connections">Connections → Sent</Link>.
+              <Link href="/connections">Connections → Sent</Link>. Only Global
+              members can send requests, to China or Global members.
+              China-to-China requests are not available.
             </p>
           </li>
           <li>
             <span aria-hidden="true">03</span>
             <h3>Accept & talk directly.</h3>
             <p>
-              The China member opens <strong>Connections → Received</strong> and
-              can accept or decline. On acceptance, both members’ emails are
+              The receiving member opens <strong>Connections → Received</strong>{" "}
+              and can accept or decline. On acceptance, both members’ emails are
               shared with each other to arrange the work.
             </p>
           </li>
@@ -396,7 +407,7 @@ export function UsageGuide() {
             <span aria-hidden="true">04</span>
             <h3>Complete & share feedback.</h3>
             <p>
-              After the work, the China member chooses{" "}
+              After the work, the receiving member chooses{" "}
               <strong>Mark work completed</strong>. The Global member can then
               submit a rating and review for team moderation.
             </p>
@@ -413,6 +424,23 @@ export function UsageGuide() {
           <span className="eyebrow">05 / A few useful answers</span>
           <h2 id="help-heading">Still finding your way?</h2>
         </div>
+        <details className="guide-disclosure">
+          <summary>How do I remove the demo members later?</summary>
+          <div>
+            <p>
+              Open the team dashboard. Under <strong>Preview data</strong>,
+              choose <strong>Hide all demo profiles</strong>. This removes all
+              sample profiles from the network together and leaves real member
+              accounts unchanged. You can show them again while reviewing the
+              design.
+            </p>
+            <p>
+              Demo profiles are fictional examples with illustrated photos and
+              sample work. They have no real ratings or contact details and
+              cannot receive connection requests.
+            </p>
+          </div>
+        </details>
         <details className="guide-disclosure">
           <summary>I registered. Why can’t I sign in yet?</summary>
           <div>

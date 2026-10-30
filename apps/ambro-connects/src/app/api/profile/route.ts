@@ -44,6 +44,11 @@ export async function PUT(request: Request) {
   try {
     const body = await jsonBody(request);
     const { supabase, user } = await authenticated();
+    if (
+      body.network_visible !== undefined &&
+      typeof body.network_visible !== "boolean"
+    )
+      throw new ApiError("Choose whether to show your profile in the network.");
     if (!Array.isArray(body.portfolio) || body.portfolio.length > 12)
       throw new ApiError("Add at most 12 portfolio projects.");
     const portfolio = body.portfolio.map((item: unknown) => {
@@ -72,6 +77,9 @@ export async function PUT(request: Request) {
       avatar_url: mediaUrl(body.avatar_url, "Profile photo", user.id),
       cover_url: mediaUrl(body.cover_url, "Cover photo", user.id),
       portfolio,
+      ...(typeof body.network_visible === "boolean"
+        ? { network_visible: body.network_visible }
+        : {}),
     };
     const { data, error } = await supabase
       .from("profiles")

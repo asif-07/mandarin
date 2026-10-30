@@ -323,8 +323,8 @@ export function Connections() {
             </h2>
             <p className="muted">
               {tab === "incoming"
-                ? "Connection requests from the network will appear here. A complete profile makes it easier for people to find the right fit."
-                : "Find people in China whose experience matches your plans, then send a thoughtful request."}
+                ? "Introductions from Global members will appear here. A complete profile makes it easier for people to find the right fit."
+                : "Find people in China and across the Global network whose experience matches your plans, then send a thoughtful introduction."}
             </p>
             <Link
               className="btn btn-dark"
@@ -332,7 +332,7 @@ export function Connections() {
             >
               {tab === "incoming"
                 ? "Complete your profile"
-                : "Meet the China network"}
+                : "Explore the network"}
               <span aria-hidden="true">↗</span>
             </Link>
           </div>

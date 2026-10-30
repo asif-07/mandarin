@@ -16,22 +16,26 @@ export async function GET(
   try {
     const id = uuidValue((await params).id, "Member ID");
     const supabase = await serverSupabase();
-    const [memberResult, reviewsResult] = await Promise.all([
-      supabase.from("member_directory").select("*").eq("id", id).maybeSingle(),
-      supabase
-        .from("reviews")
-        .select(
-          "id,connection_id,reviewer_id,recipient_id,rating,body,status,created_at",
-        )
-        .eq("recipient_id", id)
-        .eq("status", "approved")
-        .order("created_at", { ascending: false })
-        .limit(50),
-    ]);
+    const memberResult = await supabase
+      .from("member_directory")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
     dbError(memberResult.error);
-    dbError(reviewsResult.error);
     if (!memberResult.data)
       throw new ApiError("This member is not currently available.", 404);
+    if (memberResult.data.is_demo)
+      return response({ member: memberResult.data, reviews: [] });
+    const reviewsResult = await supabase
+      .from("reviews")
+      .select(
+        "id,connection_id,reviewer_id,recipient_id,rating,body,status,created_at",
+      )
+      .eq("recipient_id", id)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    dbError(reviewsResult.error);
     // Reviewer names are intentionally not public without their separate consent.
     return response({
       member: memberResult.data,

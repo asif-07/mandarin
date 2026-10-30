@@ -15,31 +15,33 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const { supabase } = await administrator();
-    const [accountResult, requestsResult, reviewsResult] = await Promise.all([
-      supabase
-        .from("member_accounts")
-        .select("user_id,member_type,moderation_status")
-        .order("created_at", { ascending: false })
-        .limit(200),
-      supabase
-        .from("membership_requests")
-        .select(
-          "id,user_id,plan,reference,note,status,rejection_reason,created_at,reviewed_at",
-        )
-        .eq("status", "pending")
-        .order("created_at")
-        .limit(200),
-      supabase
-        .from("reviews")
-        .select(
-          "id,connection_id,reviewer_id,recipient_id,rating,body,status,created_at",
-        )
-        .eq("status", "pending")
-        .order("created_at")
-        .limit(200),
-    ]);
-    [accountResult, requestsResult, reviewsResult].forEach(({ error }) =>
-      dbError(error),
+    const [accountResult, requestsResult, reviewsResult, demosResult] =
+      await Promise.all([
+        supabase
+          .from("member_accounts")
+          .select("user_id,member_type,moderation_status")
+          .order("created_at", { ascending: false })
+          .limit(200),
+        supabase
+          .from("membership_requests")
+          .select(
+            "id,user_id,plan,reference,note,status,rejection_reason,created_at,reviewed_at",
+          )
+          .eq("status", "pending")
+          .order("created_at")
+          .limit(200),
+        supabase
+          .from("reviews")
+          .select(
+            "id,connection_id,reviewer_id,recipient_id,rating,body,status,created_at",
+          )
+          .eq("status", "pending")
+          .order("created_at")
+          .limit(200),
+        supabase.from("demo_members").select("enabled"),
+      ]);
+    [accountResult, requestsResult, reviewsResult, demosResult].forEach(
+      ({ error }) => dbError(error),
     );
     const accounts = accountResult.data || [];
     const accountIds = accounts.map((account) => account.user_id);
@@ -64,6 +66,10 @@ export async function GET() {
       accounts.map((account) => [account.user_id, account.member_type]),
     );
     return response({
+      demo_members: {
+        total: (demosResult.data || []).length,
+        visible: (demosResult.data || []).filter((demo) => demo.enabled).length,
+      },
       profiles: accounts.flatMap((account) => {
         const profile = profiles.get(account.user_id);
         return profile
@@ -97,11 +103,20 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     const body = await jsonBody(request);
+    const { supabase } = await administrator();
+    if (body.action === "demo_visibility") {
+      if (typeof body.visible !== "boolean")
+        throw new ApiError("Choose whether to show demo profiles.");
+      const { error } = await supabase.rpc("set_demo_members_visible", {
+        visible: body.visible,
+      });
+      dbError(error);
+      return response({ ok: true });
+    }
     if (!["profile", "membership", "review"].includes(String(body.kind)))
       throw new ApiError("Choose a valid review queue.");
     if (!["approved", "rejected", "suspended"].includes(String(body.decision)))
       throw new ApiError("Choose a valid decision.");
-    const { supabase } = await administrator();
     const { error } = await supabase.rpc("admin_decision", {
       entity_kind: body.kind,
       target: uuidValue(body.id),

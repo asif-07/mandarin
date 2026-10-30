@@ -32,10 +32,12 @@ export interface Profile {
   portfolio: PortfolioItem[];
   created_at: string;
   updated_at: string;
+  network_visible: boolean;
 }
 
 export interface PublicMember extends Profile {
-  member_type: "china";
+  member_type: MemberType;
+  is_demo: boolean;
   verified: boolean;
   rating: number | null;
   review_count: number;
@@ -113,6 +115,7 @@ export interface MeResponse {
 }
 
 export interface AdminQueues {
+  demo_members: { total: number; visible: number };
   profiles: Array<
     Profile & { member_type: MemberType; moderation_status: ModerationStatus }
   >;

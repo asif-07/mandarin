@@ -10,8 +10,9 @@ The app needs only `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHA
 - Global: RMB 100 per calendar month, subject to payment approval.
 - Trip benefit: one complimentary calendar year per account, after the team verifies the booking.
 - Submitting a reference creates a pending request. Only an administrator decision creates an immutable membership period. Renewals extend the latest existing end date.
-- China profile edits remove its public listing until review. A rejected profile can be saved for another review; suspension persists.
-- Connections require an active Global sender and an approved, active China recipient. Only the recipient can accept, decline, or complete the request. Email sharing requires both recorded consents.
+- China and published Global profile edits remove their public listing until review. Global directory visibility requires the owner’s explicit opt-in; existing Global profiles default to private. A rejected profile can be saved for another review; suspension persists.
+- Connections require an active Global sender and an approved, active China recipient or an opted-in approved, active Global recipient. China members cannot initiate any requests. Only the recipient can accept, decline, or complete the request. Email sharing requires both recorded consents. Phone numbers and WhatsApp links are not public profile fields; a database guard rejects recognizable contact details in public text.
+- Fictional demo members have a separate RLS-protected table and no Auth identities or real review metrics. Directory results include `is_demo`; RPCs reject demo connection targets. Only an administrator can atomically hide/show all demos with `set_demo_members_visible`, which records an audit entry. Seed and cleanup are scoped solely to this separate table.
 - One review is allowed per completed connection, by its Global sender. Public ratings include only approved reviews.
 
 Profiles expose professional content only. Private account state, billing references and connection records have separate RLS. The directory view uses `security_invoker`. Mutations are authenticated invoker wrappers over private functions that validate authorization. Administrator checks use current, server-controlled `auth.users.raw_app_meta_data`; user metadata cannot grant a role.

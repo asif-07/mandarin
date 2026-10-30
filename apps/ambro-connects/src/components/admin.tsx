@@ -146,6 +146,37 @@ export function Admin() {
     }
   }
 
+  async function setDemoVisibility(visible: boolean) {
+    setBusy("demo-visibility");
+    setNotice(null);
+    try {
+      await responseData(
+        await fetch("/api/admin", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "demo_visibility", visible }),
+        }),
+      );
+      await load();
+      setNotice({
+        type: "success",
+        text: visible
+          ? "Demo profiles are visible in the network."
+          : "All demo profiles are hidden. Real member accounts are unchanged.",
+      });
+    } catch (cause) {
+      setNotice({
+        type: "error",
+        text:
+          cause instanceof Error
+            ? cause.message
+            : "Demo visibility could not be updated.",
+      });
+    } finally {
+      setBusy("");
+    }
+  }
+
   function decisionControls(
     kind: QueueKind,
     id: string,
@@ -299,6 +330,29 @@ export function Admin() {
         >
           {notice.text}
         </div>
+      ) : null}
+      {queues.demo_members?.total ? (
+        <section className="ac-team-entry" aria-label="Demo profiles">
+          <div>
+            <span className="eyebrow">Preview data</span>
+            <h2>{queues.demo_members.visible} demo profiles visible</h2>
+            <p>
+              Fictional sample members are labeled in the directory. Hide them
+              all when you’re ready to welcome real members.
+            </p>
+          </div>
+          <button
+            className="btn btn-ghost"
+            disabled={Boolean(busy)}
+            onClick={() => setDemoVisibility(queues.demo_members.visible === 0)}
+          >
+            {busy === "demo-visibility"
+              ? "Updating…"
+              : queues.demo_members.visible
+                ? "Hide all demo profiles"
+                : "Show demo profiles"}
+          </button>
+        </section>
       ) : null}
       <div className="ac-admin-summary">
         <div>

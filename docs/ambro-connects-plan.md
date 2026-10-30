@@ -8,6 +8,12 @@ Use **Ambro Connect China** for China-based members and **Ambro Connect Global**
 
 The first release should feel like a social discovery app: real people, useful profiles, project stories, saved members, and considered introductions. It must not imply that a membership guarantees business, a visa, travel availability, or a successful transaction.
 
+## Network expansion and review samples
+
+The directory includes China and Global segments. Only Global members initiate requests, to China or Global members; China members can browse and respond but cannot initiate requests. Global public listing is an explicit profile setting, with team approval and active membership required. Existing Global profiles remain private until their owner opts in. Public phone numbers, WhatsApp contact links and contact email addresses are excluded; accepted connections share account emails only with both people’s consent.
+
+For design review, show four fictional China members in each of the five existing specialties (20 total) and ten complete fictional Global profiles. Every sample carries a Demo profile label, illustrated portrait and sample portfolio, with no invented ratings or real connection actions. Keep samples in a separate table and provide a team control to hide them all later without touching real accounts.
+
 ## Membership model
 
 | Membership | Who it serves | Price and access | Activation |

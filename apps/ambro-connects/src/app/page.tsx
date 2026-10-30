@@ -259,7 +259,7 @@ export default function Home() {
             </div>
             <ul>
               {[
-                "Discover China-based professionals",
+                "Discover China and Global members",
                 "Explore portfolios and member reviews",
                 "Send personal connection requests",
                 "Build your own China network",
@@ -396,7 +396,7 @@ export default function Home() {
             },
             {
               q: "When are my contact details shared?",
-              a: "Your email is never shown in the public directory. Sending or accepting a connection includes consent to share your account email with that person once the request is accepted.",
+              a: "Phone numbers and WhatsApp links are not displayed on profiles. Your email is never shown in the public directory. Sending or accepting a connection includes consent to share your account email with that person once the request is accepted.",
             },
           ].map((f) => (
             <details key={f.q}>

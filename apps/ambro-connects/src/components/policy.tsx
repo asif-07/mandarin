@@ -8,8 +8,8 @@ export function Policy({ kind }: { kind: "privacy" | "terms" | "community" }) {
           <h1>Membership, clearly.</h1>
           <p>
             Ambro Connects is a network by Ambro and Mandarin Roots. It helps
-            Global members discover and connect with professionals who reside
-            and do business in China.
+            Global members discover and connect with China professionals and
+            other Global members who choose to appear in the directory.
           </p>
           <h2>Choose your membership</h2>
           <ul>
@@ -50,17 +50,22 @@ export function Policy({ kind }: { kind: "privacy" | "terms" | "community" }) {
             credentials, pricing and delivery directly before doing business.
           </p>
           <p>
-            Contact email is shared with the other member only after a
-            connection is accepted with both members’ consent. Connection
-            requests, acceptance and completion are recorded. Eligible completed
-            connections may receive one moderated review.
+            Only Global members can send requests, to visible China or Global
+            members. China members can browse profiles and respond to requests.
+            China-to-China requests are not available. Contact email is shared
+            with the other member only after a connection is accepted with both
+            members’ consent. Connection requests, acceptance and completion are
+            recorded. Eligible completed connections may receive one moderated
+            review.
           </p>
           <h2>Keeping the circle useful</h2>
           <p>
             Profiles must be honest, respectful and based on work you may share.
             The team can reject or suspend a profile, membership or review that
             breaches the <Link href="/community">community guidelines</Link>.
-            China profile edits return it to review before it is listed again.
+            Edits to China profiles and published Global profiles return them to
+            review before they are listed again. Demo profiles are fictional
+            previews, clearly labeled, and cannot receive real requests.
           </p>
           <div className="status">
             Launch information: confirm operator support details and payment
@@ -88,8 +93,10 @@ export function Policy({ kind }: { kind: "privacy" | "terms" | "community" }) {
             Approved, active China profiles are publicly discoverable. Names,
             city, company, biography, specialties, languages, achievements,
             portfolio and approved reviews may be visible. Global profiles are
-            not listed in the public directory. People involved in a connection
-            can see each other’s basic profile and introduction.
+            listed only when the member turns on public network visibility,
+            after profile approval and membership activation. Existing Global
+            profiles remain unlisted unless their owner opts in. People involved
+            in a connection can see each other’s basic profile and introduction.
           </p>
           <p>
             Profile images and portfolio images use public image links, even
@@ -103,6 +110,9 @@ export function Policy({ kind }: { kind: "privacy" | "terms" | "community" }) {
             history are available to you and authorized administrators. Your
             email is not in the directory. It becomes available to the other
             party on an accepted connection, with consent from both people.
+            Phone numbers and WhatsApp contact links are not displayed in the
+            directory or public profiles. Do not put contact details in public
+            text or images.
           </p>
           <h2>How the app works</h2>
           <p>
@@ -116,11 +126,12 @@ export function Policy({ kind }: { kind: "privacy" | "terms" | "community" }) {
           <h2>Your choices</h2>
           <p>
             You can edit your profile and photos in{" "}
-            <Link href="/account">My space</Link>. China profile edits return it
-            for review. You can choose whether to send or accept a connection
-            and share your email. Contact the Mandarin Roots team through your
-            existing booking or membership channel for access, removal,
-            visibility or other privacy requests. Do not send sensitive
+            <Link href="/account">My space</Link>. Global members can turn off
+            public network visibility there. Edits to China or published Global
+            profiles return them for review. You can choose whether to send or
+            accept a connection and share your email. Contact the Mandarin Roots
+            team through your existing booking or membership channel for access,
+            removal, visibility or other privacy requests. Do not send sensitive
             information in public profile fields.
           </p>
           <div className="status">

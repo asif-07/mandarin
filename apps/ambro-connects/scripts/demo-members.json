@@ -1,0 +1,1126 @@
+[
+  {
+    "id": "0d8fc263-b231-5cb7-a5a4-1aee8acb8f9c",
+    "full_name": "Lin Qiao",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I help a buyer turn an early homeware idea into a clear sample brief. My focus is comparing materials, organising factory questions, and keeping the choices understandable before a sourcing visit. I enjoy working with first-time China visitors who want to learn the process as they go.",
+    "city": "Guangzhou",
+    "company": "Demo · Lanternline Sourcing",
+    "specialties": [
+      "Sourcing",
+      "Homeware",
+      "Sample coordination"
+    ],
+    "languages": [
+      "Mandarin",
+      "English"
+    ],
+    "avatar_url": "/demo/lin-qiao-avatar.svg",
+    "cover_url": "/demo/lin-qiao-cover.svg",
+    "achievements": [
+      "Illustrative: built a sample-comparison framework for small homeware ranges",
+      "Illustrative: designed a bilingual factory-visit preparation checklist",
+      "Illustrative: created a materials reference library for product discussions"
+    ],
+    "portfolio": [
+      {
+        "title": "Homeware sample study",
+        "description": "Fictional demo project. An illustrated exercise comparing shape, finish, and packaging options for a small tableware collection.",
+        "image_url": "/demo/lin-qiao-project-1.svg"
+      },
+      {
+        "title": "Factory visit brief",
+        "description": "Fictional demo project. A sample visit workbook showing the questions, product priorities, and follow-up notes a buyer could prepare.",
+        "image_url": "/demo/lin-qiao-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "4d871dd0-6a86-58b0-b034-a97d2a0312d7",
+    "full_name": "Jun Wei",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I explore consumer-electronics supply chains with a practical eye for product specifications. I can help frame a supplier comparison, organise a sample review, and prepare a useful meeting agenda. My favourite projects start with a clear explanation of the buyer’s intended customer and use case.",
+    "city": "Shenzhen",
+    "company": "Demo · Circuit Grove Studio",
+    "specialties": [
+      "Sourcing",
+      "Consumer electronics",
+      "Supplier research"
+    ],
+    "languages": [
+      "Mandarin",
+      "English",
+      "Cantonese"
+    ],
+    "avatar_url": "/demo/jun-wei-avatar.svg",
+    "cover_url": "/demo/jun-wei-cover.svg",
+    "achievements": [
+      "Illustrative: developed a product-specification comparison template",
+      "Illustrative: mapped an example supplier-research workflow",
+      "Illustrative: prepared a visual guide to sample-review notes"
+    ],
+    "portfolio": [
+      {
+        "title": "Portable light concept",
+        "description": "Fictional demo project. A sample product brief showing how battery, brightness, materials, and packaging questions could be organised.",
+        "image_url": "/demo/jun-wei-project-1.svg"
+      },
+      {
+        "title": "Supplier shortlist board",
+        "description": "Fictional demo project. A fictional research board demonstrating how a buyer might compare capabilities and unanswered questions.",
+        "image_url": "/demo/jun-wei-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "45396279-3b94-523f-a746-9e9acf47c786",
+    "full_name": "Mei An",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I make a large wholesale market feel easier to navigate. I focus on giftware, stationery, and everyday accessories, helping visitors plan a realistic route and capture useful product notes. I like a thoughtful shortlist more than a rushed day of collecting business cards.",
+    "city": "Yiwu",
+    "company": "Demo · Little Horizon Trading",
+    "specialties": [
+      "Sourcing",
+      "Giftware",
+      "Market visits"
+    ],
+    "languages": [
+      "Mandarin",
+      "English"
+    ],
+    "avatar_url": "/demo/mei-an-avatar.svg",
+    "cover_url": "/demo/mei-an-cover.svg",
+    "achievements": [
+      "Illustrative: created a category-based wholesale-market visit planner",
+      "Illustrative: developed a product-photo and quotation note template",
+      "Illustrative: designed an example gift-range selection board"
+    ],
+    "portfolio": [
+      {
+        "title": "Gift range moodboard",
+        "description": "Fictional demo project. A fictional selection study for an everyday gift collection, organised by material, colour, and intended audience.",
+        "image_url": "/demo/mei-an-project-1.svg"
+      },
+      {
+        "title": "Market day route",
+        "description": "Fictional demo project. An illustrative route and note-taking plan for comparing giftware categories during a sourcing visit.",
+        "image_url": "/demo/mei-an-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "2479da9f-b5df-5849-9a16-aa0beb80c075",
+    "full_name": "Rui Chen",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am interested in the details that make furniture sourcing clearer: dimensions, finishes, materials, and the questions behind a beautiful reference image. I help shape a showroom visit around a defined brief so buyers can compare options with more confidence and fewer loose notes.",
+    "city": "Foshan",
+    "company": "Demo · Form & Field Workshop",
+    "specialties": [
+      "Sourcing",
+      "Furniture",
+      "Materials"
+    ],
+    "languages": [
+      "Mandarin",
+      "English",
+      "Cantonese"
+    ],
+    "avatar_url": "/demo/rui-chen-avatar.svg",
+    "cover_url": "/demo/rui-chen-cover.svg",
+    "achievements": [
+      "Illustrative: built a furniture-finish comparison worksheet",
+      "Illustrative: prepared a showroom-visit planning guide",
+      "Illustrative: created an example room-by-room procurement brief"
+    ],
+    "portfolio": [
+      {
+        "title": "Furniture finish library",
+        "description": "Fictional demo project. An illustrated sample palette comparing wood tones, upholstery, and metal finishes for a hospitality concept.",
+        "image_url": "/demo/rui-chen-project-1.svg"
+      },
+      {
+        "title": "Showroom comparison kit",
+        "description": "Fictional demo project. A fictional furniture shortlist with measurement fields, reference images, and questions for a showroom discussion.",
+        "image_url": "/demo/rui-chen-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "e9607b28-ad2b-5a34-939f-2f4a65730fa7",
+    "full_name": "Tao Wen",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I help people think through the movement of goods before the last minute. My work centres on shipment information, collection schedules, and useful questions for freight partners. I enjoy explaining unfamiliar logistics terms in plain language so a new importer can have a better conversation.",
+    "city": "Shenzhen",
+    "company": "Demo · Harbour Path Logistics",
+    "specialties": [
+      "Logistics",
+      "Freight planning",
+      "Shipment coordination"
+    ],
+    "languages": [
+      "Mandarin",
+      "English"
+    ],
+    "avatar_url": "/demo/tao-wen-avatar.svg",
+    "cover_url": "/demo/tao-wen-cover.svg",
+    "achievements": [
+      "Illustrative: designed a shipment-information handover checklist",
+      "Illustrative: created an example freight-route comparison board",
+      "Illustrative: prepared a plain-language packing-list guide"
+    ],
+    "portfolio": [
+      {
+        "title": "Shipment handover map",
+        "description": "Fictional demo project. A fictional logistics workflow showing the information to confirm between a supplier, buyer, and freight partner.",
+        "image_url": "/demo/tao-wen-project-1.svg"
+      },
+      {
+        "title": "Freight route study",
+        "description": "Fictional demo project. An illustrative comparison of shipment stages and planning questions, without offering real rates or transit promises.",
+        "image_url": "/demo/tao-wen-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "59d17ddd-37ac-545d-aca7-e0e5c8b38a8b",
+    "full_name": "Yuna Luo",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I focus on keeping the documentary side of an export conversation organised. I help people identify the information they need, spot gaps in a handover, and prepare questions for the qualified partners involved. A calm checklist is often the most useful thing at a busy moment.",
+    "city": "Ningbo",
+    "company": "Demo · Estuary Cargo Desk",
+    "specialties": [
+      "Logistics",
+      "Export documentation",
+      "Port coordination"
+    ],
+    "languages": [
+      "Mandarin",
+      "English"
+    ],
+    "avatar_url": "/demo/yuna-luo-avatar.svg",
+    "cover_url": "/demo/yuna-luo-cover.svg",
+    "achievements": [
+      "Illustrative: built an export-document completeness checklist",
+      "Illustrative: prepared a sample port-handover information map",
+      "Illustrative: created a terminology reference for new exporters"
+    ],
+    "portfolio": [
+      {
+        "title": "Document flow workbook",
+        "description": "Fictional demo project. A fictional set of document placeholders showing how details could be checked across a shipment handover.",
+        "image_url": "/demo/yuna-luo-project-1.svg"
+      },
+      {
+        "title": "Port handover board",
+        "description": "Fictional demo project. An illustrated planning board for organising milestones, responsibilities, and questions around a port movement.",
+        "image_url": "/demo/yuna-luo-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "32a4c528-7d14-5ca9-9ec8-8cd150daa1ea",
+    "full_name": "Bo Han",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I like turning several small purchasing decisions into one coherent shipping conversation. I focus on collection planning, carton information, and packaging questions for buyers visiting multiple suppliers. My starting point is a shared list of what is ready, what is missing, and who needs to confirm it.",
+    "city": "Guangzhou",
+    "company": "Demo · Parcel & Passage",
+    "specialties": [
+      "Logistics",
+      "Consolidation planning",
+      "Packaging"
+    ],
+    "languages": [
+      "Mandarin",
+      "English",
+      "Cantonese"
+    ],
+    "avatar_url": "/demo/bo-han-avatar.svg",
+    "cover_url": "/demo/bo-han-cover.svg",
+    "achievements": [
+      "Illustrative: created a multi-supplier collection tracker",
+      "Illustrative: designed a carton-information review sheet",
+      "Illustrative: prepared an example consolidation planning guide"
+    ],
+    "portfolio": [
+      {
+        "title": "Multi-supplier collection plan",
+        "description": "Fictional demo project. A fictional planning exercise showing how several product pickups could be organised into one handover schedule.",
+        "image_url": "/demo/bo-han-project-1.svg"
+      },
+      {
+        "title": "Packaging information cards",
+        "description": "Fictional demo project. Illustrative cards showing the dimensions, handling notes, and open questions useful in a packaging discussion.",
+        "image_url": "/demo/bo-han-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "19f7999a-fe90-530a-9bac-e854c0f98f30",
+    "full_name": "Xia Ning",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I approach logistics as a sequence of decisions, not just a booking. I can help outline the people, documents, and milestones a small trading business should discuss with its service providers. I work best with visitors who want a clear map before they choose a route.",
+    "city": "Shanghai",
+    "company": "Demo · Waypoint Freight Studio",
+    "specialties": [
+      "Logistics",
+      "Supply-chain planning",
+      "Trade coordination"
+    ],
+    "languages": [
+      "Mandarin",
+      "English"
+    ],
+    "avatar_url": "/demo/xia-ning-avatar.svg",
+    "cover_url": "/demo/xia-ning-cover.svg",
+    "achievements": [
+      "Illustrative: developed a milestone-based shipment planning board",
+      "Illustrative: created a responsibility-mapping worksheet",
+      "Illustrative: prepared a sample first-shipment briefing pack"
+    ],
+    "portfolio": [
+      {
+        "title": "First shipment roadmap",
+        "description": "Fictional demo project. A fictional visual roadmap for a new trading business to discuss responsibilities and milestones with its providers.",
+        "image_url": "/demo/xia-ning-project-1.svg"
+      },
+      {
+        "title": "Supply-chain conversation kit",
+        "description": "Fictional demo project. An illustrated briefing pack for collecting product, timing, and delivery questions before requesting professional advice.",
+        "image_url": "/demo/xia-ning-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "eb251744-3b85-5d8f-9e1c-40f039c40935",
+    "full_name": "An Li",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I help a business conversation stay clear across languages. My focus is meeting preparation, shared terminology, and thoughtful follow-up notes for sourcing and trade-fair visits. I like to understand the purpose of a meeting first, so the language support serves the actual discussion.",
+    "city": "Guangzhou",
+    "company": "Demo · Clearbridge Language Studio",
+    "specialties": [
+      "Translation",
+      "Business meetings",
+      "Trade fair support"
+    ],
+    "languages": [
+      "Mandarin",
+      "English",
+      "Cantonese"
+    ],
+    "avatar_url": "/demo/an-li-avatar.svg",
+    "cover_url": "/demo/an-li-cover.svg",
+    "achievements": [
+      "Illustrative: built a bilingual sourcing-meeting glossary",
+      "Illustrative: designed a trade-fair conversation preparation sheet",
+      "Illustrative: created a sample meeting-summary format"
+    ],
+    "portfolio": [
+      {
+        "title": "Trade fair language kit",
+        "description": "Fictional demo project. A fictional bilingual preparation kit with example question categories and space for a visitor’s product vocabulary.",
+        "image_url": "/demo/an-li-project-1.svg"
+      },
+      {
+        "title": "Meeting notes study",
+        "description": "Fictional demo project. An illustrative note-taking format separating decisions, open questions, and next steps after a business discussion.",
+        "image_url": "/demo/an-li-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "56f2328c-de75-5639-8d74-d624c7153f42",
+    "full_name": "Ning Xu",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am interested in the space between a literal translation and a message that feels natural. I focus on product stories, visitor information, and brand introductions, with careful questions about audience and tone. I enjoy helping international teams prepare a clearer first impression in China.",
+    "city": "Shanghai",
+    "company": "Demo · Paper Kite Language",
+    "specialties": [
+      "Translation",
+      "Brand communication",
+      "Editorial adaptation"
+    ],
+    "languages": [
+      "Mandarin",
+      "English",
+      "French"
+    ],
+    "avatar_url": "/demo/ning-xu-avatar.svg",
+    "cover_url": "/demo/ning-xu-cover.svg",
+    "achievements": [
+      "Illustrative: created a tone-of-voice adaptation worksheet",
+      "Illustrative: developed a bilingual brand-introduction structure",
+      "Illustrative: prepared a sample editorial review checklist"
+    ],
+    "portfolio": [
+      {
+        "title": "Brand introduction study",
+        "description": "Fictional demo project. A fictional layout showing how the same short business introduction could be adapted for different reading contexts.",
+        "image_url": "/demo/ning-xu-project-1.svg"
+      },
+      {
+        "title": "Visitor guide language board",
+        "description": "Fictional demo project. An illustrative editorial exercise exploring clear headings, practical instructions, and consistent terminology.",
+        "image_url": "/demo/ning-xu-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "67b5c5b7-1721-5018-bf7b-294a4e774203",
+    "full_name": "Hana Zhou",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I help teams prepare the language around a product before a supplier meeting begins. I enjoy building simple glossaries, checking that questions are precise, and making room for clarification. My approach is collaborative: the best translation starts with understanding what everyone is trying to decide.",
+    "city": "Shenzhen",
+    "company": "Demo · Openphrase Studio",
+    "specialties": [
+      "Translation",
+      "Product terminology",
+      "Supplier meetings"
+    ],
+    "languages": [
+      "Mandarin",
+      "English",
+      "Korean"
+    ],
+    "avatar_url": "/demo/hana-zhou-avatar.svg",
+    "cover_url": "/demo/hana-zhou-cover.svg",
+    "achievements": [
+      "Illustrative: designed a product-terminology preparation template",
+      "Illustrative: created a clarification-question reference sheet",
+      "Illustrative: built a sample bilingual supplier briefing"
+    ],
+    "portfolio": [
+      {
+        "title": "Product glossary workshop",
+        "description": "Fictional demo project. A fictional terminology board grouping example product features, materials, and clarification questions for a meeting.",
+        "image_url": "/demo/hana-zhou-project-1.svg"
+      },
+      {
+        "title": "Supplier briefing cards",
+        "description": "Fictional demo project. Illustrated sample cards for preparing concise questions and recording technical terms that need follow-up.",
+        "image_url": "/demo/hana-zhou-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "ce334d00-5cf0-5355-917a-c97e4fcf5f71",
+    "full_name": "Wei Su",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I enjoy helping visitors ask better questions and hear the stories behind a place. I focus on language support for cultural visits, community meetings, and small-group travel conversations. A little preparation around names, context, and expectations can make an introduction feel much more comfortable.",
+    "city": "Chengdu",
+    "company": "Demo · Common Thread Language",
+    "specialties": [
+      "Translation",
+      "Cultural exchange",
+      "Travel support"
+    ],
+    "languages": [
+      "Mandarin",
+      "English",
+      "Spanish"
+    ],
+    "avatar_url": "/demo/wei-su-avatar.svg",
+    "cover_url": "/demo/wei-su-cover.svg",
+    "achievements": [
+      "Illustrative: prepared a cultural-visit vocabulary workbook",
+      "Illustrative: created a sample small-group introduction guide",
+      "Illustrative: designed a visitor-question planning sheet"
+    ],
+    "portfolio": [
+      {
+        "title": "Cultural visit phraseboard",
+        "description": "Fictional demo project. A fictional language-preparation board for a cultural visit, with example topics rather than a real itinerary.",
+        "image_url": "/demo/wei-su-project-1.svg"
+      },
+      {
+        "title": "Community introduction kit",
+        "description": "Fictional demo project. An illustrative guide to preparing names, context, and open questions before a small-group introduction.",
+        "image_url": "/demo/wei-su-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "0461bbe7-141c-5bd0-b973-72219d68474d",
+    "full_name": "Jia Song",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I help a business visit start with a sharper question. I focus on desk research, meeting preparation, and organising what a team learns along the way. I enjoy working with small businesses exploring a new market, especially when they want a practical research plan before making commitments.",
+    "city": "Guangzhou",
+    "company": "Demo · Gatherline Business Studio",
+    "specialties": [
+      "Business services",
+      "Market research",
+      "Meeting preparation"
+    ],
+    "languages": [
+      "Mandarin",
+      "English",
+      "Cantonese"
+    ],
+    "avatar_url": "/demo/jia-song-avatar.svg",
+    "cover_url": "/demo/jia-song-cover.svg",
+    "achievements": [
+      "Illustrative: built a market-entry discovery worksheet",
+      "Illustrative: designed a structured business-visit debrief",
+      "Illustrative: prepared an example competitor observation board"
+    ],
+    "portfolio": [
+      {
+        "title": "Market questions canvas",
+        "description": "Fictional demo project. A fictional research canvas that turns broad business ambitions into topics for structured conversations and further investigation.",
+        "image_url": "/demo/jia-song-project-1.svg"
+      },
+      {
+        "title": "Business visit debrief",
+        "description": "Fictional demo project. An illustrated sample workbook for recording observations, uncertainties, and next research steps after a visit.",
+        "image_url": "/demo/jia-song-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "7ab455ce-7442-519f-9e97-5c0f67125872",
+    "full_name": "Yue Tan",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I look at how products meet people: the shop floor, the product story, and the questions customers ask. I focus on organising retail observations and brand-research conversations for visiting teams. I like to keep evidence, interpretation, and unanswered questions clearly separate.",
+    "city": "Shanghai",
+    "company": "Demo · Northwindow Strategy Desk",
+    "specialties": [
+      "Business services",
+      "Brand research",
+      "Retail observation"
+    ],
+    "languages": [
+      "Mandarin",
+      "English"
+    ],
+    "avatar_url": "/demo/yue-tan-avatar.svg",
+    "cover_url": "/demo/yue-tan-cover.svg",
+    "achievements": [
+      "Illustrative: created a retail-observation note system",
+      "Illustrative: built a sample brand-positioning comparison canvas",
+      "Illustrative: developed an evidence-and-assumptions review sheet"
+    ],
+    "portfolio": [
+      {
+        "title": "Retail observation journal",
+        "description": "Fictional demo project. A fictional journal layout showing how a visiting team could organise product-display and customer-experience observations.",
+        "image_url": "/demo/yue-tan-project-1.svg"
+      },
+      {
+        "title": "Brand landscape board",
+        "description": "Fictional demo project. An illustrative research board comparing positioning themes without representing real brands or market conclusions.",
+        "image_url": "/demo/yue-tan-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "62ce380b-7108-5a0a-9a9d-7b0aac0d2554",
+    "full_name": "Kai Lu",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am curious about the journey from a product idea to a clear online story. I help outline research questions, product-page information, and the operational topics a new e-commerce project should explore. My aim is a practical planning conversation, with specialist advice brought in where needed.",
+    "city": "Hangzhou",
+    "company": "Demo · Morrow Commerce Lab",
+    "specialties": [
+      "Business services",
+      "E-commerce planning",
+      "Product storytelling"
+    ],
+    "languages": [
+      "Mandarin",
+      "English"
+    ],
+    "avatar_url": "/demo/kai-lu-avatar.svg",
+    "cover_url": "/demo/kai-lu-cover.svg",
+    "achievements": [
+      "Illustrative: designed a product-page information checklist",
+      "Illustrative: prepared an e-commerce discovery workshop canvas",
+      "Illustrative: created an example content-production workflow"
+    ],
+    "portfolio": [
+      {
+        "title": "Product story framework",
+        "description": "Fictional demo project. A fictional product-page planning exercise linking customer questions with images, specifications, and helpful explanations.",
+        "image_url": "/demo/kai-lu-project-1.svg"
+      },
+      {
+        "title": "Commerce launch canvas",
+        "description": "Fictional demo project. An illustrative planning canvas for discussing research, content, fulfilment, and other launch dependencies with a team.",
+        "image_url": "/demo/kai-lu-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "29bad643-4f10-5e41-8885-43b031d09134",
+    "full_name": "Min He",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I help turn a productive meeting into an organised next step. I focus on shared action lists, project handovers, and useful communication rhythms for small international teams. I enjoy the quieter side of collaboration: clear ownership, realistic questions, and notes everyone can find later.",
+    "city": "Shenzhen",
+    "company": "Demo · Fieldnote Operations",
+    "specialties": [
+      "Business services",
+      "Operations planning",
+      "Project coordination"
+    ],
+    "languages": [
+      "Mandarin",
+      "English"
+    ],
+    "avatar_url": "/demo/min-he-avatar.svg",
+    "cover_url": "/demo/min-he-cover.svg",
+    "achievements": [
+      "Illustrative: created a cross-team action-log template",
+      "Illustrative: designed a project-handover checklist",
+      "Illustrative: built a sample international-team communication guide"
+    ],
+    "portfolio": [
+      {
+        "title": "Project handover studio",
+        "description": "Fictional demo project. A fictional operations board showing how decisions, owners, and outstanding questions could be handed between teams.",
+        "image_url": "/demo/min-he-project-1.svg"
+      },
+      {
+        "title": "Shared action journal",
+        "description": "Fictional demo project. An illustrated example of a simple action log for a small business project spanning different locations.",
+        "image_url": "/demo/min-he-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "2df7f7f3-56db-5ac5-a696-cb8570432503",
+    "full_name": "Lan Yu",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I enjoy helping a first visit feel more familiar. I focus on city orientation, neighbourhood stories, and the practical questions that come with exploring Guangzhou. I like a thoughtful pace that leaves space for food, conversation, and the unexpected turn that becomes a favourite memory.",
+    "city": "Guangzhou",
+    "company": "Demo · Citrus Lane Travel Studio",
+    "specialties": [
+      "Travel",
+      "City orientation",
+      "Food & culture"
+    ],
+    "languages": [
+      "Mandarin",
+      "English",
+      "Cantonese"
+    ],
+    "avatar_url": "/demo/lan-yu-avatar.svg",
+    "cover_url": "/demo/lan-yu-cover.svg",
+    "achievements": [
+      "Illustrative: created an example neighbourhood orientation guide",
+      "Illustrative: designed a visitor-preferences planning sheet",
+      "Illustrative: prepared a food-and-culture conversation map"
+    ],
+    "portfolio": [
+      {
+        "title": "Guangzhou neighbourhood notes",
+        "description": "Fictional demo project. A fictional illustrated city-orientation concept exploring how a visitor might collect neighbourhood interests and practical questions.",
+        "image_url": "/demo/lan-yu-project-1.svg"
+      },
+      {
+        "title": "A day with room to wander",
+        "description": "Fictional demo project. An illustrative travel-planning board balancing culture, conversation, and breaks; not a bookable itinerary.",
+        "image_url": "/demo/lan-yu-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "4e919a4d-5753-524c-9415-3d367a21dbb7",
+    "full_name": "Chen Mo",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I like helping curious visitors find the story behind a landmark. I focus on preparing cultural visits, understanding a group’s interests, and building sensible time for questions and reflection. I enjoy trips where people return with a richer understanding of a place, as well as photographs.",
+    "city": "Beijing",
+    "company": "Demo · Quiet Gate Journeys",
+    "specialties": [
+      "Travel",
+      "Cultural visits",
+      "Small-group planning"
+    ],
+    "languages": [
+      "Mandarin",
+      "English"
+    ],
+    "avatar_url": "/demo/chen-mo-avatar.svg",
+    "cover_url": "/demo/chen-mo-cover.svg",
+    "achievements": [
+      "Illustrative: built a sample cultural-visit preparation workbook",
+      "Illustrative: created a small-group interests questionnaire",
+      "Illustrative: designed an accessible pacing discussion guide"
+    ],
+    "portfolio": [
+      {
+        "title": "Culture before the visit",
+        "description": "Fictional demo project. A fictional preparation workbook collecting context, visitor interests, and questions before a cultural outing.",
+        "image_url": "/demo/chen-mo-project-1.svg"
+      },
+      {
+        "title": "Small-group journey canvas",
+        "description": "Fictional demo project. An illustrated planning concept for discussing pace, interests, and practical needs; no dates or bookings offered.",
+        "image_url": "/demo/chen-mo-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "9904d54d-e5d4-5c6c-b49b-2b634f88273d",
+    "full_name": "Yun Fei",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am drawn to the everyday details of a city: a market conversation, a shared meal, or a craft with a story. I help visitors think about the kinds of local experiences they enjoy and the questions to ask before planning them. A comfortable pace matters to me.",
+    "city": "Chengdu",
+    "company": "Demo · Bamboo Window Travel",
+    "specialties": [
+      "Travel",
+      "Local experiences",
+      "Food & culture"
+    ],
+    "languages": [
+      "Mandarin",
+      "English",
+      "Japanese"
+    ],
+    "avatar_url": "/demo/yun-fei-avatar.svg",
+    "cover_url": "/demo/yun-fei-cover.svg",
+    "achievements": [
+      "Illustrative: created a local-experience interests canvas",
+      "Illustrative: prepared a sample food-preferences discussion sheet",
+      "Illustrative: designed an illustrated cultural-curiosity journal"
+    ],
+    "portfolio": [
+      {
+        "title": "Everyday Chengdu notebook",
+        "description": "Fictional demo project. A fictional visual notebook for collecting food, craft, and neighbourhood interests before planning a local experience.",
+        "image_url": "/demo/yun-fei-project-1.svg"
+      },
+      {
+        "title": "Shared table concept",
+        "description": "Fictional demo project. An illustrative experience-planning board centred on conversation and food preferences; not a real tour offer.",
+        "image_url": "/demo/yun-fei-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "01490035-1855-59a0-9053-aa33e83fa672",
+    "full_name": "Qing Zhao",
+    "member_type": "china",
+    "enabled": true,
+    "bio": "Fictional demo profile. I help visitors connect a big cultural interest with the practical shape of a day. I focus on heritage-visit preparation, useful background reading, and clear questions about pacing and access. I enjoy meeting people who want to understand a place thoughtfully, with time to notice the details.",
+    "city": "Xi’an",
+    "company": "Demo · Terrace & Trail Studio",
+    "specialties": [
+      "Travel",
+      "Heritage visits",
+      "Visitor planning"
+    ],
+    "languages": [
+      "Mandarin",
+      "English"
+    ],
+    "avatar_url": "/demo/qing-zhao-avatar.svg",
+    "cover_url": "/demo/qing-zhao-cover.svg",
+    "achievements": [
+      "Illustrative: designed a heritage-visit planning journal",
+      "Illustrative: prepared a sample visitor-access questions checklist",
+      "Illustrative: created a cultural-background reading-board concept"
+    ],
+    "portfolio": [
+      {
+        "title": "Heritage curiosity journal",
+        "description": "Fictional demo project. A fictional journal pairing cultural questions with preparation notes for a thoughtful heritage visit.",
+        "image_url": "/demo/qing-zhao-project-1.svg"
+      },
+      {
+        "title": "Visit planning cards",
+        "description": "Fictional demo project. Illustrative cards for discussing pace, access, and visitor interests before choosing an actual travel provider.",
+        "image_url": "/demo/qing-zhao-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "e515ff87-3c1b-5feb-9bce-bf3371c79596",
+    "full_name": "Maya Nair",
+    "member_type": "global",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am developing an idea for a small homeware shop with a careful material palette. I would like to understand how to prepare a useful sourcing brief and compare samples before making decisions. I hope to meet people who enjoy explaining their process and sharing a local perspective.",
+    "city": "Kochi, India",
+    "company": "Demo · Palm & Paper Collective",
+    "specialties": [
+      "Sourcing",
+      "Homeware",
+      "Design-led retail"
+    ],
+    "languages": [
+      "English",
+      "Malayalam",
+      "Hindi"
+    ],
+    "avatar_url": "/demo/maya-nair-avatar.svg",
+    "cover_url": "/demo/maya-nair-cover.svg",
+    "achievements": [
+      "Illustrative: drafted a fictional homeware brand concept",
+      "Illustrative: built an example product-material moodboard",
+      "Illustrative: prepared an introductory sourcing research brief"
+    ],
+    "portfolio": [
+      {
+        "title": "A quieter everyday",
+        "description": "Fictional demo project. A fictional retail concept exploring natural textures, simple forms, and a small homeware product range.",
+        "image_url": "/demo/maya-nair-project-1.svg"
+      },
+      {
+        "title": "Sourcing questions journal",
+        "description": "Fictional demo project. An illustrative workbook gathering sample, packaging, and material questions for a possible future visit.",
+        "image_url": "/demo/maya-nair-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "56170a5f-6560-5cd2-a69d-bc44bcd36baf",
+    "full_name": "Omar Faris",
+    "member_type": "global",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am exploring how a hospitality concept could be supported by a thoughtful furniture brief. I want to learn what information makes a showroom conversation productive, from dimensions to finishes. I would welcome connections with people who can help me ask better questions and understand available options.",
+    "city": "Dubai, UAE",
+    "company": "Demo · Dune Workshop Concept",
+    "specialties": [
+      "Sourcing",
+      "Furniture",
+      "Hospitality concepts"
+    ],
+    "languages": [
+      "Arabic",
+      "English"
+    ],
+    "avatar_url": "/demo/omar-faris-avatar.svg",
+    "cover_url": "/demo/omar-faris-cover.svg",
+    "achievements": [
+      "Illustrative: developed a fictional hospitality moodboard",
+      "Illustrative: created a room-by-room furniture brief",
+      "Illustrative: prepared an example finish-comparison worksheet"
+    ],
+    "portfolio": [
+      {
+        "title": "Courtyard stay concept",
+        "description": "Fictional demo project. A fictional hospitality moodboard combining warm materials, relaxed shared spaces, and a concise furniture palette.",
+        "image_url": "/demo/omar-faris-project-1.svg"
+      },
+      {
+        "title": "Furniture visit preparation",
+        "description": "Fictional demo project. An illustrative workbook for organising measurements, finishes, and questions before visiting a showroom.",
+        "image_url": "/demo/omar-faris-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "5d30f1cf-ffbf-5bd7-b768-cf57c9d9cb37",
+    "full_name": "Sofia Duarte",
+    "member_type": "global",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am a product-design enthusiast exploring a collection of useful everyday objects. I am interested in how a sketch becomes a clear discussion about materials, samples, and packaging. I would like to meet people in China who enjoy the early questions as much as the finished product.",
+    "city": "Lisbon, Portugal",
+    "company": "Demo · Softline Objects Studio",
+    "specialties": [
+      "Sourcing",
+      "Product design",
+      "Giftware"
+    ],
+    "languages": [
+      "Portuguese",
+      "English",
+      "Spanish"
+    ],
+    "avatar_url": "/demo/sofia-duarte-avatar.svg",
+    "cover_url": "/demo/sofia-duarte-cover.svg",
+    "achievements": [
+      "Illustrative: created a fictional everyday-object design series",
+      "Illustrative: prepared a sample packaging moodboard",
+      "Illustrative: built an example product-development question bank"
+    ],
+    "portfolio": [
+      {
+        "title": "Everyday forms collection",
+        "description": "Fictional demo project. A fictional design exploration of small desktop objects, with emphasis on shape, texture, and everyday use.",
+        "image_url": "/demo/sofia-duarte-project-1.svg"
+      },
+      {
+        "title": "From sketch to conversation",
+        "description": "Fictional demo project. An illustrated briefing exercise linking product sketches to questions about materials and sample development.",
+        "image_url": "/demo/sofia-duarte-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "20e82bfe-5178-569c-bf4e-62ec8de9c8d4",
+    "full_name": "Daniel Okoye",
+    "member_type": "global",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am researching the practical steps behind a small consumer-goods trading idea. I want to understand the questions to ask about supplier handovers, shipment information, and freight coordination. I value patient explanations and would like to build a useful network before planning a sourcing visit.",
+    "city": "Lagos, Nigeria",
+    "company": "Demo · Brightway Trade Concept",
+    "specialties": [
+      "Logistics",
+      "Trade planning",
+      "Consumer goods"
+    ],
+    "languages": [
+      "English",
+      "Igbo"
+    ],
+    "avatar_url": "/demo/daniel-okoye-avatar.svg",
+    "cover_url": "/demo/daniel-okoye-cover.svg",
+    "achievements": [
+      "Illustrative: mapped a fictional first-import research plan",
+      "Illustrative: created an example shipment-information checklist",
+      "Illustrative: prepared a consumer-goods category exploration"
+    ],
+    "portfolio": [
+      {
+        "title": "First trade roadmap",
+        "description": "Fictional demo project. A fictional planning map showing the people, information, and questions involved in an early trading concept.",
+        "image_url": "/demo/daniel-okoye-project-1.svg"
+      },
+      {
+        "title": "Product-to-port notebook",
+        "description": "Fictional demo project. An illustrative notebook connecting product research with packaging and shipment questions for future professional advice.",
+        "image_url": "/demo/daniel-okoye-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "c9dd8c6a-6c4b-5cfb-a4de-32c92b413242",
+    "full_name": "Aisha Rahman",
+    "member_type": "global",
+    "enabled": true,
+    "bio": "Fictional demo profile. I enjoy looking at the relationship between a product, a shop, and the community around it. I am developing a retail research concept and would like to exchange perspectives with people working in China. I am especially interested in thoughtful observations, clear evidence, and useful introductions.",
+    "city": "Kuala Lumpur, Malaysia",
+    "company": "Demo · Common Table Ventures",
+    "specialties": [
+      "Business services",
+      "Market research",
+      "Retail concepts"
+    ],
+    "languages": [
+      "Malay",
+      "English",
+      "Tamil"
+    ],
+    "avatar_url": "/demo/aisha-rahman-avatar.svg",
+    "cover_url": "/demo/aisha-rahman-cover.svg",
+    "achievements": [
+      "Illustrative: designed a fictional retail research canvas",
+      "Illustrative: created a customer-question interview guide",
+      "Illustrative: prepared an example store-observation journal"
+    ],
+    "portfolio": [
+      {
+        "title": "Neighbourhood retail study",
+        "description": "Fictional demo project. A fictional research concept exploring how small shops might understand their audience and present a coherent product story.",
+        "image_url": "/demo/aisha-rahman-project-1.svg"
+      },
+      {
+        "title": "Questions worth asking",
+        "description": "Fictional demo project. An illustrative interview-planning workbook that separates assumptions, observations, and questions for future research.",
+        "image_url": "/demo/aisha-rahman-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "3e4d700e-ff33-58f7-86c5-fefdd012bb37",
+    "full_name": "Luca Marin",
+    "member_type": "global",
+    "enabled": true,
+    "bio": "Fictional demo profile. I like discovering a city through architecture, objects, and everyday routines. I am curious about a future China visit that balances design interests with unhurried local experiences. I would enjoy meeting people who can share context, suggest good questions, and help a visitor see beyond a checklist.",
+    "city": "Milan, Italy",
+    "company": "Demo · Forma Weekend Studio",
+    "specialties": [
+      "Travel",
+      "Design & culture",
+      "City exploration"
+    ],
+    "languages": [
+      "Italian",
+      "English"
+    ],
+    "avatar_url": "/demo/luca-marin-avatar.svg",
+    "cover_url": "/demo/luca-marin-cover.svg",
+    "achievements": [
+      "Illustrative: created a fictional design-travel journal",
+      "Illustrative: built an example architecture interest board",
+      "Illustrative: prepared a personal cultural-visit question list"
+    ],
+    "portfolio": [
+      {
+        "title": "A city through design",
+        "description": "Fictional demo project. A fictional travel-journal concept collecting architectural forms, everyday objects, and questions about local design culture.",
+        "image_url": "/demo/luca-marin-project-1.svg"
+      },
+      {
+        "title": "Unhurried discovery board",
+        "description": "Fictional demo project. An illustrative interest board for a possible future visit; no real itinerary, dates, or bookings are represented.",
+        "image_url": "/demo/luca-marin-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "902be6ed-a4b0-52b0-85b7-e3aed331f57f",
+    "full_name": "Priya Menon",
+    "member_type": "global",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am exploring an idea for a simple everyday technology product. I would like to learn how to prepare specifications, compare samples, and discuss a concept clearly with potential partners. I hope to connect with people who bring a practical product perspective and an openness to early-stage questions.",
+    "city": "Bengaluru, India",
+    "company": "Demo · Small Spark Product Lab",
+    "specialties": [
+      "Sourcing",
+      "Consumer electronics",
+      "Product research"
+    ],
+    "languages": [
+      "English",
+      "Hindi",
+      "Kannada"
+    ],
+    "avatar_url": "/demo/priya-menon-avatar.svg",
+    "cover_url": "/demo/priya-menon-cover.svg",
+    "achievements": [
+      "Illustrative: drafted a fictional product problem statement",
+      "Illustrative: created a sample feature-priority canvas",
+      "Illustrative: prepared an introductory supplier-question worksheet"
+    ],
+    "portfolio": [
+      {
+        "title": "Small spark concept",
+        "description": "Fictional demo project. A fictional product-research board connecting an everyday user need with possible features and design questions.",
+        "image_url": "/demo/priya-menon-project-1.svg"
+      },
+      {
+        "title": "Specification starter kit",
+        "description": "Fictional demo project. An illustrated exercise in organising product requirements, sample questions, and assumptions before a supplier conversation.",
+        "image_url": "/demo/priya-menon-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "c446c873-6e07-57f7-9fac-3f304c513f09",
+    "full_name": "Ethan Brooks",
+    "member_type": "global",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am interested in the operational choices behind a considered product business. I want to learn more about materials research, useful supplier questions, and how a small team can keep a project organised. I would welcome connections that make the learning process clearer and more grounded.",
+    "city": "Melbourne, Australia",
+    "company": "Demo · Fieldwork Supply Concept",
+    "specialties": [
+      "Business services",
+      "Operations planning",
+      "Sustainable materials"
+    ],
+    "languages": [
+      "English"
+    ],
+    "avatar_url": "/demo/ethan-brooks-avatar.svg",
+    "cover_url": "/demo/ethan-brooks-cover.svg",
+    "achievements": [
+      "Illustrative: prepared a fictional materials-research framework",
+      "Illustrative: created an example small-team project board",
+      "Illustrative: developed a supplier-conversation preparation sheet"
+    ],
+    "portfolio": [
+      {
+        "title": "Considered materials canvas",
+        "description": "Fictional demo project. A fictional research framework for collecting material questions and documenting what still needs independent verification.",
+        "image_url": "/demo/ethan-brooks-project-1.svg"
+      },
+      {
+        "title": "Small team, clear steps",
+        "description": "Fictional demo project. An illustrative project board showing how a small team might organise research, responsibilities, and decision points.",
+        "image_url": "/demo/ethan-brooks-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "8bd39cf3-1f7c-54ec-b411-0c8f8051d3cf",
+    "full_name": "Nadia Azlan",
+    "member_type": "global",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am curious about the way language shapes a first impression. I am exploring a cultural storytelling concept and would like to exchange ideas with people who work across languages in China. I enjoy conversations about audience, context, and the details that make a message feel welcoming.",
+    "city": "Singapore",
+    "company": "Demo · Story Atlas Collective",
+    "specialties": [
+      "Translation",
+      "Cultural storytelling",
+      "Brand communication"
+    ],
+    "languages": [
+      "English",
+      "Malay",
+      "Mandarin"
+    ],
+    "avatar_url": "/demo/nadia-azlan-avatar.svg",
+    "cover_url": "/demo/nadia-azlan-cover.svg",
+    "achievements": [
+      "Illustrative: created a fictional cross-cultural story concept",
+      "Illustrative: prepared an audience-and-tone worksheet",
+      "Illustrative: built an example bilingual content planning board"
+    ],
+    "portfolio": [
+      {
+        "title": "Stories across places",
+        "description": "Fictional demo project. A fictional editorial concept exploring how a short cultural story could be presented to readers with different backgrounds.",
+        "image_url": "/demo/nadia-azlan-project-1.svg"
+      },
+      {
+        "title": "A welcoming first sentence",
+        "description": "Fictional demo project. An illustrative language workshop board focused on audience, context, and approachable introductions.",
+        "image_url": "/demo/nadia-azlan-project-2.svg"
+      }
+    ]
+  },
+  {
+    "id": "97179979-3fd1-5d78-ab84-2f0114dbc513",
+    "full_name": "Noah Patel",
+    "member_type": "global",
+    "enabled": true,
+    "bio": "Fictional demo profile. I am gathering ideas for a first visit to China and want to understand the people and everyday experiences behind the famous places. I am especially interested in food, neighbourhoods, and thoughtful cultural conversations. I would love to meet local people who enjoy helping a curious visitor get oriented.",
+    "city": "London, United Kingdom",
+    "company": "Demo · Open Road Notes",
+    "specialties": [
+      "Travel",
+      "Food & culture",
+      "First China visit"
+    ],
+    "languages": [
+      "English",
+      "Gujarati"
+    ],
+    "avatar_url": "/demo/noah-patel-avatar.svg",
+    "cover_url": "/demo/noah-patel-cover.svg",
+    "achievements": [
+      "Illustrative: created a fictional first-visit interests journal",
+      "Illustrative: prepared a food-and-culture curiosity map",
+      "Illustrative: built an example visitor-planning checklist"
+    ],
+    "portfolio": [
+      {
+        "title": "The first-visit notebook",
+        "description": "Fictional demo project. A fictional travel-preparation journal gathering cultural questions, practical topics, and personal interests without a real booking.",
+        "image_url": "/demo/noah-patel-project-1.svg"
+      },
+      {
+        "title": "A place at the table",
+        "description": "Fictional demo project. An illustrative food-and-culture interest board for discussing preferences and learning about everyday experiences.",
+        "image_url": "/demo/noah-patel-project-2.svg"
+      }
+    ]
+  }
+]

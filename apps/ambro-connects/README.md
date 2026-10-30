@@ -25,7 +25,7 @@ Set the new Ambro Connects Supabase project URL and publishable key in `.env.loc
 
 China membership costs RMB 1,000 for a year. Global membership costs RMB 100 for a month or includes one complimentary year after an eligible Ambro trip is verified. No payment gateway, automatic billing or automatic paid renewal is enabled. Members submit a reference; administrators confirm payment or trip eligibility and activate access. Database functions compute prices, activation dates and expiry. China profiles require separate approval to appear in discovery.
 
-Members own their profiles and media. Active Global members may request introductions to approved active China members. Both parties consent before account emails are disclosed to each other. Only senders of completed connections can review, once per connection; reviews require moderation before they affect public ratings.
+Members own their profiles and media. Only active Global members may initiate introductions, to approved active China members or Global members who opt into public network visibility. China members may browse and receive requests but cannot initiate them. Existing Global profiles remain unlisted until their owner opts in. Both parties consent before account emails are disclosed to each other. Phone numbers and WhatsApp links are not displayed publicly; public text is checked at the database boundary and redacted defensively in the UI. Only senders of completed connections can review, once per connection; reviews require moderation before they affect public ratings.
 
 The first administrator is configured in a private database bootstrap record. Their exact email must be confirmed before admin access is granted. No admin password is seeded or stored in source. Register, confirm the email, then visit `/admin`.
 
@@ -41,7 +41,7 @@ The user requested publication for review while arranging email. Supabase's defa
 
 Confirm the business support contact, payment instructions, cancellation/refund arrangements, trip eligibility and retention policy before paid public launch. Policies currently explain actual app behavior and identify the pending launch details. The homepage now uses an identity-preserving, AI-cleaned edit of the user-supplied black-polo photo of Hamras. The transparent PNG logo, symbol and app icons are custom brand assets. Asset provenance and prompts are in `../../docs/ambro-connects-brand-assets.md`.
 
-The directory starts empty; no invented members, ratings or testimonials are seeded. Saved profiles currently stay on the browser/device, as the UI states. A dedicated social post feed, in-app chat, block/report workflow and payment gateway are future extensions; the current social experience is profile discovery, portfolios, requests and reviews.
+The review directory includes 20 clearly labeled fictional China profiles (four each in Sourcing, Logistics, Translation, Business services and Travel) and 10 fictional Global profiles. They live in a separate demo table with no Auth accounts, contacts, ratings or testimonials, and cannot receive requests. Team dashboard → Preview data → Hide all demo profiles removes every sample from discovery without affecting real members. See `docs/demo-members.md` for repeatable seed and scoped cleanup instructions. Saved profiles currently stay on the browser/device, as the UI states. A dedicated social post feed, in-app chat, block/report workflow and payment gateway are future extensions; the current social experience is profile discovery, portfolios, requests and reviews.
 
 ## Design and assets
 

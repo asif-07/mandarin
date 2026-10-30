@@ -17,14 +17,18 @@ export async function GET(request: Request) {
     const specialty = (url.searchParams.get("specialty") || "")
       .trim()
       .slice(0, 100);
+    const memberType = url.searchParams.get("member_type");
     const supabase = await serverSupabase();
     let requestQuery = supabase
       .from("member_directory")
       .select("*")
+      .order("is_demo", { ascending: true })
       .order("created_at", { ascending: false })
       .limit(100);
     if (city && city !== "All cities")
       requestQuery = requestQuery.eq("city", city);
+    if (memberType === "china" || memberType === "global")
+      requestQuery = requestQuery.eq("member_type", memberType);
     if (specialty && specialty !== "All specialties")
       requestQuery = requestQuery.contains("specialties", [specialty]);
     // Avoid interpolating user-controlled text into PostgREST's expression grammar.

@@ -80,7 +80,7 @@ export function Account() {
         setPlan(
           result.membership?.member_type === "china"
             ? "china_yearly"
-            : "global_monthly",
+            : result.membership?.preferred_plan || "global_monthly",
         );
       }
       setLoadError("");
@@ -172,10 +172,10 @@ export function Account() {
       setNotice({ type: "error", text: "Choose a JPG, PNG or WebP image." });
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 4 * 1024 * 1024) {
       setNotice({
         type: "error",
-        text: "Please choose an image smaller than 5 MB.",
+        text: "Please choose an image smaller than 4 MB.",
       });
       return;
     }
@@ -474,7 +474,7 @@ export function Account() {
                       }}
                     />
                   </label>
-                  <p className="ac-help">JPG, PNG or WebP. Up to 5 MB.</p>
+                  <p className="ac-help">JPG, PNG or WebP. Up to 4 MB.</p>
                 </div>
               </div>
               <div className="form-grid ac-form-grid">
@@ -545,6 +545,11 @@ export function Account() {
                   <span className="ac-help">
                     A clear introduction builds trust. {profile.bio.length}
                     /2,000
+                  </span>
+                  <span className="ac-help">
+                    Keep phone numbers, WhatsApp links and contact emails out of
+                    your public profile. Account emails are shared only after an
+                    accepted connection with both members’ consent.
                   </span>
                 </label>
                 <label className="field ac-full-width">
@@ -758,11 +763,39 @@ export function Account() {
               )}
             </div>
 
+            {!isChina ? (
+              <div className="ac-form-section">
+                <span className="eyebrow">Your profile visibility</span>
+                <h2>Be part of the conversation.</h2>
+                <label className="check-label">
+                  <input
+                    type="checkbox"
+                    checked={profile.network_visible === true}
+                    onChange={(event) =>
+                      edit("network_visible", event.target.checked)
+                    }
+                  />
+                  <span>
+                    Show my Global profile in the public network after team
+                    approval and membership activation.
+                  </span>
+                </label>
+                <p className="ac-help">
+                  Your name, city, company, story, images, achievements and
+                  previous work will be public. Global members can send you
+                  requests; China members can view your profile. Leave this off
+                  to stay out of the directory while you discover and send
+                  requests. Publishing or editing a published profile pauses
+                  connection access until the team approves it, even if you hide
+                  it again while review is pending.
+                </p>
+              </div>
+            ) : null}
             <div className="ac-save-bar">
               <p className="ac-help">
                 {isChina
                   ? "Your China profile appears in discovery after profile approval and membership activation."
-                  : "Your details help China members understand your business interests."}
+                  : "Only Global members can send requests, to China or visible Global members. Published profile edits return to team review."}
               </p>
               <button
                 className="btn btn-primary"
@@ -843,7 +876,7 @@ export function Account() {
               <p className="ac-moderation-reason">
                 <strong>A note from the team</strong>
                 {membership.moderation_reason}
-                {membership.moderation_status === "rejected" && isChina ? (
+                {membership.moderation_status === "rejected" ? (
                   <span className="ac-resubmit-help">
                     Correct your profile and save it to submit it for another
                     review.
