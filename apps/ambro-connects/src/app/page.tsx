@@ -37,7 +37,7 @@ export default function Home() {
             <Link href="/discover" className="btn btn-primary">
               Find your people <ArrowUpRight size={19} />
             </Link>
-            <Link href="#memberships" className="text-link">
+            <Link href="#memberships" className="btn btn-ghost">
               Memberships <ArrowRight size={17} />
             </Link>
           </div>

@@ -1,5 +1,5 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,6 +10,7 @@ import {
   Users,
   Plane,
 } from "lucide-react";
+import "./mobile-forms.css";
 
 export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
   const search = useSearchParams();
@@ -28,11 +29,25 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
   );
   const [notice, setNotice] = useState("");
   const [forgot, setForgot] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const noticeRef = useRef<HTMLDivElement>(null);
   const joining = mode === "join";
   const reset = mode === "reset";
   const teamLogin = mode === "login" && search.get("next") === "/admin";
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+  useEffect(() => {
+    if (!notice) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLInputElement) active.blur();
+    noticeRef.current?.focus();
+  }, [notice]);
+
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError("");
     setNotice("");
@@ -89,53 +104,8 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
   }
   return (
     <div className="container auth-layout">
-      <div className="auth-intro">
-        <p className="eyebrow">YOUR NEXT CONNECTION STARTS HERE</p>
-        <h1>
-          {joining ? (
-            <>
-              A wider world.
-              <br />
-              <em>Your kind of people.</em>
-            </>
-          ) : reset ? (
-            <>
-              A fresh start.
-              <br />
-              <em>Welcome back.</em>
-            </>
-          ) : (
-            <>
-              Your circle.
-              <br />
-              <em>One hello away.</em>
-            </>
-          )}
-        </h1>
-        <p>
-          {joining
-            ? "People in China. People going to China. One shared space for what comes next."
-            : "Pick up where you left off. Your people, plans and next possibilities are right here."}
-        </p>
-        <div className="auth-feature">
-          <Users size={20} />
-          <span>People first. Business follows.</span>
-        </div>
-        <div className="auth-feature">
-          <ShieldCheck size={20} />
-          <span>Your contact details stay private until you connect.</span>
-        </div>
-        <div className="auth-feature">
-          <Plane size={20} />
-          <span>A trip with Ambro includes your first year.</span>
-        </div>
-        <p className="auth-note">
-          Ambro Connects is a community by Hamras and Mandarin Roots.
-          Memberships are confirmed by the team, with no automatic billing.
-        </p>
-      </div>
-      <section className="auth-panel">
-        <h2>
+      <section className="auth-panel" aria-labelledby="auth-form-heading">
+        <h1 id="auth-form-heading" className="auth-form-heading">
           {joining
             ? "Find your place in the circle."
             : reset
@@ -145,7 +115,7 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
                 : teamLogin
                   ? "Sign in to team approvals."
                   : "Good to see you again."}
-        </h2>
+        </h1>
         <p>
           {joining
             ? "Choose your membership and create your account."
@@ -157,174 +127,220 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
                   ? "Use your designated team email and the password you chose."
                   : "Sign in to your Ambro Connects account."}
         </p>
-        <form onSubmit={submit}>
-          {joining && (
-            <>
-              <div className="status">
-                Preview release · Public registrations open after email
-                verification delivery is connected. Team accounts can register
-                now.
-              </div>
-              <div
-                className="type-toggle"
-                role="group"
-                aria-label="Membership type"
-              >
-                <button
-                  type="button"
-                  aria-pressed={type === "global"}
-                  className={type === "global" ? "selected" : ""}
-                  onClick={() => setType("global")}
+        <form onSubmit={submit} aria-busy={busy}>
+          <fieldset className="auth-fields" disabled={busy}>
+            {joining && (
+              <>
+                <details className="auth-preview-info">
+                  <summary>Review release · registration details</summary>
+                  <p>
+                    Public registrations open after email verification delivery
+                    is connected. Team accounts can register now.
+                  </p>
+                </details>
+                <div
+                  className="type-toggle"
+                  role="group"
+                  aria-label="Membership type"
                 >
-                  <Globe2 size={20} />
-                  <span>
-                    Connect Global<small>Visiting or exploring China</small>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={type === "china"}
-                  className={type === "china" ? "selected" : ""}
-                  onClick={() => setType("china")}
-                >
-                  <MapPin size={20} />
-                  <span>
-                    Connect China<small>Living & doing business in China</small>
-                  </span>
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    aria-pressed={type === "global"}
+                    className={type === "global" ? "selected" : ""}
+                    onClick={() => setType("global")}
+                  >
+                    <Globe2 size={20} />
+                    <span>
+                      Connect Global<small>Visiting or exploring China</small>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={type === "china"}
+                    className={type === "china" ? "selected" : ""}
+                    onClick={() => setType("china")}
+                  >
+                    <MapPin size={20} />
+                    <span>
+                      Connect China
+                      <small>Living & doing business in China</small>
+                    </span>
+                  </button>
+                </div>
+                <label className="field">
+                  Your full name
+                  <input
+                    name="name"
+                    autoComplete="name"
+                    maxLength={100}
+                    required
+                    placeholder="How should we call you?"
+                  />
+                </label>
+              </>
+            )}
+            {!reset && (
               <label className="field">
-                Your full name
+                Email address
                 <input
-                  name="name"
-                  autoComplete="name"
-                  maxLength={100}
+                  name="email"
+                  autoComplete="email"
+                  type="email"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  maxLength={254}
                   required
-                  placeholder="How should we call you?"
+                  placeholder="you@example.com"
                 />
               </label>
-            </>
-          )}
-          {!reset && (
-            <label className="field">
-              Email address
-              <input
-                name="email"
-                autoComplete="email"
-                type="email"
-                maxLength={254}
-                required
-                placeholder="you@example.com"
-              />
-            </label>
-          )}
-          {!forgot && (
-            <label className="field">
-              {reset ? "New password" : "Password"}
-              <input
-                name="password"
-                autoComplete={
-                  joining || reset ? "new-password" : "current-password"
-                }
-                type="password"
-                minLength={joining || reset ? 10 : 1}
-                maxLength={128}
-                required
-                placeholder={
-                  joining || reset ? "At least 10 characters" : "Your password"
-                }
-              />
-            </label>
-          )}
-          {joining && (
-            <>
-              {type === "global" && (
-                <label className="check-label">
+            )}
+            {!forgot && (
+              <div className="field">
+                <label htmlFor="auth-password">
+                  {reset ? "New password" : "Password"}
+                </label>
+                <div className="auth-password-field">
                   <input
-                    type="checkbox"
-                    checked={trip}
-                    onChange={(e) => setTrip(e.target.checked)}
+                    id="auth-password"
+                    name="password"
+                    autoComplete={
+                      joining || reset ? "new-password" : "current-password"
+                    }
+                    type={passwordVisible ? "text" : "password"}
+                    aria-describedby={
+                      joining || reset ? "auth-password-help" : undefined
+                    }
+                    minLength={joining || reset ? 10 : 1}
+                    maxLength={128}
+                    required
+                    placeholder={
+                      joining || reset
+                        ? "At least 10 characters"
+                        : "Your password"
+                    }
                   />
+                  <button
+                    className="auth-password-toggle"
+                    type="button"
+                    aria-label={
+                      passwordVisible ? "Hide password" : "Show password"
+                    }
+                    aria-pressed={passwordVisible}
+                    onClick={() => setPasswordVisible((visible) => !visible)}
+                  >
+                    {passwordVisible ? "Hide" : "Show"}
+                  </button>
+                </div>
+                {joining || reset ? (
+                  <span id="auth-password-help" className="auth-password-help">
+                    Use at least 10 characters.
+                  </span>
+                ) : null}
+              </div>
+            )}
+            {joining && (
+              <>
+                {type === "global" && (
+                  <label className="check-label">
+                    <input
+                      type="checkbox"
+                      checked={trip}
+                      onChange={(e) => setTrip(e.target.checked)}
+                    />
+                    <span>
+                      I’m joining an Ambro / Mandarin Roots China trip. I’d like
+                      my complimentary year.
+                    </span>
+                  </label>
+                )}
+                {type === "global" && trip && (
+                  <p className="status">
+                    Add your trip booking reference in My space after confirming
+                    your email. Your complimentary year starts after team
+                    verification.
+                  </p>
+                )}
+                <div className="status">
+                  <strong>
+                    {type === "china"
+                      ? "RMB 1,000 / year"
+                      : trip
+                        ? "First 12 months complimentary"
+                        : "RMB 100 / month"}
+                  </strong>
+                  <br />
+                  {type === "china"
+                    ? "Profile review and manual payment confirmation required."
+                    : trip
+                      ? "Subject to booking verification. No automatic paid renewal."
+                      : "Manual payment confirmation required. No automatic billing."}
+                </div>
+                <label className="check-label">
+                  <input type="checkbox" required />
                   <span>
-                    I’m joining an Ambro / Mandarin Roots China trip. I’d like
-                    my complimentary year.
+                    I agree to the <Link href="/terms">membership terms</Link>,{" "}
+                    <Link href="/privacy">privacy notice</Link> and{" "}
+                    <Link href="/community">community guidelines</Link>. If I
+                    join China, my approved profile will be publicly
+                    discoverable.
                   </span>
                 </label>
-              )}
-              {type === "global" && trip && (
-                <p className="status">
-                  Add your trip booking reference in My space after confirming
-                  your email. Your complimentary year starts after team
-                  verification.
-                </p>
-              )}
-              <div className="status">
-                <strong>
-                  {type === "china"
-                    ? "RMB 1,000 / year"
-                    : trip
-                      ? "First 12 months complimentary"
-                      : "RMB 100 / month"}
-                </strong>
-                <br />
-                {type === "china"
-                  ? "Profile review and manual payment confirmation required."
-                  : trip
-                    ? "Subject to booking verification. No automatic paid renewal."
-                    : "Manual payment confirmation required. No automatic billing."}
+              </>
+            )}
+            {error && (
+              <div
+                ref={errorRef}
+                tabIndex={-1}
+                role="alert"
+                className="status error auth-feedback"
+              >
+                {error}
               </div>
-              <label className="check-label">
-                <input type="checkbox" required />
-                <span>
-                  I agree to the <Link href="/terms">membership terms</Link>,{" "}
-                  <Link href="/privacy">privacy notice</Link> and{" "}
-                  <Link href="/community">community guidelines</Link>. If I join
-                  China, my approved profile will be publicly discoverable.
-                </span>
-              </label>
-            </>
-          )}
-          {error && (
-            <div role="alert" className="status error">
-              {error}
-            </div>
-          )}
-          {notice && (
-            <div role="status" className="status success">
-              {notice}
-            </div>
-          )}
-          <button disabled={busy} className="btn btn-primary" type="submit">
-            {busy
-              ? "One moment…"
-              : joining
-                ? "Create my account"
-                : reset
-                  ? "Save new password"
-                  : forgot
-                    ? "Send reset link"
-                    : "Sign in"}
-            <ArrowUpRight size={17} />
-          </button>
-          {!joining && !reset && (
-            <button
-              type="button"
-              className="clear-filter"
-              onClick={() => {
-                setForgot(!forgot);
-                setError("");
-                setNotice("");
-              }}
-            >
-              {forgot ? "Back to sign in" : "Forgot your password?"}
+            )}
+            {notice && (
+              <div
+                ref={noticeRef}
+                tabIndex={-1}
+                role="status"
+                className="status success auth-feedback"
+              >
+                {notice}
+              </div>
+            )}
+            <button disabled={busy} className="btn btn-primary" type="submit">
+              {busy
+                ? "One moment…"
+                : joining
+                  ? "Create my account"
+                  : reset
+                    ? "Save new password"
+                    : forgot
+                      ? "Send reset link"
+                      : "Sign in"}
+              <ArrowUpRight size={17} />
             </button>
-          )}
-          {joining && (
-            <small className="muted" style={{ fontSize: 10 }}>
-              No payments are collected here. Create your account first; the
-              team will confirm the next step.
-            </small>
-          )}
+            {!joining && !reset && (
+              <button
+                type="button"
+                className="clear-filter"
+                onClick={() => {
+                  setForgot(!forgot);
+                  setPasswordVisible(false);
+                  setError("");
+                  setNotice("");
+                }}
+              >
+                {forgot ? "Back to sign in" : "Forgot your password?"}
+              </button>
+            )}
+            {joining && (
+              <small className="muted auth-payment-note">
+                No payments are collected here. Create your account first; the
+                team will confirm the next step.
+              </small>
+            )}
+          </fieldset>
         </form>
         <div className="auth-foot">
           {joining ? (
@@ -349,6 +365,51 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
           </div>
         ) : null}
       </section>
+      <div className="auth-intro">
+        <p className="eyebrow">YOUR NEXT CONNECTION STARTS HERE</p>
+        <h2 className="auth-intro-heading">
+          {joining ? (
+            <>
+              A wider world.
+              <br />
+              <em>Your kind of people.</em>
+            </>
+          ) : reset ? (
+            <>
+              A fresh start.
+              <br />
+              <em>Welcome back.</em>
+            </>
+          ) : (
+            <>
+              Your circle.
+              <br />
+              <em>One hello away.</em>
+            </>
+          )}
+        </h2>
+        <p>
+          {joining
+            ? "People in China. People going to China. One shared space for what comes next."
+            : "Pick up where you left off. Your people, plans and next possibilities are right here."}
+        </p>
+        <div className="auth-feature">
+          <Users size={20} />
+          <span>People first. Business follows.</span>
+        </div>
+        <div className="auth-feature">
+          <ShieldCheck size={20} />
+          <span>Your contact details stay private until you connect.</span>
+        </div>
+        <div className="auth-feature">
+          <Plane size={20} />
+          <span>A trip with Ambro includes your first year.</span>
+        </div>
+        <p className="auth-note">
+          Ambro Connects is a community by Hamras and Mandarin Roots.
+          Memberships are confirmed by the team, with no automatic billing.
+        </p>
+      </div>
     </div>
   );
 }

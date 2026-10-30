@@ -10,8 +10,9 @@ import {
   Menu,
   X,
   ArrowRight,
+  Home,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function Brand() {
   return (
@@ -29,11 +30,85 @@ export function Brand() {
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    setOpen(false);
+  }, [path]);
+  useEffect(() => {
+    if (!open) return;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        menuButton.current?.focus();
+      }
+    };
+    const media = window.matchMedia("(max-width: 1000px)");
+    const closeOnDesktop = () => {
+      if (!media.matches) setOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    media.addEventListener("change", closeOnDesktop);
+    return () => {
+      document.body.style.overflow = overflow;
+      window.removeEventListener("keydown", closeOnEscape);
+      media.removeEventListener("change", closeOnDesktop);
+    };
+  }, [open]);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    let baseline = window.innerHeight;
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const element = document.activeElement;
+        const editing =
+          element instanceof HTMLTextAreaElement ||
+          (element instanceof HTMLInputElement &&
+            !["checkbox", "radio", "button", "submit", "file"].includes(
+              element.type,
+            ));
+        if (!editing) baseline = window.innerHeight;
+        const height = viewport?.height ?? window.innerHeight;
+        const keyboard =
+          window.innerWidth <= 760 &&
+          editing &&
+          (window.innerHeight - height > 140 || baseline - height > 180);
+        document.documentElement.dataset.keyboardOpen = keyboard
+          ? "true"
+          : "false";
+      });
+    };
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", update);
+    viewport?.addEventListener("resize", update);
+    window.addEventListener("resize", update);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", update);
+      viewport?.removeEventListener("resize", update);
+      window.removeEventListener("resize", update);
+      delete document.documentElement.dataset.keyboardOpen;
+    };
+  }, []);
   const links = [
     { href: "/discover", label: "Discover", icon: Compass },
     { href: "/connections", label: "Connections", icon: Users },
     { href: "/account", label: "My space", icon: UserRound },
   ];
+  const activeTab = (href: string) =>
+    href === "/"
+      ? path === "/"
+      : href === "/discover"
+        ? path === "/discover" || path.startsWith("/members/")
+        : href === "/account"
+          ? ["/account", "/admin", "/login", "/join", "/auth/"].some((route) =>
+              path.startsWith(route),
+            )
+          : path.startsWith(href);
   return (
     <>
       <a href="#main" className="skip-link">
@@ -64,11 +139,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link href="/account" className="sign-in">
               My space
             </Link>
-            <Link href="/join" className="btn btn-dark small">
-              Join the circle <ArrowUpRight size={16} />
+            <Link
+              href="/join"
+              className="btn btn-dark small header-join"
+              aria-label="Join the circle"
+            >
+              <span className="header-join-label">Join the circle</span>
+              <span className="header-join-short" aria-hidden="true">
+                Join
+              </span>{" "}
+              <ArrowUpRight size={16} />
             </Link>
           </div>
           <button
+            ref={menuButton}
             className="menu-toggle"
             aria-expanded={open}
             aria-controls="mobile-menu"
@@ -99,8 +183,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </nav>
         )}
       </header>
-      <main id="main">{children}</main>
-      <footer className="site-footer">
+      {open ? (
+        <button
+          className="mobile-menu-scrim"
+          tabIndex={-1}
+          aria-label="Dismiss navigation"
+          onClick={() => {
+            setOpen(false);
+            menuButton.current?.focus();
+          }}
+        />
+      ) : null}
+      <main id="main" inert={open || undefined}>
+        {children}
+      </main>
+      <footer className="site-footer" inert={open || undefined}>
         <div className="container footer-top">
           <Link href="/">
             <Brand />
@@ -136,21 +233,24 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </span>
         </div>
       </footer>
-      <nav className="bottom-nav" aria-label="Member navigation">
-        {links.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={path.startsWith(href) ? "active" : ""}
-          >
-            <Icon size={21} />
-            <span>{label}</span>
-          </Link>
-        ))}
-        <Link href="/join" className={path === "/join" ? "active" : ""}>
-          <Globe2 size={21} />
-          <span>Join</span>
-        </Link>
+      <nav
+        className="bottom-nav"
+        aria-label="Member navigation"
+        inert={open || undefined}
+      >
+        {[{ href: "/", label: "Home", icon: Home }, ...links].map(
+          ({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className={activeTab(href) ? "active" : ""}
+              aria-current={activeTab(href) ? "page" : undefined}
+            >
+              <Icon size={21} />
+              <span>{label}</span>
+            </Link>
+          ),
+        )}
       </nav>
     </>
   );

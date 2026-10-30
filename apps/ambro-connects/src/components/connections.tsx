@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import type { Connection, ConnectionStatus, MeResponse } from "@/lib/types";
 import "./member-tools.css";
+import "./mobile-operations.css";
 
 async function responseData<T>(response: Response): Promise<T> {
   const body: unknown = await response.json().catch(() => null);
@@ -43,23 +50,48 @@ const STATUS_LABELS: Record<ConnectionStatus, string> = {
   declined: "Declined",
   completed: "Completed",
 };
+const STATUS_FILTERS: Array<{
+  value: "all" | ConnectionStatus;
+  label: string;
+}> = [
+  { value: "all", label: "All statuses" },
+  { value: "pending", label: "Awaiting reply" },
+  { value: "accepted", label: "Connected" },
+  { value: "completed", label: "Completed" },
+  { value: "declined", label: "Declined" },
+];
 
 export function Connections() {
   const [data, setData] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
   const [tab, setTab] = useState<"incoming" | "outgoing">("outgoing");
+  const [statusFilter, setStatusFilter] = useState<"all" | ConnectionStatus>(
+    "all",
+  );
   const [busy, setBusy] = useState("");
+  const [busyAction, setBusyAction] = useState("");
+  const mutationRef = useRef(false);
+  const refreshRef = useRef(false);
+  const noticeRef = useRef<HTMLDivElement>(null);
+  const ratingRef = useRef<HTMLSelectElement>(null);
   const [reviewId, setReviewId] = useState("");
   const [rating, setRating] = useState(5);
   const [reviewBody, setReviewBody] = useState("");
   const [contactConsent, setContactConsent] = useState<Record<string, boolean>>(
     {},
   );
+  useEffect(() => {
+    if (notice) noticeRef.current?.focus();
+  }, [notice]);
+  useEffect(() => {
+    if (reviewId) ratingRef.current?.focus();
+  }, [reviewId]);
 
   const load = useCallback(async (signal?: AbortSignal, initial = false) => {
     const result = await responseData<MeResponse>(
@@ -68,7 +100,15 @@ export function Connections() {
     if (!Array.isArray(result.connections) || !("user" in result))
       throw new Error("Your connections could not be loaded.");
     setData(result);
-    if (initial && result.membership?.member_type === "china")
+    if (
+      initial &&
+      (result.membership?.member_type === "china" ||
+        result.connections.some(
+          (connection) =>
+            connection.recipient_id === result.user?.id &&
+            connection.status === "pending",
+        ))
+    )
       setTab("incoming");
     setError("");
   }, []);
@@ -91,17 +131,29 @@ export function Connections() {
   }, [load]);
 
   async function retry() {
-    setLoading(true);
+    if (refreshRef.current || mutationRef.current) return;
+    refreshRef.current = true;
+    if (data) setRefreshing(true);
+    else setLoading(true);
+    setNotice(null);
     try {
       await load();
+      if (data)
+        setNotice({
+          type: "success",
+          text: "Your connections are up to date.",
+        });
     } catch (cause) {
-      setError(
+      const message =
         cause instanceof Error
           ? cause.message
-          : "Your connections could not be loaded.",
-      );
+          : "Your connections could not be loaded.";
+      if (data) setNotice({ type: "error", text: message });
+      else setError(message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
+      refreshRef.current = false;
     }
   }
 
@@ -109,9 +161,13 @@ export function Connections() {
     id: string,
     status: "accepted" | "declined" | "completed",
   ) {
+    if (mutationRef.current || refreshRef.current) return;
     if (status === "accepted" && !contactConsent[id]) return;
+    mutationRef.current = true;
     setBusy(id);
+    setBusyAction(status);
     setNotice(null);
+    let saved = false;
     try {
       await responseData(
         await fetch("/api/connections", {
@@ -123,6 +179,17 @@ export function Connections() {
             ...(status === "accepted" ? { consent: true } : {}),
           }),
         }),
+      );
+      saved = true;
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              connections: current.connections.map((connection) =>
+                connection.id === id ? { ...connection, status } : connection,
+              ),
+            }
+          : current,
       );
       await load();
       setNotice({
@@ -137,13 +204,16 @@ export function Connections() {
     } catch (cause) {
       setNotice({
         type: "error",
-        text:
-          cause instanceof Error
+        text: saved
+          ? "Your connection was updated. Use Refresh connections to reload its latest details."
+          : cause instanceof Error
             ? cause.message
             : "The request could not be updated.",
       });
     } finally {
       setBusy("");
+      setBusyAction("");
+      mutationRef.current = false;
     }
   }
 
@@ -152,8 +222,12 @@ export function Connections() {
     connection: Connection,
   ) {
     event.preventDefault();
+    if (mutationRef.current || refreshRef.current) return;
+    mutationRef.current = true;
     setBusy(connection.id);
+    setBusyAction("review");
     setNotice(null);
+    let saved = false;
     try {
       await responseData(
         await fetch("/api/reviews", {
@@ -166,10 +240,21 @@ export function Connections() {
           }),
         }),
       );
-      await load();
+      saved = true;
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              connections: current.connections.map((item) =>
+                item.id === connection.id ? { ...item, reviewed: true } : item,
+              ),
+            }
+          : current,
+      );
       setReviewId("");
       setReviewBody("");
       setRating(5);
+      await load();
       setNotice({
         type: "success",
         text: "Thank you. Your review has been submitted for moderation before it appears on the member’s profile.",
@@ -177,19 +262,22 @@ export function Connections() {
     } catch (cause) {
       setNotice({
         type: "error",
-        text:
-          cause instanceof Error
+        text: saved
+          ? "Your review was submitted for moderation. Use Refresh connections to reload the list."
+          : cause instanceof Error
             ? cause.message
             : "Your review could not be submitted.",
       });
     } finally {
       setBusy("");
+      setBusyAction("");
+      mutationRef.current = false;
     }
   }
 
   if (loading)
     return (
-      <div className="container ac-page">
+      <div className="container ac-page ac-operations ac-connections-page">
         <div className="ac-loading" role="status">
           <span className="ac-spinner" />
           Loading your connections…
@@ -198,7 +286,7 @@ export function Connections() {
     );
   if (error)
     return (
-      <div className="container ac-page">
+      <div className="container ac-page ac-operations ac-connections-page">
         <div className="panel ac-state" role="alert">
           <span className="eyebrow">Your connections</span>
           <h1>Let’s try that again.</h1>
@@ -211,7 +299,7 @@ export function Connections() {
     );
   if (!data?.user)
     return (
-      <div className="container ac-page">
+      <div className="container ac-page ac-operations ac-connections-page">
         <div className="panel ac-state">
           <span className="eyebrow">A little introduction goes a long way</span>
           <h1>Your people, in one place.</h1>
@@ -236,7 +324,13 @@ export function Connections() {
   const outgoing = data.connections.filter(
     (connection) => connection.sender_id === data.user?.id,
   );
-  const visible = tab === "incoming" ? incoming : outgoing;
+  const directionConnections = tab === "incoming" ? incoming : outgoing;
+  const visible = directionConnections.filter(
+    (connection) =>
+      statusFilter === "all" || connection.status === statusFilter,
+  );
+  const isChina = data.membership?.member_type === "china";
+  const canManage = Boolean(data.membership?.active);
   const pendingCount = data.connections.filter(
     (connection) => connection.status === "pending",
   ).length;
@@ -248,28 +342,36 @@ export function Connections() {
   ).length;
 
   return (
-    <div className="container ac-page">
+    <div className="container ac-page ac-operations ac-connections-page">
       <div className="ac-page-heading">
         <div className="page-intro">
           <span className="eyebrow">From a hello to what’s next</span>
-          <h1>
-            Good connections.
-            <br />
-            Real possibilities.
-          </h1>
+          <h1>Connections.</h1>
           <p className="muted">
-            Follow your introductions, agree next steps and build something
-            together.
+            Follow introductions and plan your next steps.
           </p>
         </div>
-        <Link className="btn btn-dark" href="/discover">
-          Explore the network <span aria-hidden="true">↗</span>
-        </Link>
+        <div className="ac-heading-actions">
+          <Link className="btn btn-dark" href="/discover">
+            Explore the network <span aria-hidden="true">↗</span>
+          </Link>
+          <button
+            className="btn btn-ghost"
+            type="button"
+            disabled={refreshing || Boolean(busy)}
+            onClick={retry}
+          >
+            {refreshing ? "Refreshing…" : "Refresh connections"}{" "}
+            <span aria-hidden="true">↻</span>
+          </button>
+        </div>
       </div>
       {notice ? (
         <div
           className={`ac-notice ac-notice-${notice.type}`}
           role={notice.type === "error" ? "alert" : "status"}
+          ref={noticeRef}
+          tabIndex={-1}
         >
           {notice.text}
         </div>
@@ -289,12 +391,20 @@ export function Connections() {
         </div>
       </div>
       <div className="ac-connections-toolbar">
-        <div className="ac-tabs" aria-label="Connection direction">
+        <div
+          className="ac-tabs ac-direction-tabs"
+          role="group"
+          aria-label="Connection direction"
+        >
           <button
             id="incoming-tab"
             aria-pressed={tab === "incoming"}
             aria-controls="connections-panel"
-            onClick={() => setTab("incoming")}
+            type="button"
+            onClick={() => {
+              setTab("incoming");
+              setStatusFilter("all");
+            }}
           >
             Received <span>{incoming.length}</span>
           </button>
@@ -302,14 +412,56 @@ export function Connections() {
             id="outgoing-tab"
             aria-pressed={tab === "outgoing"}
             aria-controls="connections-panel"
-            onClick={() => setTab("outgoing")}
+            type="button"
+            onClick={() => {
+              setTab("outgoing");
+              setStatusFilter("all");
+            }}
           >
             Sent <span>{outgoing.length}</span>
           </button>
         </div>
-        <p className="ac-help">Business starts with a conversation.</p>
+        <p className="ac-help">
+          {tab === "incoming"
+            ? "Requests for you to respond to."
+            : "Introductions you’ve sent."}
+        </p>
       </div>
-      <div id="connections-panel" aria-labelledby={`${tab}-tab`}>
+      <div
+        className="ac-status-filters"
+        role="group"
+        aria-label="Filter connections by status"
+      >
+        {STATUS_FILTERS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={statusFilter === value}
+            aria-controls="connections-panel"
+            onClick={() => setStatusFilter(value)}
+          >
+            {label}
+            <span>
+              {
+                directionConnections.filter(
+                  (connection) =>
+                    value === "all" || connection.status === value,
+                ).length
+              }
+            </span>
+          </button>
+        ))}
+      </div>
+      <p className="ac-results-summary" role="status">
+        {visible.length} {visible.length === 1 ? "connection" : "connections"}
+        {statusFilter === "all" ? "" : ` · ${STATUS_LABELS[statusFilter]}`}
+      </p>
+      <div
+        id="connections-panel"
+        role="region"
+        aria-labelledby={`${tab}-tab`}
+        aria-busy={refreshing}
+      >
         {visible.length === 0 ? (
           <div className="panel ac-connections-empty">
             <div className="ac-empty-symbol" aria-hidden="true">
@@ -317,24 +469,50 @@ export function Connections() {
             </div>
             <span className="eyebrow">Room for new possibilities</span>
             <h2>
-              {tab === "incoming"
-                ? "Your next hello is on its way."
-                : "Start with one good introduction."}
+              {statusFilter !== "all"
+                ? "Nothing with this status yet."
+                : isChina && tab === "outgoing"
+                  ? "Your introductions arrive in Received."
+                  : tab === "incoming"
+                    ? "Your next hello is on its way."
+                    : "Start with one good introduction."}
             </h2>
             <p className="muted">
-              {tab === "incoming"
-                ? "Introductions from Global members will appear here. A complete profile makes it easier for people to find the right fit."
-                : "Find people in China and across the Global network whose experience matches your plans, then send a thoughtful introduction."}
+              {statusFilter !== "all"
+                ? "Choose another status or see all your connections."
+                : isChina && tab === "outgoing"
+                  ? "Global members start introductions. As a China member, you can browse the network and respond to their requests."
+                  : tab === "incoming"
+                    ? "Introductions from Global members will appear here. A complete profile makes it easier for people to find the right fit."
+                    : "Find people in China and across the Global network whose experience matches your plans, then send a thoughtful introduction."}
             </p>
-            <Link
-              className="btn btn-dark"
-              href={tab === "incoming" ? "/account" : "/discover"}
-            >
-              {tab === "incoming"
-                ? "Complete your profile"
-                : "Explore the network"}
-              <span aria-hidden="true">↗</span>
-            </Link>
+            {statusFilter !== "all" ? (
+              <button
+                className="btn btn-dark"
+                type="button"
+                onClick={() => setStatusFilter("all")}
+              >
+                See all statuses
+              </button>
+            ) : isChina && tab === "outgoing" ? (
+              <button
+                className="btn btn-dark"
+                type="button"
+                onClick={() => setTab("incoming")}
+              >
+                View received requests
+              </button>
+            ) : (
+              <Link
+                className="btn btn-dark"
+                href={tab === "incoming" ? "/account" : "/discover"}
+              >
+                {tab === "incoming"
+                  ? "Complete your profile"
+                  : "Explore the network"}
+                <span aria-hidden="true">↗</span>
+              </Link>
+            )}
           </div>
         ) : (
           <div className="ac-connection-list">
@@ -349,6 +527,7 @@ export function Connections() {
                 <article
                   className="panel ac-connection-card"
                   key={connection.id}
+                  aria-busy={isBusy}
                 >
                   <div className="ac-connection-card-heading">
                     <div className="ac-person">
@@ -404,11 +583,28 @@ export function Connections() {
                       </span>
                     </div>
                   ) : null}
-                  {isRecipient && connection.status === "pending" ? (
+                  {isRecipient &&
+                  ["pending", "accepted"].includes(connection.status) &&
+                  !canManage ? (
+                    <div className="ac-connection-actions">
+                      <p className="ac-help">
+                        An active membership is needed to respond to requests or
+                        mark work completed.
+                      </p>
+                      <Link className="btn btn-ghost" href="/account">
+                        Check my membership <span aria-hidden="true">↗</span>
+                      </Link>
+                    </div>
+                  ) : null}
+                  {isRecipient &&
+                  connection.status === "pending" &&
+                  canManage ? (
                     <div className="ac-connection-actions">
                       <label className="ac-consent">
                         <input
                           type="checkbox"
+                          disabled={isBusy || refreshing}
+                          aria-describedby={`consent-help-${connection.id}`}
                           checked={Boolean(contactConsent[connection.id])}
                           onChange={(event) =>
                             setContactConsent((current) => ({
@@ -423,32 +619,50 @@ export function Connections() {
                           me. These details are visible only to the two of us.
                         </span>
                       </label>
+                      <p
+                        className="ac-help ac-consent-help"
+                        id={`consent-help-${connection.id}`}
+                      >
+                        Select email sharing above to accept. Declining does not
+                        share your email.
+                      </p>
                       <div className="ac-actions">
                         <button
                           className="btn btn-primary"
+                          type="button"
+                          aria-describedby={`consent-help-${connection.id}`}
                           disabled={
-                            Boolean(busy) || !contactConsent[connection.id]
+                            Boolean(busy) ||
+                            refreshing ||
+                            !contactConsent[connection.id]
                           }
                           onClick={() =>
                             updateConnection(connection.id, "accepted")
                           }
                         >
-                          {isBusy ? "Updating…" : "Accept and share email"}{" "}
+                          {isBusy && busyAction === "accepted"
+                            ? "Accepting…"
+                            : "Accept and share email"}{" "}
                           <span aria-hidden="true">↗</span>
                         </button>
                         <button
                           className="btn btn-ghost"
-                          disabled={Boolean(busy)}
+                          type="button"
+                          disabled={Boolean(busy) || refreshing}
                           onClick={() =>
                             updateConnection(connection.id, "declined")
                           }
                         >
-                          Decline
+                          {isBusy && busyAction === "declined"
+                            ? "Declining…"
+                            : "Decline"}
                         </button>
                       </div>
                     </div>
                   ) : null}
-                  {isRecipient && connection.status === "accepted" ? (
+                  {isRecipient &&
+                  connection.status === "accepted" &&
+                  canManage ? (
                     <div className="ac-connection-actions">
                       <p className="ac-help">
                         Finished working together? Mark this connection complete
@@ -456,12 +670,15 @@ export function Connections() {
                       </p>
                       <button
                         className="btn btn-dark"
-                        disabled={Boolean(busy)}
+                        type="button"
+                        disabled={Boolean(busy) || refreshing}
                         onClick={() =>
                           updateConnection(connection.id, "completed")
                         }
                       >
-                        {isBusy ? "Updating…" : "Mark work completed"}{" "}
+                        {isBusy && busyAction === "completed"
+                          ? "Marking completed…"
+                          : "Mark work completed"}{" "}
                         <span aria-hidden="true">✓</span>
                       </button>
                     </div>
@@ -481,13 +698,14 @@ export function Connections() {
                           className="ac-review-form"
                           onSubmit={(event) => submitReview(event, connection)}
                         >
-                          <fieldset disabled={Boolean(busy)}>
+                          <fieldset disabled={Boolean(busy) || refreshing}>
                             <legend>
                               How was working with {name.split(" ")[0]}?
                             </legend>
                             <label className="field">
                               Your rating
                               <select
+                                ref={ratingRef}
                                 className="input ac-rating-select"
                                 value={rating}
                                 onChange={(event) =>
@@ -525,7 +743,9 @@ export function Connections() {
                             </p>
                             <div className="ac-actions">
                               <button className="btn btn-primary" type="submit">
-                                {isBusy ? "Submitting…" : "Submit review"}
+                                {isBusy && busyAction === "review"
+                                  ? "Submitting…"
+                                  : "Submit review"}
                               </button>
                               <button
                                 type="button"
@@ -548,7 +768,8 @@ export function Connections() {
                           </p>
                           <button
                             className="btn btn-dark"
-                            disabled={Boolean(busy)}
+                            type="button"
+                            disabled={Boolean(busy) || refreshing}
                             onClick={() => {
                               setReviewId(connection.id);
                               setRating(5);

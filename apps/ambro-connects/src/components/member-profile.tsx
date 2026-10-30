@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import Link from "next/link";
 import {
   MapPin,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Avatar, publicProfileText } from "./discover";
 import type { PublicMember, Review, MeResponse } from "@/lib/types";
+import "./mobile-directory.css";
 export function MemberProfile({ id }: { id: string }) {
   const [member, setMember] = useState<PublicMember | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -21,6 +22,19 @@ export function MemberProfile({ id }: { id: string }) {
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const requestPending = useRef(false);
+  const requestFeedback = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (busy || (!sent && !error) || !requestFeedback.current) return;
+    requestFeedback.current.focus({ preventScroll: true });
+    requestFeedback.current.scrollIntoView({
+      block: "center",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  }, [busy, sent, error]);
   useEffect(() => {
     setLoading(true);
     setMember(null);
@@ -37,6 +51,14 @@ export function MemberProfile({ id }: { id: string }) {
         const d = await r.json();
         if (!r.ok)
           throw new Error(d.error || "This profile is currently unavailable.");
+        if (
+          !d.member ||
+          typeof d.member.full_name !== "string" ||
+          !Array.isArray(d.reviews)
+        )
+          throw new Error(
+            "This profile could not be loaded. Please try again.",
+          );
         setMember(d.member);
         setReviews(d.reviews || []);
       }),
@@ -61,9 +83,10 @@ export function MemberProfile({ id }: { id: string }) {
         if (!c.signal.aborted) setLoading(false);
       });
     return () => c.abort();
-  }, [id]);
+  }, [id, loadAttempt]);
   async function connect(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (busy || requestPending.current) return;
     if (
       !member ||
       member.is_demo ||
@@ -76,9 +99,10 @@ export function MemberProfile({ id }: { id: string }) {
       );
       return;
     }
+    const f = new FormData(e.currentTarget);
+    requestPending.current = true;
     setBusy(true);
     setError("");
-    const f = new FormData(e.currentTarget);
     try {
       const r = await fetch("/api/connections", {
         method: "POST",
@@ -96,12 +120,13 @@ export function MemberProfile({ id }: { id: string }) {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Please try again.");
     } finally {
+      requestPending.current = false;
       setBusy(false);
     }
   }
   if (loading)
     return (
-      <div className="container loading-state">
+      <div className="container loading-state" role="status">
         Getting to know your next connection…
       </div>
     );
@@ -115,9 +140,18 @@ export function MemberProfile({ id }: { id: string }) {
             {error ||
               "The member may be updating their profile, or their membership may be inactive."}
           </p>
-          <Link href="/discover" className="btn btn-dark">
-            Explore the network <ArrowUpRight size={17} />
-          </Link>
+          <div className="profile-unavailable-actions">
+            <button
+              className="btn btn-ghost"
+              type="button"
+              onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+            >
+              Try again
+            </button>
+            <Link href="/discover" className="btn btn-dark">
+              Explore the network <ArrowUpRight size={17} />
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -137,9 +171,62 @@ export function MemberProfile({ id }: { id: string }) {
   const firstName = name.split(" ")[0];
   const isGlobal = member.member_type === "global";
   const visibleReviews = member.is_demo ? [] : reviews;
+  const primaryAction = member.is_demo
+    ? {
+        href: "",
+        label: "Demo · introductions unavailable",
+        note: "Fictional example. This profile cannot receive requests.",
+        disabled: true,
+      }
+    : ownProfile
+      ? {
+          href: "/account",
+          label: "Edit my profile",
+          note: "Manage the details you share with the network.",
+          disabled: false,
+        }
+      : sent || existingConnection
+        ? {
+            href: "/connections",
+            label: "View this connection",
+            note:
+              existingConnection?.status === "accepted"
+                ? "You’re connected. Continue the conversation privately."
+                : "Follow your introduction and its response.",
+            disabled: false,
+          }
+        : me?.membership?.member_type === "china"
+          ? {
+              href: "/connections",
+              label: "View received requests",
+              note: "You can explore profiles and receive Global introductions.",
+              disabled: false,
+            }
+          : membershipError
+            ? {
+                href: "#profile-introduction",
+                label: "Check my access",
+                note: "Your membership could not be checked. Try again below.",
+                disabled: false,
+              }
+            : eligible
+              ? {
+                  href: "#profile-introduction",
+                  label: `Introduce yourself to ${firstName}`,
+                  note: "Start with your plans. Email is shared only after mutual consent.",
+                  disabled: false,
+                }
+              : {
+                  href: me?.user ? "/account" : "/join?type=global",
+                  label: me?.user
+                    ? "View my membership"
+                    : "Join Global to connect",
+                  note: "An active Global membership lets you send introductions.",
+                  disabled: false,
+                };
   return (
-    <>
-      <div className="container" style={{ paddingTop: 24 }}>
+    <div className="mobile-member-page">
+      <div className="container profile-back-row">
         <Link className="text-link" href="/discover">
           <ArrowLeft size={16} /> Back to your network
         </Link>
@@ -147,10 +234,8 @@ export function MemberProfile({ id }: { id: string }) {
           <div className="network-demo-notice profile-demo-notice">
             <span className="demo-label">Demo profile</span>
             <p>
-              This is a fictional example of an{" "}
-              {isGlobal ? "Ambro Connect Global" : "Ambro Connect China"}{" "}
-              profile. Images, projects and experience are illustrative. This
-              profile cannot receive introductions.
+              Fictional {isGlobal ? "Global" : "China"} profile. Images and
+              experience are illustrative; introductions are disabled.
             </p>
           </div>
         ) : null}
@@ -169,6 +254,29 @@ export function MemberProfile({ id }: { id: string }) {
                 {publicProfileText(member.city)}
                 {member.company && <> · {publicProfileText(member.company)}</>}
               </p>
+              <div className="profile-primary-action">
+                {primaryAction.disabled ? (
+                  <button type="button" className="btn btn-ghost" disabled>
+                    {primaryAction.label}
+                  </button>
+                ) : (
+                  <Link className="btn btn-primary" href={primaryAction.href}>
+                    {primaryAction.label}
+                    <ArrowUpRight size={17} />
+                  </Link>
+                )}
+                <p>{primaryAction.note}</p>
+              </div>
+              <nav className="profile-section-nav" aria-label="On this profile">
+                <a href="#profile-about">About</a>
+                <a href="#profile-experience">Experience</a>
+                <a href="#profile-reviews">Reviews</a>
+                {eligible && !sent && !existingConnection ? (
+                  <a href="#profile-introduction">
+                    Introduce yourself <ArrowUpRight size={13} />
+                  </a>
+                ) : null}
+              </nav>
               <div className="profile-badges" style={{ marginTop: 18 }}>
                 <span
                   className={`member-network-badge member-network-${member.member_type}`}
@@ -208,7 +316,11 @@ export function MemberProfile({ id }: { id: string }) {
                   </div>
                 </div>
               )}
-              <div className="profile-about">
+              <div
+                className="profile-about profile-scroll-target"
+                id="profile-about"
+                tabIndex={-1}
+              >
                 <h2>A little about me.</h2>
                 <p>{publicProfileText(member.bio)}</p>
               </div>
@@ -247,8 +359,13 @@ export function MemberProfile({ id }: { id: string }) {
               )}
             </div>
           </section>
-          <section className="panel profile-work">
-            <h2>
+          <section
+            className="panel profile-work profile-scroll-target"
+            id="profile-experience"
+            tabIndex={-1}
+            aria-labelledby="profile-experience-heading"
+          >
+            <h2 id="profile-experience-heading">
               {isGlobal
                 ? "Projects & previous experience."
                 : "A glimpse of my work."}
@@ -283,8 +400,13 @@ export function MemberProfile({ id }: { id: string }) {
               </p>
             )}
           </section>
-          <section className="panel profile-reviews">
-            <h2>
+          <section
+            className="panel profile-reviews profile-scroll-target"
+            id="profile-reviews"
+            tabIndex={-1}
+            aria-labelledby="profile-reviews-heading"
+          >
+            <h2 id="profile-reviews-heading">
               {member.is_demo
                 ? "How reviews will work."
                 : "From real connections."}
@@ -324,13 +446,18 @@ export function MemberProfile({ id }: { id: string }) {
             )}
           </section>
         </div>
-        <aside className="panel profile-sidebar">
+        <aside
+          className="panel profile-sidebar profile-scroll-target"
+          id="profile-introduction"
+          tabIndex={-1}
+          aria-labelledby="profile-introduction-heading"
+        >
           <p className="eyebrow">
             {member.is_demo
               ? "EXPLORE THE POSSIBILITIES"
               : "START WITH A HELLO"}
           </p>
-          <h2 style={{ marginTop: 12 }}>
+          <h2 id="profile-introduction-heading" style={{ marginTop: 12 }}>
             {member.is_demo
               ? "A preview of a connection."
               : isGlobal
@@ -368,15 +495,17 @@ export function MemberProfile({ id }: { id: string }) {
             </div>
           ) : sent || existingConnection ? (
             <div
-              className="status success"
+              ref={requestFeedback}
+              tabIndex={-1}
+              className="status success profile-request-feedback"
               role="status"
               style={{ marginTop: 20 }}
             >
               <strong>
-                {sent || existingConnection?.status === "pending"
-                  ? "There’s already an introduction here."
-                  : existingConnection?.status === "declined"
-                    ? "Your earlier introduction was declined."
+                {sent
+                  ? "Your introduction has been sent."
+                  : existingConnection?.status === "pending"
+                    ? "There’s already an introduction here."
                     : "You’ve already made a connection."}
               </strong>
               <p>
@@ -408,39 +537,56 @@ export function MemberProfile({ id }: { id: string }) {
               <button
                 className="btn btn-ghost"
                 style={{ marginTop: 12 }}
-                onClick={() => window.location.reload()}
+                onClick={() => setLoadAttempt((attempt) => attempt + 1)}
               >
                 Try again
               </button>
             </div>
           ) : eligible ? (
-            <form onSubmit={connect}>
-              <label className="field">
-                Your introduction
-                <textarea
-                  name="message"
-                  required
-                  minLength={10}
-                  maxLength={2000}
-                  placeholder="What are you planning, where and when? How could you work together?"
-                />
-              </label>
-              <label className="check-label">
-                <input name="consent" type="checkbox" required />
-                <span>
-                  I agree to share my account email with this member if they
-                  accept my request.
-                </span>
-              </label>
-              {error && (
-                <div className="status error" role="alert">
-                  {error}
-                </div>
-              )}
-              <button className="btn btn-primary" disabled={busy}>
-                {busy ? "Sending…" : "Send an introduction"}
-                <ArrowUpRight size={16} />
-              </button>
+            <form onSubmit={connect} aria-busy={busy}>
+              <fieldset
+                className="profile-introduction-fields"
+                disabled={busy}
+                aria-label="Your introduction"
+              >
+                <label className="field">
+                  Your introduction
+                  <textarea
+                    name="message"
+                    id="introduction-message"
+                    aria-describedby="introduction-guidance"
+                    required
+                    minLength={10}
+                    maxLength={2000}
+                    placeholder="What are you planning, where and when? How could you work together?"
+                  />
+                </label>
+                <p id="introduction-guidance" className="introduction-guidance">
+                  Include your plans, timing and how you hope to work together.
+                  At least 10 characters.
+                </p>
+                <label className="check-label">
+                  <input name="consent" type="checkbox" required />
+                  <span>
+                    I agree to share my account email with this member if they
+                    accept my request.
+                  </span>
+                </label>
+                {error && (
+                  <div
+                    ref={requestFeedback}
+                    tabIndex={-1}
+                    className="status error profile-request-feedback"
+                    role="alert"
+                  >
+                    {error}
+                  </div>
+                )}
+                <button className="btn btn-primary" disabled={busy}>
+                  {busy ? "Sending…" : "Send an introduction"}
+                  <ArrowUpRight size={16} />
+                </button>
+              </fieldset>
             </form>
           ) : (
             <>
@@ -465,6 +611,6 @@ export function MemberProfile({ id }: { id: string }) {
           </p>
         </aside>
       </div>
-    </>
+    </div>
   );
 }

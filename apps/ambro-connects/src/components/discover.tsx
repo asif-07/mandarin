@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -11,9 +11,23 @@ import {
   ShieldCheck,
   Users,
   Star,
+  X,
+  SlidersHorizontal,
+  ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import type { MemberType, PublicMember } from "@/lib/types";
+import "./mobile-directory.css";
 type NetworkFilter = "all" | MemberType;
+type DirectoryFilters = {
+  network: NetworkFilter;
+  specialty: string;
+  city: string;
+  query: string;
+  language: string;
+  onlySaved: boolean;
+};
+const DIRECTORY_STATE_KEY = "ambro-directory-v1";
 
 // Public profiles never expose contact details. Private, accepted connections
 // use the separate contact_email response in Connections.
@@ -70,6 +84,7 @@ export function Avatar({
 }
 export function Discover() {
   const params = useSearchParams();
+  const parameterKey = params.toString();
   const networkParam = params.get("type") || params.get("network");
   const initialNetwork: NetworkFilter =
     networkParam === "china" || networkParam === "global"
@@ -88,13 +103,127 @@ export function Discover() {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<string[]>([]);
   const [toast, setToast] = useState("");
+  const [restored, setRestored] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const filtersButton = useRef<HTMLButtonElement>(null);
+  const writtenParameters = useRef<string | null>(null);
   useEffect(() => {
-    setNetwork(initialNetwork);
-    setCity("");
-    setLanguage("");
-  }, [initialNetwork]);
+    // Ignore URL snapshots superseded by a newer keystroke, and avoid reading
+    // our own history updates back over the current input state.
+    if (new URLSearchParams(window.location.search).toString() !== parameterKey)
+      return;
+    if (writtenParameters.current === parameterKey) {
+      writtenParameters.current = null;
+      return;
+    }
+    let stored: Partial<DirectoryFilters> = {};
+    try {
+      const value: unknown = JSON.parse(
+        sessionStorage.getItem(DIRECTORY_STATE_KEY) || "null",
+      );
+      if (value && typeof value === "object" && !Array.isArray(value))
+        stored = value as Partial<DirectoryFilters>;
+    } catch {
+      /* Browsing still works when storage is unavailable. */
+    }
+    const url = new URLSearchParams(parameterKey);
+    const requestedNetwork = url.get("type") || url.get("network");
+    const hasUrlState = [
+      "type",
+      "network",
+      "specialty",
+      "city",
+      "q",
+      "language",
+      "saved",
+    ].some((key) => url.has(key));
+    setNetwork(
+      requestedNetwork === "china" || requestedNetwork === "global"
+        ? requestedNetwork
+        : !hasUrlState &&
+            (stored.network === "china" || stored.network === "global")
+          ? stored.network
+          : "all",
+    );
+    const requestedSpecialty = url.get("specialty");
+    setSpecialty(
+      requestedSpecialty && specialties.includes(requestedSpecialty)
+        ? requestedSpecialty
+        : !hasUrlState &&
+            stored.specialty &&
+            specialties.includes(stored.specialty)
+          ? stored.specialty
+          : "All connections",
+    );
+    setCity(
+      hasUrlState
+        ? (url.get("city") || "").slice(0, 100)
+        : typeof stored.city === "string"
+          ? stored.city.slice(0, 100)
+          : "",
+    );
+    setQuery(
+      hasUrlState
+        ? (url.get("q") || "").slice(0, 200)
+        : typeof stored.query === "string"
+          ? stored.query.slice(0, 200)
+          : "",
+    );
+    setLanguage(
+      hasUrlState
+        ? (url.get("language") || "").slice(0, 50)
+        : typeof stored.language === "string"
+          ? stored.language.slice(0, 50)
+          : "",
+    );
+    setOnlySaved(
+      hasUrlState ? url.get("saved") === "1" : stored.onlySaved === true,
+    );
+    setRestored(true);
+  }, [parameterKey]);
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      sessionStorage.setItem(
+        DIRECTORY_STATE_KEY,
+        JSON.stringify({
+          network,
+          specialty,
+          city,
+          query,
+          language,
+          onlySaved,
+        } satisfies DirectoryFilters),
+      );
+    } catch {
+      /* Session storage is optional. */
+    }
+    const next = new URLSearchParams(window.location.search);
+    ["type", "network", "specialty", "city", "q", "language", "saved"].forEach(
+      (key) => next.delete(key),
+    );
+    if (network !== "all") next.set("type", network);
+    if (specialty !== "All connections") next.set("specialty", specialty);
+    if (city) next.set("city", city);
+    if (query) next.set("q", query);
+    if (language) next.set("language", language);
+    if (onlySaved) next.set("saved", "1");
+    const search = next.toString();
+    if (search !== window.location.search.slice(1)) {
+      writtenParameters.current = search;
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`,
+      );
+    }
+  }, [restored, network, specialty, city, query, language, onlySaved]);
   useEffect(() => {
     const controller = new AbortController();
+    setLoading(true);
+    setError("");
     fetch("/api/members", { signal: controller.signal })
       .then(async (r) => {
         const d = await r.json();
@@ -103,12 +232,17 @@ export function Discover() {
           throw new Error(
             "The network returned an unexpected response. Please try again.",
           );
-        setMembers(d.members);
         if (!d.configured)
-          setError("The network is being prepared. Please check back shortly.");
+          throw new Error(
+            "The network is being prepared. Please check back shortly.",
+          );
+        setMembers(d.members);
       })
       .catch((e) => {
-        if (e.name !== "AbortError") setError(e.message);
+        if (e.name !== "AbortError") {
+          setMembers([]);
+          setError(e.message);
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -118,7 +252,7 @@ export function Discover() {
       if (Array.isArray(s)) setSaved(s.filter((v) => typeof v === "string"));
     } catch {}
     return () => controller.abort();
-  }, []);
+  }, [loadAttempt]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(""), 2500);
@@ -128,9 +262,9 @@ export function Discover() {
     const next = saved.includes(id)
       ? saved.filter((s) => s !== id)
       : [...saved, id];
-    setSaved(next);
     try {
       localStorage.setItem("ambro-saved", JSON.stringify(next));
+      setSaved(next);
       setToast(
         next.includes(id)
           ? "Saved on this device."
@@ -149,6 +283,7 @@ export function Discover() {
   const languages = Array.from(
     new Set(networkMembers.flatMap((m) => m.languages)),
   ).sort();
+  const searchTerm = query.trim().toLowerCase();
   const filtered = networkMembers.filter(
     (m) =>
       (!onlySaved || saved.includes(m.id)) &&
@@ -158,12 +293,18 @@ export function Discover() {
         m.specialties.some((s) =>
           s.toLowerCase().includes(specialty.toLowerCase()),
         )) &&
-      (!query ||
+      (!searchTerm ||
         `${m.full_name} ${m.city} ${m.bio} ${m.company} ${m.specialties.join(" ")}`
           .toLowerCase()
-          .includes(query.toLowerCase())),
+          .includes(searchTerm)),
   );
   const demoCount = filtered.filter((member) => member.is_demo).length;
+  const advancedCount = Number(Boolean(city)) + Number(Boolean(language));
+  const filterCount =
+    advancedCount +
+    Number(Boolean(query.trim())) +
+    Number(onlySaved) +
+    Number(specialty !== "All connections");
   function chooseNetwork(next: NetworkFilter) {
     setNetwork(next);
     setCity("");
@@ -176,15 +317,16 @@ export function Discover() {
     setLanguage("");
     setOnlySaved(false);
   }
+  function closeFilters() {
+    setFiltersOpen(false);
+    filtersButton.current?.focus();
+  }
   return (
-    <>
-      <div className="container page-intro">
-        <p className="eyebrow">YOUR WORLD OF CONNECTIONS, STARTS HERE</p>
+    <div className="directory-page">
+      <div className="container page-intro directory-intro">
+        <p className="eyebrow">YOUR WORLD OF CONNECTIONS</p>
         <h1>People worth knowing.</h1>
-        <p>
-          Meet local expertise in China and shared ambition around the world.
-          Find the people who could be part of your next chapter.
-        </p>
+        <p>Local expertise in China. Shared ambition around the world.</p>
       </div>
       <div className="container discover-layout">
         <aside className="filter-rail" aria-label="Filter members">
@@ -285,59 +427,196 @@ export function Discover() {
                 ? "Travellers, founders and business people who have chosen to share their profiles."
                 : "One circle, across borders. Explore both China and Global members."}
           </p>
-          <div className="search-bar">
-            <Search size={20} />
-            <input
-              aria-label="Search members"
-              placeholder="Try a name, city or specialty…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-          <div className="mobile-categories">
-            {specialties.map((s) => (
-              <button
-                key={s}
-                className={specialty === s ? "selected" : ""}
-                onClick={() => setSpecialty(s)}
-              >
-                {s}
-              </button>
-            ))}
+          <div className="directory-search-row">
+            <form
+              className="search-bar"
+              role="search"
+              onSubmit={(event) => {
+                event.preventDefault();
+                searchInput.current?.blur();
+              }}
+            >
+              <Search size={19} aria-hidden="true" />
+              <input
+                ref={searchInput}
+                type="search"
+                aria-label="Search members"
+                placeholder="Name, city or specialty"
+                maxLength={200}
+                enterKeyHint="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+              {query ? (
+                <button
+                  className="directory-clear-search"
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => {
+                    setQuery("");
+                    searchInput.current?.focus();
+                  }}
+                >
+                  <X size={17} />
+                </button>
+              ) : null}
+            </form>
             <button
+              ref={filtersButton}
+              className={`directory-filter-toggle ${advancedCount ? "has-filters" : ""}`}
+              type="button"
+              aria-label={
+                advancedCount ? `Filters, ${advancedCount} active` : "Filters"
+              }
+              aria-expanded={filtersOpen}
+              aria-controls="directory-mobile-filters"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+            >
+              <SlidersHorizontal size={17} />
+              <span>Filters</span>
+              {advancedCount ? (
+                <span className="directory-filter-count" aria-hidden="true">
+                  {advancedCount}
+                </span>
+              ) : (
+                <ChevronDown
+                  size={13}
+                  className={filtersOpen ? "is-open" : ""}
+                />
+              )}
+            </button>
+          </div>
+          <div
+            className="mobile-categories"
+            role="group"
+            aria-label="Filter by specialty or saved profiles"
+          >
+            <button
+              type="button"
+              aria-pressed={onlySaved}
               className={onlySaved ? "selected" : ""}
               onClick={() => setOnlySaved(!onlySaved)}
             >
+              <Bookmark size={13} />
               Saved
             </button>
-          </div>
-          <div className="mobile-filter-row">
-            <label className="field">
-              City
-              <select value={city} onChange={(e) => setCity(e.target.value)}>
-                <option value="">All cities</option>
-                {cities.map((c) => (
-                  <option key={c} value={c}>
-                    {publicProfileText(c)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              Language
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
+            {specialties.map((s) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={specialty === s}
+                className={specialty === s ? "selected" : ""}
+                onClick={() => setSpecialty(s)}
               >
-                <option value="">All languages</option>
-                {languages.map((l) => (
-                  <option key={l} value={l}>
-                    {publicProfileText(l)}
-                  </option>
-                ))}
-              </select>
-            </label>
+                {s === "All connections" ? "All specialties" : s}
+              </button>
+            ))}
           </div>
+          <section
+            id="directory-mobile-filters"
+            className="directory-mobile-filters"
+            hidden={!filtersOpen}
+            aria-label="More directory filters"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                closeFilters();
+              }
+            }}
+          >
+            <div className="directory-filter-heading">
+              <div>
+                <h2>Find your people.</h2>
+                <p>Refine by location and language.</p>
+              </div>
+              <button
+                type="button"
+                className="directory-panel-close"
+                aria-label="Close filters"
+                onClick={closeFilters}
+              >
+                <X size={19} />
+              </button>
+            </div>
+            <div className="directory-filter-fields">
+              <label className="field">
+                City
+                <select value={city} onChange={(e) => setCity(e.target.value)}>
+                  <option value="">All cities</option>
+                  {cities.map((c) => (
+                    <option key={c} value={c}>
+                      {publicProfileText(c)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                Language
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                >
+                  <option value="">All languages</option>
+                  {languages.map((l) => (
+                    <option key={l} value={l}>
+                      {publicProfileText(l)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="directory-filter-footer">
+              <button
+                type="button"
+                className="directory-reset-advanced"
+                disabled={!advancedCount}
+                onClick={() => {
+                  setCity("");
+                  setLanguage("");
+                }}
+              >
+                Reset filters
+              </button>
+              <button
+                type="button"
+                className="btn btn-dark"
+                onClick={closeFilters}
+              >
+                Show{" "}
+                {loading
+                  ? "profiles"
+                  : `${filtered.length} ${filtered.length === 1 ? "profile" : "profiles"}`}{" "}
+                <ArrowUpRight size={15} />
+              </button>
+            </div>
+          </section>
+          {advancedCount ? (
+            <div
+              className="directory-active-filters"
+              aria-label="Active location and language filters"
+            >
+              {city ? (
+                <button
+                  type="button"
+                  aria-label={`Remove city filter ${publicProfileText(city)}`}
+                  onClick={() => setCity("")}
+                >
+                  {publicProfileText(city)}
+                  <X size={12} />
+                </button>
+              ) : null}
+              {language ? (
+                <button
+                  type="button"
+                  aria-label={`Remove language filter ${publicProfileText(language)}`}
+                  onClick={() => setLanguage("")}
+                >
+                  {publicProfileText(language)}
+                  <X size={12} />
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <div className="discovery-banner">
             <div>
               <p className="eyebrow" style={{ color: "#dfe4b6", marginTop: 0 }}>
@@ -359,31 +638,48 @@ export function Discover() {
             <div className="network-demo-notice">
               <span className="demo-label">Demo profiles</span>
               <p>
-                Profiles marked “Demo profile” are fictional examples of the
-                network. Explore their stories; introductions are disabled for
-                these profiles.
+                Fictional examples, marked “Demo profile”. Introductions are
+                disabled for them.
               </p>
             </div>
           ) : null}
-          <div className="result-bar">
-            <span>
-              {loading
+          <div className="result-bar" id="directory-results">
+            <span role="status" aria-live="polite" aria-atomic="true">
+              {loading || !restored
                 ? "Finding your people…"
-                : `${filtered.length} ${filtered.length === 1 ? "profile" : "profiles"}${city ? ` in ${publicProfileText(city)}` : " to explore"}${demoCount ? ` · ${demoCount} demo` : ""}`}
+                : error
+                  ? "Network unavailable"
+                  : `${filtered.length} ${filtered.length === 1 ? "profile" : "profiles"}${city ? ` in ${publicProfileText(city)}` : " to explore"}${demoCount ? ` · ${demoCount} demo` : ""}`}
             </span>
-            <button className="clear-filter" onClick={resetFilters}>
-              Reset filters
-            </button>
+            {filterCount ? (
+              <button className="clear-filter" onClick={resetFilters}>
+                Clear filters{" "}
+                <span className="directory-filter-count">{filterCount}</span>
+              </button>
+            ) : null}
           </div>
-          {error && (
-            <div className="status error" role="alert">
-              {error}
+          {loading || !restored ? (
+            <div
+              className="member-grid directory-loading"
+              role="status"
+              aria-label="Loading member profiles"
+            >
+              <div className="skeleton" aria-hidden="true" />
+              <div className="skeleton" aria-hidden="true" />
             </div>
-          )}
-          {loading ? (
-            <div className="member-grid">
-              <div className="skeleton" />
-              <div className="skeleton" />
+          ) : error ? (
+            <div className="empty-state directory-load-error" role="alert">
+              <Globe2 size={32} strokeWidth={1.4} />
+              <h2>The network is taking a moment.</h2>
+              <p>{error}</p>
+              <button
+                type="button"
+                className="btn btn-dark"
+                onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+              >
+                <RefreshCw size={16} />
+                Try again
+              </button>
             </div>
           ) : filtered.length ? (
             <div className="member-grid">
@@ -471,14 +767,18 @@ export function Discover() {
             <div className="empty-state">
               <Users size={38} strokeWidth={1.3} />
               <h2>
-                {members.length
-                  ? "A different search. A new possibility."
-                  : "A new circle is taking shape."}
+                {onlySaved && !saved.length
+                  ? "Keep a good connection close."
+                  : members.length
+                    ? "A different search. A new possibility."
+                    : "A new circle is taking shape."}
               </h2>
               <p>
-                {members.length
-                  ? "Try another city or specialty, or clear your filters to see the whole network."
-                  : "We’re welcoming people in China and around the world. Real profiles appear after membership activation and team review. Global members choose whether to share theirs."}
+                {onlySaved && !saved.length
+                  ? "Tap the bookmark on any profile to save it on this device. Your shortlist will appear here."
+                  : members.length
+                    ? "Try another city or specialty, or clear your filters to see the whole network."
+                    : "We’re welcoming people in China and around the world. Real profiles appear after membership activation and team review. Global members choose whether to share theirs."}
               </p>
               {members.length ? (
                 <button
@@ -509,6 +809,6 @@ export function Discover() {
           {toast}
         </div>
       )}
-    </>
+    </div>
   );
 }

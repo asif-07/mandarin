@@ -45,7 +45,9 @@ The review directory includes 20 clearly labeled fictional China profiles (four 
 
 ## Design and assets
 
-Content and mobile design plan: `../../docs/ambro-connects-plan.md`. Warm ivory, forest green and vermilion; Manrope and DM Sans with system-font fallbacks. Keyboard focus, reduced motion and bottom navigation are provided. Main routes were checked at desktop and 360/390 px mobile widths.
+Content and mobile design plan: `../../docs/ambro-connects-plan.md`. Warm ivory, forest green and vermilion; Manrope and DM Sans with system-font fallbacks. Keyboard focus, reduced motion and bottom navigation are provided.
+
+The mobile polish covers touch and keyboard navigation, safe-area spacing, compact discovery with persistent filters, profile actions, form feedback, per-user tab drafts and compact approval queues. Ten routes passed overflow, touch-target and input-text checks at 320/360/390/430 px, with tablet menu and resize checks at 820/1100 px. Protected interactions used an in-memory local proxy with no real database or Auth writes. See [mobile UX review](docs/mobile-ux-review.md) for the tested flows and production-mode proxy commands. Native Android/iOS packaging remains future work.
 
 Guangzhou photo: [Unsplash source](https://unsplash.com/photos/a-city-skyline-with-a-rainbow-colored-tower-Y4f-AKaTm3I), served locally as `public/guangzhou.jpg`. The editorial quotation is explicitly labeled as the community's spirit, not presented as a testimonial or direct attributed quote.
 
