@@ -18,7 +18,7 @@ Profiles expose professional content only. Private account state, billing refere
 
 ## Administrator bootstrap
 
-The private `admin_bootstrap_emails` allowlist is configured in the database, outside source control. An allowed email receives `app_metadata.role = admin` only after email verification. The one-time grant is consumed by that user. Email confirmation must remain enabled. Other administrators may be assigned only through a trusted server/database operation.
+The private `admin_bootstrap_emails` allowlist is configured in the database, outside source control. An allowed email receives `app_metadata.role = admin` only after email verification. The email is bound once to that user ID. A BEFORE trigger assigns the role to the actual Auth return record and preserves it for that same verified, bound identity across later provider metadata refreshes. A different user cannot inherit a consumed binding. Email confirmation must remain enabled. Other administrators may be assigned only through a trusted server/database operation. To revoke the configured initial administrator, a trusted operator must remove its private allowlist entry before changing its app metadata role.
 
 ## Auth and media setup
 
@@ -29,6 +29,8 @@ The member-media bucket contains public profile photos; links are readable even 
 ## Verification
 
 `tests/security.sql` runs entirely inside a rolled-back transaction. It verifies anonymous privacy, immutable membership activation, pricing and dates, role escalation prevention, admin email verification, connection authorization and consent, completed-only unique reviews, media ownership, profile resubmission and suspension. Fixtures use reserved `.invalid` addresses and do not send mail. Run it only in the Ambro Connects project.
+
+`tests/admin-bootstrap.sql` verifies the Auth write boundary specifically: no elevation before verification, the admin role appears in `UPDATE ... RETURNING`, subsequent provider metadata writes preserve the grant, email reuse cannot transfer it to a different user ID, and trusted revocation works. This also rolls back all fixtures.
 
 The migration security advisor and these SQL checks were run against the isolated project. App API smoke checks cover unauthenticated access, cross-site rejection, input validation, callback redirect safety and `no-store` responses.
 

@@ -30,6 +30,7 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
   const [forgot, setForgot] = useState(false);
   const joining = mode === "join";
   const reset = mode === "reset";
+  const teamLogin = mode === "login" && search.get("next") === "/admin";
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -77,7 +78,7 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
         );
         if (data.confirmation_required === false) router.push("/account");
       } else {
-        router.push("/account");
+        router.push(teamLogin || data.user?.is_admin ? "/admin" : "/account");
         router.refresh();
       }
     } catch (err) {
@@ -141,7 +142,9 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
               ? "Choose a new password."
               : forgot
                 ? "Reset your password."
-                : "Good to see you again."}
+                : teamLogin
+                  ? "Sign in to team approvals."
+                  : "Good to see you again."}
         </h2>
         <p>
           {joining
@@ -150,7 +153,9 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
               ? "We’ll send a secure reset link to your email."
               : reset
                 ? "Use at least 10 characters for your new password."
-                : "Sign in to your Ambro Connects account."}
+                : teamLogin
+                  ? "Use your designated team email and the password you chose."
+                  : "Sign in to your Ambro Connects account."}
         </p>
         <form onSubmit={submit}>
           {joining && (
@@ -332,6 +337,17 @@ export function AuthForm({ mode }: { mode: "join" | "login" | "reset" }) {
             </>
           )}
         </div>
+        {!joining && !reset ? (
+          <div className="auth-team-help">
+            <strong>Here to approve members?</strong>
+            <p>
+              Use your team account. Admin access uses the same password and
+              does not require a paid membership.
+            </p>
+            <Link href="/admin">Open approvals ↗</Link>
+            <Link href="/how-to-use#team">How to use the admin portal ↗</Link>
+          </div>
+        ) : null}
       </section>
     </div>
   );

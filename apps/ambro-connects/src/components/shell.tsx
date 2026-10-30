@@ -51,7 +51,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               Discover the network
             </Link>
-            <Link href="/#how-it-works">How it works</Link>
+            <Link
+              className={path === "/how-to-use" ? "active" : ""}
+              href="/how-to-use"
+            >
+              How to use
+            </Link>
             <Link href="/#memberships">Memberships</Link>
             <Link href="/connections">Connections</Link>
           </nav>
@@ -82,6 +87,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {[
               ...links,
               { href: "/#memberships", label: "Memberships", icon: Globe2 },
+              { href: "/how-to-use", label: "How to use", icon: Compass },
+              { href: "/admin", label: "Team approvals", icon: Users },
               { href: "/login", label: "Sign in", icon: UserRound },
             ].map((l) => (
               <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>
@@ -108,6 +115,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Link>
             <Link href="/join?type=china">
               Become a China connect <ArrowUpRight size={16} />
+            </Link>
+            <Link href="/how-to-use">
+              How to use <ArrowUpRight size={16} />
+            </Link>
+            <Link href="/admin">
+              Team approvals <ArrowUpRight size={16} />
             </Link>
           </div>
         </div>

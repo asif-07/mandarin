@@ -1391,6 +1391,28 @@ select:focus {
   color: var(--green);
   text-decoration: underline;
 }
+
+.auth-team-help {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.auth-team-help p {
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 8px 0 12px;
+}
+
+.auth-team-help a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
 .profile-layout {
   display: grid;
   grid-template-columns: 1fr 320px;

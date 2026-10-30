@@ -371,6 +371,23 @@ export function Account() {
         </button>
       </div>
 
+      {data.user.is_admin ? (
+        <section className="ac-team-entry" aria-label="Team access">
+          <div>
+            <span className="eyebrow">Your team access is active</span>
+            <h2>Ready for your approval.</h2>
+            <p>Review profiles, payments, trip benefits and member feedback.</p>
+          </div>
+          <div className="ac-heading-actions">
+            <Link className="btn btn-dark" href="/admin">
+              Open team dashboard <span aria-hidden="true">↗</span>
+            </Link>
+            <Link className="ac-admin-link" href="/how-to-use#team">
+              How to use ↗
+            </Link>
+          </div>
+        </section>
+      ) : null}
       {notice ? (
         <div
           className={`ac-notice ac-notice-${notice.type}`}

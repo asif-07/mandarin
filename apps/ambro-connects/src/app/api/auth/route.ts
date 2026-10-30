@@ -72,7 +72,11 @@ export async function POST(request: Request) {
         );
       return response({
         ok: true,
-        user: { id: data.user.id, email: data.user.email },
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          is_admin: data.user.app_metadata?.role === "admin",
+        },
       });
     }
     if (password.length < 10)

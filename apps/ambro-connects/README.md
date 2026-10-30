@@ -29,6 +29,12 @@ Members own their profiles and media. Active Global members may request introduc
 
 The first administrator is configured in a private database bootstrap record. Their exact email must be confirmed before admin access is granted. No admin password is seeded or stored in source. Register, confirm the email, then visit `/admin`.
 
+## Team use
+
+The public `/how-to-use` guide covers admin sign-in, the Profiles/Memberships/Reviews queues, manual payment and trip checks, member onboarding and connections. It is linked from navigation, sign-in, My space and approvals. `/login?next=/admin` opens team sign-in; verified administrators also go straight to approvals after ordinary login. A team account needs no paid membership to approve requests. China members need both profile approval and active membership to appear publicly.
+
+The initial administrator binding survives Auth provider metadata refreshes. The focused rolled-back `supabase/tests/admin-bootstrap.sql` checks the Auth return value, verification boundary, later writes, identity binding and trusted revocation; see `supabase/README.md` for revocation procedure.
+
 ## Review release and remaining launch setup
 
 The user requested publication for review while arranging email. Supabase's default mail sender is limited to organization team addresses. Configure custom SMTP before inviting the public, then remove the preview notice from the signup form. Email confirmation is intentionally enabled. No external signup/confirmation email was used for QA.

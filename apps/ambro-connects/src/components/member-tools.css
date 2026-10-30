@@ -14,6 +14,36 @@
   margin: 0;
   padding: 0;
 }
+
+.ac-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.ac-team-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px;
+  margin-bottom: 28px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--soft);
+}
+
+.ac-team-entry h2 {
+  font-size: 26px;
+  margin: 10px 0;
+}
+
+.ac-team-entry p {
+  color: var(--muted);
+  font-size: 14px;
+}
 .ac-page-heading .page-intro h1 {
   font-size: clamp(2.6rem, 4.8vw, 4.4rem);
   line-height: 1.04;

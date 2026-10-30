@@ -223,8 +223,11 @@ export function Admin() {
           <p className="muted">
             This dashboard is available to authorised team members.
           </p>
-          <Link className="btn btn-dark" href="/login">
+          <Link className="btn btn-dark" href="/login?next=/admin">
             Sign in <span aria-hidden="true">↗</span>
+          </Link>
+          <Link className="ac-admin-link" href="/how-to-use#team">
+            How to use the admin portal ↗
           </Link>
         </div>
       </div>
@@ -241,6 +244,9 @@ export function Admin() {
           </p>
           <Link className="btn btn-dark" href="/account">
             Back to your account <span aria-hidden="true">↗</span>
+          </Link>
+          <Link className="ac-admin-link" href="/how-to-use#team">
+            Help with team access ↗
           </Link>
         </div>
       </div>
@@ -277,9 +283,14 @@ export function Admin() {
             trustworthy.
           </p>
         </div>
-        <button className="btn btn-ghost" onClick={retry}>
-          Refresh queue <span aria-hidden="true">↻</span>
-        </button>
+        <div className="ac-heading-actions">
+          <Link className="btn btn-ghost" href="/how-to-use#approvals">
+            How to approve <span aria-hidden="true">↗</span>
+          </Link>
+          <button className="btn btn-ghost" onClick={retry}>
+            Refresh queue <span aria-hidden="true">↻</span>
+          </button>
+        </div>
       </div>
       {notice ? (
         <div
