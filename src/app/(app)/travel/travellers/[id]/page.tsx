@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shell/page-header";
+import { SectionTabs } from "@/components/shared/section-tabs";
 import { Attribution } from "@/components/shell/attribution";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPill, TRAVELLER_TONES } from "@/components/shared/status-pill";
@@ -158,6 +159,16 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
         </section>
       )}
 
+      <SectionTabs
+        defaultValue="documents"
+        tabs={[
+          {
+            value: "documents",
+            label: "Documents",
+            badge: `${completeness.count}/${completeness.total}`,
+            tone: completeness.complete ? undefined : "warning",
+            content: (
+              <>
       <section className="mb-8">
         <h2 className="micro-label mb-3">Documents</h2>
         <DocumentSlots travellerId={t.id} documents={documents} groupCovered={groupCovered} />
@@ -178,13 +189,28 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
         )}
       </section>
 
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+              </>
+            ),
+          },
+          {
+            value: "details",
+            label: "Details",
+            content: (
+              <>
         <section>
           <h2 className="micro-label mb-3">Details</h2>
           <TravellerForm mode="edit" travellerId={t.id} defaultValues={defaults} initialGroup={initialGroup} />
         </section>
+              </>
+            ),
+          },
+          {
+            value: "packs",
+            label: "Packs & links",
+            badge: (packs ?? []).length || null,
+            content: (
+              <div className="grid gap-6 xl:grid-cols-2">
 
-        <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Travel packs</CardTitle>
@@ -234,8 +260,12 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        
+              </div>
+            ),
+          },
+        ]}
+      />
     </>
   );
 }

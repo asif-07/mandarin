@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowRight, CheckCircle2, Plane, Users } from "lucide-react";
 import { StatCard, StatGrid } from "@/components/shared/stat-card";
 import { Section } from "@/components/shared/section";
+import { SectionTabs } from "@/components/shared/section-tabs";
 import { Chip } from "@/components/shared/chip";
 import { WorkflowStatusChip } from "@/components/workflow/status-chip";
 import { NotificationsList } from "@/components/workflow/notifications-list";
@@ -177,123 +178,15 @@ export default async function DashboardPage() {
         <StatCard label="Outstanding" value={`USD ${formatNumber(monthBalance)}`} hint={`received USD ${formatNumber(monthReceived)}`} tone={monthBalance > 0 ? "warning" : "success"} href={admin ? "/accounts/receivables" : "/invoices"} />
       </StatGrid>
 
-      <Section id="arrivals" title="Hong Kong group arrivals" icon={<PlaneLanding />} hint={arrivals.length ? `${arrivals.length} in the next 14 days · ${newArrivals} unanswered` : "none in the next 14 days"} link={{ href: "/travel/arrivals", label: "All arrivals" }}>
-        {arrivals.length === 0 ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-mr-line px-4 py-4">
-            <p className="text-sm text-mr-muted">Share the public link with travel agents; their arrival details land here for you to reply to.</p>
-            <ArrivalsLinkButton />
-          </div>
-        ) : (
-          <ul className="divide-y divide-mr-line rounded-lg border border-mr-line bg-white">
-            {arrivals.slice(0, 8).map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
-                <Link href={`/travel/arrivals?status=${a.status}`} className="tnum text-sm font-medium text-mr-ink hover:underline">
-                  {formatDate(a.arrival_date)} {a.arrival_time}
-                </Link>
-                <Chip tone="ink">{a.partner_code}</Chip>
-                <span className="text-sm text-mr-body">
-                  {a.airline_flight} · {a.pax} pax{a.agent_name ? ` · ${a.agent_name}` : ""}
-                </span>
-                <Chip tone={a.status === "new" ? "warning" : a.status === "closed" ? "muted" : "success"} className="ml-auto">
-                  {a.status === "new" ? "Needs reply" : a.status}
-                </Chip>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
-
-      <Section id="applications" title="Visa applications" icon={<UserPlus />} hint={openApplications.length ? `${openApplications.length} submitted, not yet reviewed` : "nothing waiting"} link={{ href: "/visa", label: "All applications" }}>
-        {recentApplications.length === 0 ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-mr-line px-4 py-4">
-            <p className="text-sm text-mr-muted">Share the link with travellers: they upload passports, photos and PAN cards, answer the PAR question, and land here to be grouped.</p>
-            <ApplyLinkButton />
-          </div>
-        ) : (
-          <ul className="divide-y divide-mr-line rounded-lg border border-mr-line bg-white">
-            {recentApplications.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
-                <Link href="/visa" className="text-sm font-medium text-mr-ink hover:underline">
-                  {a.contact_name}
-                </Link>
-                <span className="tnum text-sm text-mr-body">{formatDateRange(a.travel_start_date, a.travel_end_date)}</span>
-                <span className="text-xs text-mr-muted">{a.passengers.length} pax</span>
-                <span className="ml-auto flex items-center gap-1.5">
-                  {a.ready && <Chip tone="ink">PAR + hotel</Chip>}
-                  {a.group_ref ? <Chip tone="success">{a.group_ref}</Chip> : a.passengers.some((p) => !p.travel_group_id) ? <Chip tone="red">No group</Chip> : null}
-                  <Chip tone={a.status === "submitted" ? "warning" : "success"}>{labelFor(PORTAL_STATUSES, a.status)}</Chip>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
-
-      {(actionGroups.length > 0 || notifications.length > 0) && (
-        <div className="mt-8 grid gap-6 xl:grid-cols-2">
-          <Section id="workflow-inbox" title="Needs your approval" icon={<AlertTriangle />} hint={actionGroups.length ? `${actionGroups.length} group${actionGroups.length === 1 ? "" : "s"} waiting on the company` : "Nothing waiting"} link={{ href: "/travel/workflow", label: "Workflow board" }}>
-            {actionGroups.length === 0 ? (
-              <p className="text-sm text-mr-muted">No partner submissions or uploaded visas waiting for review.</p>
-            ) : (
-              <ul className="divide-y divide-mr-line rounded-lg border border-mr-line bg-white">
-                {actionGroups.map((g) => (
-                  <li key={g.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
-                    <div className="min-w-0 flex-1">
-                      <Link href={`/travel/workflow?group=${g.id}`} className="font-mono text-xs font-medium text-mr-ink hover:underline">
-                        {g.group_ref}
-                      </Link>
-                      <p className="text-xs text-mr-muted">
-                        {formatDate(g.travel_date)} to {formatDate(g.travel_end_date)} · {g.pax_expected ?? g.traveller_count} pax{g.partner_code ? ` · ${g.partner_code}` : ""}
-                      </p>
-                    </div>
-                    {g.other_border_requested && <Chip tone="warning">Other border</Chip>}
-                    <WorkflowStatusChip status={g.workflow_status} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-          <Section id="notifications" title="Notifications" icon={<CheckCircle2 />} hint={unread ? `${unread} unread` : "all read"} link={{ href: "/travel/workflow", label: "Workflow board" }}>
-            <div className="mb-2 flex justify-end">{unread > 0 && <MarkReadButton />}</div>
-            <NotificationsList items={notifications} hrefFor={(n) => (n.group_id ? `/travel/workflow?group=${n.group_id}` : null)} />
-          </Section>
-        </div>
-      )}
-
-      {completedGroups.length > 0 && (
-        <Section id="completed-groups" title="Travel completed" icon={<CheckCircle2 />} hint={`${completedPax} traveller${completedPax === 1 ? "" : "s"} back in the last 30 days`} link={{ href: "/travel/travellers?status=travelled", label: "All travelled" }}>
-          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {completedGroups.map((g) => (
-              <li key={g.id} className="rounded-lg border border-mr-success/30 bg-mr-success/5 p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="tnum text-xs font-medium text-mr-body">{formatDateRange(g.travel_date, g.travel_end_date)}</p>
-                    <Link href={`/travel?date=${g.travel_date}`} className="mt-0.5 block truncate font-heading text-lg font-semibold text-mr-ink hover:underline">
-                      {g.group_code}
-                      {g.partner_code && <Chip tone="ink" className="ml-2 align-middle font-sans">{g.b2b ? "B2B" : "Partner"} {g.partner_code}</Chip>}
-                      {g.label ? <span className="font-sans text-sm font-normal text-mr-body"> · {g.label}</span> : null}
-                    </Link>
-                  </div>
-                  <Chip tone="success" className="shrink-0">{g.daysAgo === 0 ? "Exited today" : g.daysAgo === 1 ? "Exited yesterday" : `Exited ${g.daysAgo} days ago`}</Chip>
-                </div>
-                <div className="mt-3 flex items-end justify-between gap-3">
-                  <div>
-                    <p className="micro-label">Travellers</p>
-                    <p className="tnum mt-1 font-heading text-2xl font-semibold leading-none text-mr-ink">{g.pax}</p>
-                  </div>
-                  <p className="truncate text-right text-xs text-mr-muted">
-                    {g.exit_port ? `Out: ${g.exit_port}` : ""}
-                    {!g.b2b && g.pax > 0 ? (
-                      <span className={cn("block", g.travelled ? "text-mr-success" : "text-mr-warning")}>{g.travelled ? "Marked travelled" : "Not yet marked travelled"}</span>
-                    ) : null}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
-
+      <SectionTabs
+        defaultValue="overview"
+        tabs={[
+          {
+            value: "overview",
+            label: "Today",
+            badge: (enteringToday ?? 0) + (exitingToday ?? 0) || null,
+            content: (
+              <>
       <Section id="upcoming-groups" title="Travelling groups" icon={<Plane />} hint={`${upcomingGroups.length ? `${upcomingGroups.length} shown, soonest first · ` : ""}today: ${enteringToday} entering, ${exitingToday} exiting`} link={{ href: "/travel/movements", label: "Entry / Exit today" }}>
         {upcomingGroups.length === 0 ? (
           <p className="rounded-lg border border-dashed border-mr-line px-4 py-6 text-center text-sm text-mr-muted">
@@ -371,7 +264,7 @@ export default async function DashboardPage() {
         )}
       </Section>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-2">
+                <div className="mt-8 grid gap-6 xl:grid-cols-2">
         <Card className="xl:order-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -407,7 +300,110 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </Card>
+                </div>
+              </>
+            ),
+          },
+          {
+            value: "inbox",
+            label: "Inbox",
+            badge: actionGroups.length + openApplications.length + newArrivals + unread || null,
+            tone: "red",
+            content: (
+              <>
+      {(actionGroups.length > 0 || notifications.length > 0) && (
+        <div className="mt-8 grid gap-6 xl:grid-cols-2">
+          <Section id="workflow-inbox" title="Needs your approval" icon={<AlertTriangle />} hint={actionGroups.length ? `${actionGroups.length} group${actionGroups.length === 1 ? "" : "s"} waiting on the company` : "Nothing waiting"} link={{ href: "/travel/workflow", label: "Workflow board" }}>
+            {actionGroups.length === 0 ? (
+              <p className="text-sm text-mr-muted">No partner submissions or uploaded visas waiting for review.</p>
+            ) : (
+              <ul className="divide-y divide-mr-line rounded-lg border border-mr-line bg-white">
+                {actionGroups.map((g) => (
+                  <li key={g.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/travel/workflow?group=${g.id}`} className="font-mono text-xs font-medium text-mr-ink hover:underline">
+                        {g.group_ref}
+                      </Link>
+                      <p className="text-xs text-mr-muted">
+                        {formatDate(g.travel_date)} to {formatDate(g.travel_end_date)} · {g.pax_expected ?? g.traveller_count} pax{g.partner_code ? ` · ${g.partner_code}` : ""}
+                      </p>
+                    </div>
+                    {g.other_border_requested && <Chip tone="warning">Other border</Chip>}
+                    <WorkflowStatusChip status={g.workflow_status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+          <Section id="notifications" title="Notifications" icon={<CheckCircle2 />} hint={unread ? `${unread} unread` : "all read"} link={{ href: "/travel/workflow", label: "Workflow board" }}>
+            <div className="mb-2 flex justify-end">{unread > 0 && <MarkReadButton />}</div>
+            <NotificationsList items={notifications} hrefFor={(n) => (n.group_id ? `/travel/workflow?group=${n.group_id}` : null)} />
+          </Section>
+        </div>
+      )}
 
+      <Section id="applications" title="Visa applications" icon={<UserPlus />} hint={openApplications.length ? `${openApplications.length} submitted, not yet reviewed` : "nothing waiting"} link={{ href: "/visa", label: "All applications" }}>
+        {recentApplications.length === 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-mr-line px-4 py-4">
+            <p className="text-sm text-mr-muted">Share the link with travellers: they upload passports, photos and PAN cards, answer the PAR question, and land here to be grouped.</p>
+            <ApplyLinkButton />
+          </div>
+        ) : (
+          <ul className="divide-y divide-mr-line rounded-lg border border-mr-line bg-white">
+            {recentApplications.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+                <Link href="/visa" className="text-sm font-medium text-mr-ink hover:underline">
+                  {a.contact_name}
+                </Link>
+                <span className="tnum text-sm text-mr-body">{formatDateRange(a.travel_start_date, a.travel_end_date)}</span>
+                <span className="text-xs text-mr-muted">{a.passengers.length} pax</span>
+                <span className="ml-auto flex items-center gap-1.5">
+                  {a.ready && <Chip tone="ink">PAR + hotel</Chip>}
+                  {a.group_ref ? <Chip tone="success">{a.group_ref}</Chip> : a.passengers.some((p) => !p.travel_group_id) ? <Chip tone="red">No group</Chip> : null}
+                  <Chip tone={a.status === "submitted" ? "warning" : "success"}>{labelFor(PORTAL_STATUSES, a.status)}</Chip>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section id="arrivals" title="Hong Kong group arrivals" icon={<PlaneLanding />} hint={arrivals.length ? `${arrivals.length} in the next 14 days · ${newArrivals} unanswered` : "none in the next 14 days"} link={{ href: "/travel/arrivals", label: "All arrivals" }}>
+        {arrivals.length === 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-mr-line px-4 py-4">
+            <p className="text-sm text-mr-muted">Share the public link with travel agents; their arrival details land here for you to reply to.</p>
+            <ArrivalsLinkButton />
+          </div>
+        ) : (
+          <ul className="divide-y divide-mr-line rounded-lg border border-mr-line bg-white">
+            {arrivals.slice(0, 8).map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+                <Link href={`/travel/arrivals?status=${a.status}`} className="tnum text-sm font-medium text-mr-ink hover:underline">
+                  {formatDate(a.arrival_date)} {a.arrival_time}
+                </Link>
+                <Chip tone="ink">{a.partner_code}</Chip>
+                <span className="text-sm text-mr-body">
+                  {a.airline_flight} · {a.pax} pax{a.agent_name ? ` · ${a.agent_name}` : ""}
+                </span>
+                <Chip tone={a.status === "new" ? "warning" : a.status === "closed" ? "muted" : "success"} className="ml-auto">
+                  {a.status === "new" ? "Needs reply" : a.status}
+                </Chip>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+              </>
+            ),
+          },
+          {
+            value: "travellers",
+            label: "Travellers",
+            badge: totalThisMonth || null,
+            content: (
+              <>
+                <div className="mt-2 grid gap-6 xl:grid-cols-2">
         <Card className="xl:order-2 xl:row-span-2">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -452,7 +448,51 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </Card>
+                </div>
+      {completedGroups.length > 0 && (
+        <Section id="completed-groups" title="Travel completed" icon={<CheckCircle2 />} hint={`${completedPax} traveller${completedPax === 1 ? "" : "s"} back in the last 30 days`} link={{ href: "/travel/travellers?status=travelled", label: "All travelled" }}>
+          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {completedGroups.map((g) => (
+              <li key={g.id} className="rounded-lg border border-mr-success/30 bg-mr-success/5 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="tnum text-xs font-medium text-mr-body">{formatDateRange(g.travel_date, g.travel_end_date)}</p>
+                    <Link href={`/travel?date=${g.travel_date}`} className="mt-0.5 block truncate font-heading text-lg font-semibold text-mr-ink hover:underline">
+                      {g.group_code}
+                      {g.partner_code && <Chip tone="ink" className="ml-2 align-middle font-sans">{g.b2b ? "B2B" : "Partner"} {g.partner_code}</Chip>}
+                      {g.label ? <span className="font-sans text-sm font-normal text-mr-body"> · {g.label}</span> : null}
+                    </Link>
+                  </div>
+                  <Chip tone="success" className="shrink-0">{g.daysAgo === 0 ? "Exited today" : g.daysAgo === 1 ? "Exited yesterday" : `Exited ${g.daysAgo} days ago`}</Chip>
+                </div>
+                <div className="mt-3 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="micro-label">Travellers</p>
+                    <p className="tnum mt-1 font-heading text-2xl font-semibold leading-none text-mr-ink">{g.pax}</p>
+                  </div>
+                  <p className="truncate text-right text-xs text-mr-muted">
+                    {g.exit_port ? `Out: ${g.exit_port}` : ""}
+                    {!g.b2b && g.pax > 0 ? (
+                      <span className={cn("block", g.travelled ? "text-mr-success" : "text-mr-warning")}>{g.travelled ? "Marked travelled" : "Not yet marked travelled"}</span>
+                    ) : null}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
+              </>
+            ),
+          },
+          {
+            value: "billing",
+            label: "Billing",
+            badge: monthBalance > 0 ? "due" : null,
+            tone: "warning",
+            content: (
+              <div className="mt-2 grid gap-6 xl:grid-cols-2">
         <Card className="xl:order-3">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -508,7 +548,11 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+              </div>
+            ),
+          },
+        ]}
+      />
     </>
   );
 }

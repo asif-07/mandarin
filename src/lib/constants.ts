@@ -12,10 +12,52 @@ export const COMPANY = {
 
 export const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "LayoutDashboard", adminOnly: false },
-  { href: "/invoices", label: "Invoices", icon: "FileText", adminOnly: false },
+  { href: "/visa", label: "Visa applications", icon: "FileCheck2", adminOnly: false },
+  {
+    href: "/travel",
+    label: "Travel",
+    icon: "Plane",
+    adminOnly: false,
+    children: [
+      { href: "/travel", label: "By group", exact: true },
+      { href: "/travel/travellers", label: "By traveller" },
+      { href: "/travel/calendar", label: "Calendar" },
+      { href: "/travel/groups", label: "Groups" },
+      { href: "/travel/packages", label: "Packages" },
+    ],
+  },
+  {
+    href: "/travel/b2b",
+    label: "B2B partners",
+    icon: "Building2",
+    adminOnly: false,
+    children: [
+      { href: "/travel/b2b", label: "Partner groups" },
+      { href: "/travel/workflow", label: "Workflow" },
+      { href: "/travel/arrivals", label: "Arrivals" },
+    ],
+  },
+  {
+    href: "/travel/transfers",
+    label: "Operations",
+    icon: "Route",
+    adminOnly: false,
+    children: [
+      { href: "/travel/transfers", label: "Transfers" },
+      { href: "/travel/movements", label: "Entry / Exit" },
+    ],
+  },
+  {
+    href: "/invoices",
+    label: "Invoices",
+    icon: "FileText",
+    adminOnly: false,
+    children: [
+      { href: "/invoices", label: "All invoices", exact: true },
+      { href: "/invoices/b2b", label: "B2B invoices" },
+    ],
+  },
   { href: "/leads", label: "Leads", icon: "Users", adminOnly: false },
-  { href: "/travel", label: "Travel", icon: "Plane", adminOnly: false },
-  { href: "/visa", label: "Visa application", icon: "FileCheck2", adminOnly: false },
   { href: "/accounts", label: "Accounts", icon: "Wallet", adminOnly: true },
   { href: "/settings", label: "Settings", icon: "Settings", adminOnly: false },
 ] as const;

@@ -3,37 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { resolveNav } from "@/lib/nav";
 
-const TABS = [
-  { href: "/travel", label: "By group", exact: true },
-  { href: "/travel/travellers", label: "By traveller" },
-  { href: "/travel/packages", label: "Packages" },
-  { href: "/travel/b2b", label: "B2B groups" },
-  { href: "/travel/calendar", label: "Calendar" },
-  { href: "/travel/groups", label: "Groups" },
-  { href: "/travel/transfers", label: "Transfers" },
-  { href: "/travel/workflow", label: "Workflow" },
-  { href: "/travel/arrivals", label: "Arrivals" },
-  { href: "/travel/movements", label: "Entry / Exit" },
-];
-
+/** Sub-tabs of the current section only (Travel, B2B partners or Operations), so each page shows one thing. */
 export function TravelNav() {
   const pathname = usePathname();
+  const { item, child } = resolveNav(pathname);
+  const tabs = item?.children ?? [];
+  if (tabs.length === 0) return null;
   return (
-    <nav className="mb-6 -mx-4 overflow-x-auto border-b border-mr-line px-4 md:mx-0 md:px-0" aria-label="Travel views">
+    <nav className="mb-6 -mx-4 overflow-x-auto border-b border-mr-line px-4 md:mx-0 md:px-0" aria-label={`${item?.label} views`}>
       <ul className="flex gap-1">
-        {TABS.map((t) => {
-          const active = t.exact ? pathname === t.href : pathname.startsWith(t.href);
+        {tabs.map((t) => {
+          const active = child?.href === t.href;
           return (
             <li key={t.href}>
-              <Link
-                href={t.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "-mb-px inline-flex h-10 items-center whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors",
-                  active ? "border-mr-red text-mr-ink" : "border-transparent text-mr-body hover:text-mr-ink",
-                )}
-              >
+              <Link href={t.href} aria-current={active ? "page" : undefined} className={cn("-mb-px inline-flex h-10 items-center whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors", active ? "border-mr-red text-mr-ink" : "border-transparent text-mr-body hover:text-mr-ink")}>
                 {t.label}
               </Link>
             </li>

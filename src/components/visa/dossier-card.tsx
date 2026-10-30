@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Check, Mail, MessageCircle, Phone, UserPlus } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Mail, MessageCircle, Phone, UserPlus } from "lucide-react";
 import { Chip } from "@/components/shared/chip";
 import { buttonVariants } from "@/components/ui/button";
 import { ApplicationActions } from "@/components/travel/application-actions";
@@ -42,9 +42,9 @@ export function DossierCard({ r, suggestions, origin }: { r: ApplicationRow; sug
   const status = r.status === "submitted" ? { tone: "warning" as const, label: "Submitted · needs review" } : r.status === "reviewed" ? { tone: "success" as const, label: "Reviewed" } : { tone: "muted" as const, label: labelFor(PORTAL_STATUSES, r.status) };
 
   return (
-    <article className="overflow-hidden rounded-xl border border-mr-line bg-white shadow-xs transition-shadow hover:shadow-md">
-      {/* Header */}
-      <div className="flex flex-col gap-3 border-b border-mr-line/70 px-5 py-4 md:flex-row md:items-center md:justify-between">
+    <details className="group overflow-hidden rounded-xl border border-mr-line bg-white shadow-xs transition-shadow open:shadow-md hover:shadow-md" open={r.status === "submitted" && anyMissing}>
+      {/* Header = the collapsed row */}
+      <summary className="flex cursor-pointer list-none flex-col gap-3 px-5 py-4 md:flex-row md:items-center md:justify-between [&::-webkit-details-marker]:hidden">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <h2 className="font-heading text-base font-semibold tracking-tight text-mr-ink">{r.contact_name}</h2>
@@ -80,14 +80,16 @@ export function DossierCard({ r, suggestions, origin }: { r: ApplicationRow; sug
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Chip tone={anyMissing ? "red" : "success"}>{anyMissing ? `Missing on ${missingByPassenger.filter((x) => x.missing.length).length} of ${r.passengers.length}` : "Documents complete"}</Chip>
           <Chip tone={status.tone}>{status.label}</Chip>
           {r.status !== "draft" && <Chip tone={r.ready ? "ink" : "neutral"}>{r.ready ? "PAR + hotel: apply directly" : "Needs PAR / hotel from us"}</Chip>}
           {r.group_ref ? <Chip tone="success">Grouped {r.passengers.length - ungrouped.length}/{r.passengers.length}</Chip> : ungrouped.length ? <Chip tone={r.status === "draft" ? "muted" : "red"}>{ungrouped.length === r.passengers.length ? "No group" : `${ungrouped.length} not grouped`}</Chip> : null}
+          <ChevronDown className="size-4 text-mr-muted transition-transform group-open:rotate-180" />
         </div>
-      </div>
+      </summary>
 
       {/* Passengers */}
-      <div className="space-y-3 bg-mr-surface/60 px-5 py-4">
+      <div className="space-y-3 border-t border-mr-line/70 bg-mr-surface/60 px-5 py-4">
         {r.passengers.length === 0 && <p className="text-sm text-mr-muted">No passengers yet.</p>}
         {missingByPassenger.map(({ p, missing }, i) => {
           const present = new Set(p.doc_types);
@@ -165,6 +167,6 @@ export function DossierCard({ r, suggestions, origin }: { r: ApplicationRow; sug
           )}
         </div>
       </div>
-    </article>
+    </details>
   );
 }
