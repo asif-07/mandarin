@@ -2360,3 +2360,14 @@ select:focus {
   outline: 2px solid var(--green);
   outline-offset: 2px;
 }
+@media (min-width: 761px) and (max-width: 1000px) {
+  .desktop-nav { display: none; }
+  .menu-toggle { display: grid; place-items: center; }
+  .header-actions { margin-left: auto; }
+}
+@media (min-width: 761px) and (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; gap: 38px; padding-top: 44px; padding-bottom: 50px; }
+  .hero h1 { font-size: 57px; letter-spacing: -3px; }
+  .hero-description { max-width: 460px; }
+  .hero-visual { width: 100%; max-width: 560px; height: 500px; justify-self: center; }
+}
