@@ -15,7 +15,7 @@ export const NAV_ITEMS = [
   { href: "/invoices", label: "Invoices", icon: "FileText", adminOnly: false },
   { href: "/leads", label: "Leads", icon: "Users", adminOnly: false },
   { href: "/travel", label: "Travel", icon: "Plane", adminOnly: false },
-  { href: "/travel/applications", label: "Visa application", icon: "FileCheck2", adminOnly: false },
+  { href: "/visa", label: "Visa application", icon: "FileCheck2", adminOnly: false },
   { href: "/accounts", label: "Accounts", icon: "Wallet", adminOnly: true },
   { href: "/settings", label: "Settings", icon: "Settings", adminOnly: false },
 ] as const;

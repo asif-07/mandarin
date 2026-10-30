@@ -4,25 +4,26 @@ import { useRef, useState } from "react";
 import { CheckCircle2, Eye, FileText, Loader2, RefreshCw, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import type { ApplicantDoc, PORTAL_DOCS } from "@/lib/apply/shared";
-import { formatFileSize } from "@/lib/format";
+import { formatDateTime, formatFileSize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const ACCEPT = ".pdf,.jpg,.jpeg,.png,.heic,.heif";
 
 /** Upload one file into a passenger's slot through the portal API. Resolves with the stored document. */
-export async function uploadPortalDocument(token: string, travellerId: string, docType: string, file: File): Promise<ApplicantDoc> {
+export async function uploadPortalDocument(token: string, travellerId: string, docType: string, file: File): Promise<UploadedDoc> {
   const fd = new FormData();
   fd.set("file", file);
   fd.set("doc_type", docType);
   fd.set("traveller_id", travellerId);
   const res = await fetch(`/api/apply/${token}/documents`, { method: "POST", body: fd });
-  const body = (await res.json().catch(() => ({}))) as { error?: string; document?: ApplicantDoc };
+  const body = (await res.json().catch(() => ({}))) as { error?: string; document?: ApplicantDoc; replaced?: boolean; replaced_at?: string | null; par_answer?: string | null };
   if (!res.ok || !body.document) throw new Error(body.error ?? "Upload failed");
-  return body.document;
+  return { ...body.document, replaced: !!body.replaced, replaced_at: body.replaced_at ?? null, par_answer: body.par_answer ?? null };
 }
+export type UploadedDoc = ApplicantDoc & { replaced: boolean; replaced_at: string | null; par_answer: string | null };
 
 /** One upload slot on a passenger card. */
-export function DocSlot({ token, travellerId, spec, doc, onUploaded, onRemoved, onUploadedFile, compact = false }: { token: string; travellerId: string; spec: (typeof PORTAL_DOCS)[number]; doc?: ApplicantDoc; onUploaded: (doc: ApplicantDoc) => void; onRemoved: (docId: string) => void; onUploadedFile?: (file: File, doc: ApplicantDoc) => void; compact?: boolean }) {
+export function DocSlot({ token, travellerId, spec, doc, onUploaded, onRemoved, onUploadedFile, compact = false, locked = false }: { token: string; travellerId: string; spec: (typeof PORTAL_DOCS)[number]; doc?: ApplicantDoc; onUploaded: (doc: UploadedDoc) => void; onRemoved: (docId: string) => void; onUploadedFile?: (file: File, doc: ApplicantDoc) => void; compact?: boolean; locked?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
@@ -32,7 +33,7 @@ export function DocSlot({ token, travellerId, spec, doc, onUploaded, onRemoved, 
     try {
       const d = await uploadPortalDocument(token, travellerId, spec.type, file);
       onUploaded(d);
-      toast.success(`${spec.title} uploaded`);
+      toast.success(d.replaced ? `${spec.title} replaced on ${formatDateTime(d.replaced_at ?? d.uploaded_at)}. The previous copy is kept with its timestamp.` : `${spec.title} uploaded`);
       onUploadedFile?.(file, d);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
@@ -94,6 +95,7 @@ export function DocSlot({ token, travellerId, spec, doc, onUploaded, onRemoved, 
           <p className="mt-1 truncate text-xs text-mr-body" title={doc.file_name}>
             {doc.file_name} · {formatFileSize(doc.file_size)}
           </p>
+          {doc.uploaded_at && <p className="text-[11px] text-mr-muted">Uploaded {formatDateTime(doc.uploaded_at)}</p>}
           <div className="mt-1 flex items-center gap-1">
             <a href={`/api/apply/${token}/documents/${doc.id}`} target="_blank" rel="noopener" className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-mr-body hover:bg-mr-surface hover:text-mr-ink">
               <Eye className="size-3.5" /> View
@@ -101,9 +103,11 @@ export function DocSlot({ token, travellerId, spec, doc, onUploaded, onRemoved, 
             <button type="button" onClick={() => inputRef.current?.click()} className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-mr-body hover:bg-mr-surface hover:text-mr-ink">
               <RefreshCw className="size-3.5" /> Replace
             </button>
-            <button type="button" onClick={remove} className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-mr-body hover:bg-mr-surface hover:text-mr-red">
-              <Trash2 className="size-3.5" /> Remove
-            </button>
+            {!locked && (
+              <button type="button" onClick={remove} className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-mr-body hover:bg-mr-surface hover:text-mr-red">
+                <Trash2 className="size-3.5" /> Remove
+              </button>
+            )}
           </div>
         </div>
       ) : (

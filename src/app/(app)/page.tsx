@@ -203,7 +203,7 @@ export default async function DashboardPage() {
         )}
       </Section>
 
-      <Section id="applications" title="Visa applications" icon={<UserPlus />} hint={openApplications.length ? `${openApplications.length} submitted, not yet reviewed` : "nothing waiting"} link={{ href: "/travel/applications", label: "All applications" }}>
+      <Section id="applications" title="Visa applications" icon={<UserPlus />} hint={openApplications.length ? `${openApplications.length} submitted, not yet reviewed` : "nothing waiting"} link={{ href: "/visa", label: "All applications" }}>
         {recentApplications.length === 0 ? (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-mr-line px-4 py-4">
             <p className="text-sm text-mr-muted">Share the link with travellers: they upload passports, photos and PAN cards, answer the PAR question, and land here to be grouped.</p>
@@ -213,7 +213,7 @@ export default async function DashboardPage() {
           <ul className="divide-y divide-mr-line rounded-lg border border-mr-line bg-white">
             {recentApplications.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
-                <Link href="/travel/applications" className="text-sm font-medium text-mr-ink hover:underline">
+                <Link href="/visa" className="text-sm font-medium text-mr-ink hover:underline">
                   {a.contact_name}
                 </Link>
                 <span className="tnum text-sm text-mr-body">{formatDateRange(a.travel_start_date, a.travel_end_date)}</span>

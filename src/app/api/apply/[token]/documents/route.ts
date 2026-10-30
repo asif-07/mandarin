@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { applicationByToken, passengerBelongs } from "@/lib/apply/server";
 import { PORTAL_DOCS } from "@/lib/apply/shared";
 import { reconcileDocumentStatus } from "@/lib/actions/travellers";
+import { notify } from "@/lib/workflow/engine";
 import { ACCEPTED_UPLOAD_TYPES, BUCKETS, DOC_TYPES, MAX_UPLOAD_BYTES } from "@/lib/constants";
 
 export const runtime = "nodejs";
@@ -57,7 +58,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (upErr) return NextResponse.json({ error: `Upload failed: ${upErr.message}` }, { status: 500 });
 
   const meta = DOC_TYPES.find((d) => d.value === docType)!;
-  await supabase.from("traveller_documents").update({ deleted_at: new Date().toISOString() }).eq("traveller_id", travellerId).eq("doc_type", docType).is("deleted_at", null);
+  // Replacing keeps the previous copy with its own timestamps (soft delete): every re-upload is traceable.
+  const { data: previous } = await supabase.from("traveller_documents").select("id, uploaded_at").eq("traveller_id", travellerId).eq("doc_type", docType).is("deleted_at", null);
+  const replacedAt = new Date().toISOString();
+  if (previous?.length) await supabase.from("traveller_documents").update({ deleted_at: replacedAt }).eq("traveller_id", travellerId).eq("doc_type", docType).is("deleted_at", null);
   const { data: row, error } = await supabase
     .from("traveller_documents")
     .insert({ traveller_id: travellerId, doc_type: docType, file_name: fileName, storage_path: path, mime_type: mime, file_size: bytes.byteLength, merge_order: meta.mergeOrder })
@@ -65,8 +69,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .single();
   if (error || !row) return NextResponse.json({ error: error?.message ?? "Could not save the document" }, { status: 500 });
   const newStatus = await reconcileDocumentStatus(supabase, travellerId);
+  // A PAR arriving for a passenger we were asked to apply for: note it and tell the team.
+  let parAnswer: string | null = null;
+  if (docType === "par") {
+    const { data: t } = await supabase.from("travellers").select("par_answer, full_name, traveller_ref").eq("id", travellerId).single();
+    if (t?.par_answer !== "has_par") {
+      await supabase.from("travellers").update({ par_answer: "has_par" }).eq("id", travellerId);
+      if (t?.par_answer === "needs_par") await notify(supabase, [{ audience: "company" }], null, `PAR uploaded by the traveller: ${t.full_name}`, `${t.traveller_ref} · the traveller now uploaded their own Hong Kong PAR; no need to apply for it.`);
+    }
+    parAnswer = "has_par";
+  }
   const { data: signed } = mime.startsWith("image/") ? await supabase.storage.from(BUCKETS.travellerDocuments).createSignedUrl(path, 3600) : { data: null };
-  return NextResponse.json({ ok: true, newStatus, traveller_id: travellerId, document: { id: row.id, doc_type: row.doc_type, file_name: row.file_name, file_size: row.file_size, mime_type: row.mime_type, uploaded_at: row.uploaded_at, preview_url: signed?.signedUrl ?? null } });
+  return NextResponse.json({ ok: true, newStatus, traveller_id: travellerId, par_answer: parAnswer, replaced: !!previous?.length, replaced_at: previous?.length ? replacedAt : null, document: { id: row.id, doc_type: row.doc_type, file_name: row.file_name, file_size: row.file_size, mime_type: row.mime_type, uploaded_at: row.uploaded_at, preview_url: signed?.signedUrl ?? null } });
 }
 
 /** DELETE { id } — remove an uploaded document (soft delete). */

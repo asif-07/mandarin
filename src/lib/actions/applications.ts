@@ -10,7 +10,7 @@ import { errorMessage, fail, ok, type ActionResult } from "@/lib/result";
 import { STANDARD_BORDER } from "@/lib/constants";
 
 function revalidate() {
-  revalidatePath("/travel/applications");
+  revalidatePath("/visa");
   revalidatePath("/travel/travellers");
   revalidatePath("/travel");
   revalidatePath("/");

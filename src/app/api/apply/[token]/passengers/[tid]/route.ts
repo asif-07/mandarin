@@ -22,7 +22,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Please check the details" }, { status: 400 });
   const v = parsed.data;
   const supabase = createAdminClient();
-  const { data: before } = await supabase.from("travellers").select("par_answer, par_requested_at, traveller_ref").eq("id", tid).single();
+  const { data: before } = await supabase.from("travellers").select("par_answer, par_requested_at, traveller_ref, given_name, surname, full_name").eq("id", tid).single();
+  // After submission the name is fixed (it is what the visa is applied for); everything else can still be corrected.
+  const locked = app.status === "submitted" || app.status === "reviewed";
+  if (locked && before && ((before.given_name ?? "") !== v.given_name || (before.surname ?? "") !== (v.surname ?? ""))) {
+    return NextResponse.json({ error: "The name cannot be changed after submission. Contact us if the passport name is wrong." }, { status: 409 });
+  }
   const patch: Database["public"]["Tables"]["travellers"]["Update"] = {
     full_name: fullName(v.given_name, v.surname),
     given_name: v.given_name,

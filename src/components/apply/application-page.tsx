@@ -147,7 +147,7 @@ export function ApplicationPage({ initial, mode }: { initial: ApplicationView; m
           <div className="mt-4 grid gap-3 border-t border-mr-line pt-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="c_name">Your name</Label>
-              <Input id="c_name" value={trip.contact_name} onChange={(e) => setTrip({ ...trip, contact_name: e.target.value })} />
+              <Input id="c_name" value={trip.contact_name} disabled={submitted} onChange={(e) => setTrip({ ...trip, contact_name: e.target.value })} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="c_pax">How many persons travelling together?</Label>
@@ -191,7 +191,24 @@ export function ApplicationPage({ initial, mode }: { initial: ApplicationView; m
           )}
         </div>
         {passengers.map((p, i) => (
-          <PassengerCard key={p.id} token={token} kind={initial.kind} passenger={p} index={i} open={open === p.id} onToggle={() => setOpen(open === p.id ? null : p.id)} onChange={upsert} onRemove={() => setPassengers((ps) => ps.filter((x) => x.id !== p.id))} canRemove={isApplicant && i > 0} canInvite={isApplicant && i > 0} alwaysOpen={!isApplicant} />
+          <PassengerCard
+            key={p.id}
+            token={token}
+            kind={initial.kind}
+            passenger={p}
+            index={i}
+            open={open === p.id}
+            onToggle={() => setOpen(open === p.id ? null : p.id)}
+            onChange={upsert}
+            onRemove={() => setPassengers((ps) => ps.filter((x) => x.id !== p.id))}
+            canRemove={isApplicant && i > 0}
+            canInvite={isApplicant && i > 0}
+            alwaysOpen={!isApplicant}
+            locked={submitted}
+            onSubmit={isApplicant && passengers.length === 1 && c.canSubmit ? submit : undefined}
+            submitting={submitting}
+            submitLabel={c.ready ? "Apply directly" : "Submit application"}
+          />
         ))}
         {isApplicant && passengers.length < expectedPax && (
           <p className="rounded-md border border-dashed border-mr-line px-3 py-2 text-xs text-mr-body">
@@ -200,8 +217,8 @@ export function ApplicationPage({ initial, mode }: { initial: ApplicationView; m
         )}
       </section>
 
-      {/* Submit */}
-      {isApplicant && (
+      {/* Submit (several passengers: one submission for all) */}
+      {isApplicant && passengers.length > 1 && (
         <section className={cn("rounded-lg border p-4", c.canSubmit ? "border-mr-ink bg-mr-surface" : "border-mr-line bg-white")}>
           <h2 className="font-heading text-base font-semibold">{submitted ? "Send an update" : "Submit"}</h2>
           {c.canSubmit ? (

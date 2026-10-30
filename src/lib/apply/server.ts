@@ -69,6 +69,7 @@ export async function loadApplicationByToken(token: string, opts: { onlyPassenge
     id: a.id,
     token,
     kind: a.kind === "b2b" ? "b2b" : "b2c",
+    locked: a.status === "submitted" || a.status === "reviewed",
     contact_name: a.contact_name,
     contact_phone: a.contact_phone,
     contact_email: a.contact_email,

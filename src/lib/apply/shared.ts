@@ -45,6 +45,8 @@ export type PassengerView = {
 export type ApplicationView = {
   id: string;
   token: string;
+  /** True once submitted: names are locked, documents can still be added or replaced (time-stamped). */
+  locked?: boolean;
   kind: ApplicationKind;
   contact_name: string;
   contact_phone: string | null;

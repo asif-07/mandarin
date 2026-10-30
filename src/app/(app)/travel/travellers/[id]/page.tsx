@@ -19,8 +19,8 @@ import { Chip } from "@/components/shared/chip";
 import { PORTAL_STATUSES } from "@/lib/constants";
 import { todayISO } from "@/lib/format";
 import { DeleteTravellerButton } from "@/components/travel/delete-traveller-button";
-import { BUCKETS, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
-import { formatDate } from "@/lib/format";
+import { BUCKETS, DOC_TYPES, TRAVELLER_STATUSES, labelFor } from "@/lib/constants";
+import { formatDate, formatDateTime } from "@/lib/format";
 import type { TravellerInput } from "@/lib/validation/travel";
 
 export const metadata: Metadata = { title: "Traveller" };
@@ -38,7 +38,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
     .maybeSingle();
   if (!t) notFound();
 
-  const [{ data: docs }, { data: packs }] = await Promise.all([
+  const [{ data: docs }, { data: packs }, { data: history }] = await Promise.all([
     supabase
       .from("traveller_documents")
       .select("id, doc_type, file_name, file_size, mime_type, storage_path, uploaded_at, uploader:profiles!traveller_documents_uploaded_by_fkey(display_name)")
@@ -51,6 +51,8 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
       .select("id, generated_at, page_count, included_doc_ids, generator:profiles!travel_packs_generated_by_fkey(display_name)")
       .eq("traveller_id", id)
       .order("generated_at", { ascending: false }),
+    // Replaced or removed copies: kept with their timestamps so every re-upload is traceable.
+    supabase.from("traveller_documents").select("id, doc_type, file_name, uploaded_at, deleted_at, uploader:profiles!traveller_documents_uploaded_by_fkey(display_name)").eq("traveller_id", id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }).limit(50),
   ]);
 
   // Signed thumbnails for image documents (1 hour).
@@ -144,7 +146,7 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
       {t.application && (
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <ApplicationActions applicationId={t.application.id} status={t.application.status} token={t.application.token} />
-          <Link href="/travel/applications" className="text-xs font-medium text-mr-body hover:text-mr-ink hover:underline">
+          <Link href="/visa" className="text-xs font-medium text-mr-body hover:text-mr-ink hover:underline">
             All applications
           </Link>
         </div>
@@ -159,6 +161,21 @@ export default async function TravellerPage({ params }: { params: Promise<{ id: 
       <section className="mb-8">
         <h2 className="micro-label mb-3">Documents</h2>
         <DocumentSlots travellerId={t.id} documents={documents} groupCovered={groupCovered} />
+        {(history ?? []).length > 0 && (
+          <details className="mt-3 rounded-lg border border-mr-line p-3 text-xs">
+            <summary className="cursor-pointer text-sm font-medium text-mr-ink">Upload history · {history!.length} replaced or removed cop{history!.length === 1 ? "y" : "ies"}</summary>
+            <ul className="mt-2 divide-y divide-mr-line">
+              {history!.map((h) => (
+                <li key={h.id} className="flex flex-wrap gap-x-3 py-1.5 text-mr-body">
+                  <span className="font-medium text-mr-ink">{labelFor(DOC_TYPES, h.doc_type)}</span>
+                  <span className="truncate font-mono">{h.file_name}</span>
+                  <span className="text-mr-muted">uploaded {formatDateTime(h.uploaded_at)}{h.uploader?.display_name ? ` by ${h.uploader.display_name}` : " through the portal"}</span>
+                  <span className="text-mr-warning">replaced / removed {formatDateTime(h.deleted_at)}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </section>
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
