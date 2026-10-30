@@ -32,6 +32,7 @@ import {
   Users,
 } from "lucide-react";
 import { useMemberSession } from "@/components/member-session";
+import { MembershipCard } from "./membership-card";
 import {
   PLAN_DETAILS,
   type MeResponse,
@@ -41,6 +42,7 @@ import {
 import "./member-tools.css";
 import "./mobile-forms.css";
 import "./profile-workspace.css";
+import "./membership-page.css";
 
 type Notice = { type: "success" | "error"; text: string } | null;
 type ProfileDraft = Pick<
@@ -796,7 +798,7 @@ function AccountWorkspace({ identity }: { identity: string }) {
         await load(undefined, false);
         setNotice({
           type: "success",
-          text: "Your details have been sent for review. Membership will activate after the Mandarin Roots team approves them.",
+          text: "Your membership request is with the team. You can follow its approval status below.",
         });
       } catch {
         setNotice({
@@ -920,6 +922,17 @@ function AccountWorkspace({ identity }: { identity: string }) {
   const pending = membership.requests.find(
     (request) => request.status === "pending",
   );
+  const profileHold = Boolean(membership.current && !membership.active);
+  const membershipHold =
+    profileHold || membership.moderation_status === "suspended";
+  const reviewLabel =
+    membership.moderation_status === "approved"
+      ? "Approved"
+      : membership.moderation_status === "pending"
+        ? "In review"
+        : membership.moderation_status === "suspended"
+          ? "Suspended"
+          : "Changes requested";
   const owner = data.profile || serverProfile.current || profile;
   const visible =
     membership.active &&
@@ -1767,106 +1780,109 @@ function AccountWorkspace({ identity }: { identity: string }) {
 
       {view === "membership" ? (
         <section
-          className="pw-membership-view"
+          className="pw-membership-view premium-membership-view"
           aria-labelledby="membership-view-heading"
         >
           <div className="pw-section-intro">
             <h1 id="membership-view-heading">Your membership</h1>
-            <p>One place for your plan, renewal and team approval.</p>
+            <p>Your card. Your circle. A world of connections.</p>
           </div>
           <aside
             className="ac-membership-column pw-membership-layout"
             id="profile-membership"
             aria-label="Your membership"
           >
-            <section className="ac-membership-card">
-              <div className="ac-membership-top">
-                <span className="eyebrow">Your membership</span>
-                <span
-                  className={`ac-status ${membership.active ? "ac-status-active" : ""}`}
-                >
-                  {membership.active
-                    ? "Active"
-                    : pending
-                      ? "In review"
-                      : "Not active"}
-                </span>
-              </div>
-              <span className="ac-membership-symbol" aria-hidden="true">
-                <Globe2 size={30} aria-hidden="true" />
-              </span>
-              <h2>
-                Ambro Connect
-                <br />
-                <em>{isChina ? "China" : "Global"}</em>
-              </h2>
-              <p>
-                {isChina
-                  ? "Your local expertise. A world of new connections."
-                  : "Good people. New perspectives. Real possibilities."}
-              </p>
-              <div className="ac-membership-facts">
-                <div>
-                  <span>Profile review</span>
-                  <strong>
-                    {membership.moderation_status === "approved"
-                      ? "Approved"
-                      : membership.moderation_status === "pending"
-                        ? "Pending"
-                        : membership.moderation_status === "suspended"
-                          ? "Suspended"
-                          : "Needs attention"}
-                  </strong>
-                </div>
-                {membership.current ? (
-                  <>
-                    <div>
-                      <span>Current plan</span>
-                      <strong>
-                        {membership.current.plan === "trip_year"
-                          ? "Trip benefit · 1 year"
-                          : `${PLAN_DETAILS[membership.current.plan].amount.toLocaleString()} RMB / ${PLAN_DETAILS[membership.current.plan].duration}`}
-                      </strong>
-                    </div>
-                    <div>
-                      <span>{"Membership through"}</span>
-                      <strong>
-                        {formatDate(membership.current.expires_at)}
-                      </strong>
-                    </div>
-                  </>
-                ) : (
+            <div className="membership-wallet-column">
+              <MembershipCard
+                memberName={owner.full_name}
+                memberId={data.user.id}
+                joinedAt={owner.created_at}
+                membership={membership}
+              />
+              <section
+                className="wallet-membership-details"
+                aria-labelledby="wallet-details-heading"
+              >
+                <h2 id="wallet-details-heading">Membership details</h2>
+                <dl>
                   <div>
-                    <span>Membership begins</span>
-                    <strong>After team approval</strong>
+                    <dt>Network</dt>
+                    <dd>Ambro Connect {isChina ? "China" : "Global"}</dd>
                   </div>
-                )}
-              </div>
-              {membership.moderation_reason &&
-              ["rejected", "suspended"].includes(
-                membership.moderation_status,
-              ) ? (
-                <p className="ac-moderation-reason">
-                  <strong>A note from the team</strong>
-                  {membership.moderation_reason}
-                  {membership.moderation_status === "rejected" ? (
-                    <span className="ac-resubmit-help">
-                      Correct your profile and save it to submit it for another
-                      review.
-                    </span>
+                  <div>
+                    <dt>Profile review</dt>
+                    <dd
+                      className={`wallet-review-status wallet-review-${membership.moderation_status}`}
+                    >
+                      {reviewLabel}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Current plan</dt>
+                    <dd>
+                      {membership.current
+                        ? membership.current.plan === "trip_year"
+                          ? "Trip benefit · 1 year included"
+                          : `${PLAN_DETAILS[membership.current.plan].amount.toLocaleString()} RMB / ${PLAN_DETAILS[membership.current.plan].duration}`
+                        : "No active membership period"}
+                    </dd>
+                  </div>
+                  {membership.current ? (
+                    <div>
+                      <dt>Membership through</dt>
+                      <dd>{formatDate(membership.current.expires_at)}</dd>
+                    </div>
                   ) : null}
-                </p>
-              ) : null}
-            </section>
+                </dl>
+                {profileHold ? (
+                  <p className="wallet-recorded-note">
+                    <ShieldCheck size={17} aria-hidden="true" />
+                    <span>
+                      Your membership period is recorded.{" "}
+                      {membership.moderation_status === "suspended"
+                        ? "Access is paused while the team reviews your account."
+                        : membership.moderation_status === "rejected"
+                          ? "Update your profile for another review to restore connection access."
+                          : "Connection access is waiting for profile approval."}
+                    </span>
+                  </p>
+                ) : null}
+                {membership.moderation_reason &&
+                ["rejected", "suspended"].includes(
+                  membership.moderation_status,
+                ) ? (
+                  <div className="wallet-team-note">
+                    <strong>A note from the team</strong>
+                    <p>{membership.moderation_reason}</p>
+                    {membership.moderation_status === "rejected" ? (
+                      <button
+                        type="button"
+                        className="wallet-review-action"
+                        onClick={() => openEditor("about")}
+                      >
+                        Update your profile{" "}
+                        <ArrowUpRight size={16} aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
+            </div>
 
             <section className="panel ac-membership-form">
-              <span className="eyebrow">A few details, then you’re in</span>
+              <span className="eyebrow">MEMBERSHIP SERVICES</span>
               <h3>
                 {pending
                   ? "Your request is with us."
-                  : membership.active
-                    ? "Extend your connections."
-                    : "Activate your membership."}
+                  : membershipHold
+                    ? membership.moderation_status === "suspended"
+                      ? "Access is paused."
+                      : membership.moderation_status === "rejected"
+                        ? "Update your profile."
+                        : "Your profile is in review."
+                    : membership.active
+                      ? "Keep your circle close."
+                      : "Activate your membership."}
               </h3>
               {pending ? (
                 <div className="ac-pending-box">
@@ -1883,116 +1899,177 @@ function AccountWorkspace({ identity }: { identity: string }) {
                     </div>
                   </dl>
                   <p className="ac-help">
-                    The Mandarin Roots team will check your details. Submission
-                    does not activate membership.
+                    {membership.active
+                      ? "Your current membership remains active while this request is reviewed."
+                      : membership.current
+                        ? "Your recorded membership period is unchanged. Profile approval is still required for connection access."
+                        : "The Mandarin Roots team will check your details. Submission does not activate membership."}
                   </p>
                 </div>
               ) : (
-                <form onSubmit={submitMembership} aria-busy={submitting}>
-                  <fieldset
-                    className="ac-membership-fields"
-                    disabled={submitting}
-                  >
-                    {!isChina ? (
-                      <fieldset className="ac-plan-options">
-                        <legend>Membership option</legend>
-                        <label
-                          className={
-                            plan === "global_monthly" ? "is-selected" : ""
+                <>
+                  {membershipHold ? (
+                    <div className="wallet-access-note">
+                      <p>
+                        {membership.current
+                          ? `Your membership is recorded through ${formatDate(membership.current.expires_at)}. `
+                          : "Your account access is paused. "}
+                        {membership.moderation_status === "suspended"
+                          ? "The team needs to review your account before access can resume."
+                          : membership.moderation_status === "rejected"
+                            ? "Make the requested profile changes and save them for another review."
+                            : "The team is checking your profile. You don’t need to submit another payment for this period."}
+                      </p>
+                      {membership.moderation_status === "suspended" ? (
+                        <Link href="/how-to-use" className="btn btn-ghost">
+                          Membership help{" "}
+                          <CircleHelp size={17} aria-hidden="true" />
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() =>
+                            membership.moderation_status === "rejected"
+                              ? openEditor("about")
+                              : changeView("profile")
                           }
                         >
-                          <input
-                            type="radio"
-                            name="membership-plan"
-                            value="global_monthly"
-                            checked={plan === "global_monthly"}
-                            onChange={() => setPlan("global_monthly")}
-                          />
-                          <span>
-                            <strong>Monthly membership</strong>
-                            <small>100 RMB / month</small>
-                          </span>
-                        </label>
-                        <label
-                          className={plan === "trip_year" ? "is-selected" : ""}
-                        >
-                          <input
-                            type="radio"
-                            name="membership-plan"
-                            value="trip_year"
-                            checked={plan === "trip_year"}
-                            onChange={() => setPlan("trip_year")}
-                          />
-                          <span>
-                            <strong>I’m joining an Ambro trip</strong>
-                            <small>
-                              First year included after booking verification
-                            </small>
-                          </span>
-                        </label>
-                      </fieldset>
-                    ) : (
-                      <div className="ac-price-line">
-                        <strong>
-                          1,000 <span>RMB</span>
-                        </strong>
-                        <span>for one year</span>
-                      </div>
-                    )}
-                    <p className="muted ac-payment-explanation">
-                      {plan === "trip_year"
-                        ? "Add your Mandarin Roots trip booking reference. Your included year starts when the team approves your booking."
-                        : "Arrange payment with the Mandarin Roots team, then submit your payment reference here for confirmation."}
+                          {membership.moderation_status === "rejected"
+                            ? "Edit profile"
+                            : "View profile"}
+                          <ArrowUpRight size={17} aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                  ) : membership.active ? (
+                    <p className="wallet-renewal-intro">
+                      Extend your membership or submit an eligible trip
+                      reference. The team will confirm your details.
                     </p>
-                    <label className="field">
-                      {plan === "trip_year"
-                        ? "Trip booking reference"
-                        : "Payment reference"}
-                      <input
-                        className="input"
-                        required
-                        minLength={3}
-                        maxLength={200}
-                        value={reference}
-                        onChange={(event) => setReference(event.target.value)}
-                        placeholder={
-                          plan === "trip_year"
-                            ? "Your booking or invoice number"
-                            : "Transaction or payment reference"
-                        }
-                      />
-                    </label>
-                    <label className="field ac-field-space">
-                      Note <span className="ac-optional">(optional)</span>
-                      <textarea
-                        className="input"
-                        rows={3}
-                        maxLength={1000}
-                        value={note}
-                        onChange={(event) => setNote(event.target.value)}
-                        placeholder={
-                          plan === "trip_year"
-                            ? "Trip date or anything we should know."
-                            : "Payment date, sender name or useful details."
-                        }
-                      />
-                    </label>
-                    <button
-                      className="btn btn-dark ac-full-button"
-                      disabled={submitting}
-                      type="submit"
+                  ) : null}
+                  {membership.moderation_status !== "suspended" ? (
+                    <details
+                      className={`wallet-renewal-details ${membershipHold ? "" : "is-primary"}`}
+                      open={!membershipHold}
                     >
-                      {submitting
-                        ? "Sending for review…"
-                        : "Submit for approval"}{" "}
-                      <ArrowUpRight size={17} aria-hidden="true" />
-                    </button>
-                    <p className="ac-help ac-membership-disclaimer">
-                      Manually reviewed by Mandarin Roots. Access starts after
-                      approval.
-                    </p>
-                  </fieldset>
-                </form>
+                      <summary>
+                        Extend your membership
+                        <ChevronRight size={18} aria-hidden="true" />
+                      </summary>
+                      <form onSubmit={submitMembership} aria-busy={submitting}>
+                        <fieldset
+                          className="ac-membership-fields"
+                          disabled={submitting}
+                        >
+                          {!isChina ? (
+                            <fieldset className="ac-plan-options">
+                              <legend>Membership option</legend>
+                              <label
+                                className={
+                                  plan === "global_monthly" ? "is-selected" : ""
+                                }
+                              >
+                                <input
+                                  type="radio"
+                                  name="membership-plan"
+                                  value="global_monthly"
+                                  checked={plan === "global_monthly"}
+                                  onChange={() => setPlan("global_monthly")}
+                                />
+                                <span>
+                                  <strong>Monthly membership</strong>
+                                  <small>100 RMB / month</small>
+                                </span>
+                              </label>
+                              <label
+                                className={
+                                  plan === "trip_year" ? "is-selected" : ""
+                                }
+                              >
+                                <input
+                                  type="radio"
+                                  name="membership-plan"
+                                  value="trip_year"
+                                  checked={plan === "trip_year"}
+                                  onChange={() => setPlan("trip_year")}
+                                />
+                                <span>
+                                  <strong>I’m joining an Ambro trip</strong>
+                                  <small>
+                                    First year included after booking
+                                    verification
+                                  </small>
+                                </span>
+                              </label>
+                            </fieldset>
+                          ) : (
+                            <div className="ac-price-line">
+                              <strong>
+                                1,000 <span>RMB</span>
+                              </strong>
+                              <span>for one year</span>
+                            </div>
+                          )}
+                          <p className="muted ac-payment-explanation">
+                            {plan === "trip_year"
+                              ? "Add your Mandarin Roots trip booking reference. Your included year starts when the team approves your booking."
+                              : "Arrange payment with the Mandarin Roots team, then submit your payment reference here for confirmation."}
+                          </p>
+                          <label className="field">
+                            {plan === "trip_year"
+                              ? "Trip booking reference"
+                              : "Payment reference"}
+                            <input
+                              className="input"
+                              required
+                              minLength={3}
+                              maxLength={200}
+                              value={reference}
+                              onChange={(event) =>
+                                setReference(event.target.value)
+                              }
+                              placeholder={
+                                plan === "trip_year"
+                                  ? "Your booking or invoice number"
+                                  : "Transaction or payment reference"
+                              }
+                            />
+                          </label>
+                          <label className="field ac-field-space">
+                            Note <span className="ac-optional">(optional)</span>
+                            <textarea
+                              className="input"
+                              rows={3}
+                              maxLength={1000}
+                              value={note}
+                              onChange={(event) => setNote(event.target.value)}
+                              placeholder={
+                                plan === "trip_year"
+                                  ? "Trip date or anything we should know."
+                                  : "Payment date, sender name or useful details."
+                              }
+                            />
+                          </label>
+                          <button
+                            className="btn btn-dark ac-full-button"
+                            disabled={submitting}
+                            type="submit"
+                          >
+                            {submitting
+                              ? "Sending for review…"
+                              : "Submit for approval"}{" "}
+                            <ArrowUpRight size={17} aria-hidden="true" />
+                          </button>
+                          <p className="ac-help ac-membership-disclaimer">
+                            Manually reviewed by Mandarin Roots. Access starts
+                            after approval.
+                          </p>
+                        </fieldset>
+                      </form>
+                    </details>
+                  ) : null}
+                </>
               )}
             </section>
 

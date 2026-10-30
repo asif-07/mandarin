@@ -5,13 +5,17 @@
  * production: run npm run build, then npm run start. npm run dev also serves
  * pages here, but dev HMR WebSocket upgrades are intentionally not proxied.
  * Open /__qa/admin, /__qa/global,
- * /__qa/china, /__qa/expired, /__qa/suspended or /__qa/anonymous on http://127.0.0.1:3011.
+ * /__qa/china, /__qa/expired, /__qa/suspended, /__qa/pending or /__qa/anonymous on http://127.0.0.1:3011.
  * Add ?reset=1 for fresh fixtures, &next=/connections for a different start page.
  * Add &images=empty to clear the selected actor's photos for strict draft-cache
  * QA; reset=1 restores the default local SVG artwork. next=/join tests the real
  * client session redirect rather than faking that behavior in this proxy.
  * me_error=503 simulates session-service failure; selecting a scenario without
  * that flag clears the fault. Repeated /api/me reads remain deterministic.
+ * pending opens Membership with a confirmed period awaiting profile review.
+ * Its variant=payment, variant=renewal and variant=unpaid cases distinguish
+ * manual payment verification, an active renewal, and no recorded membership.
+ * view=membership also opens the Membership tab for the other member scenarios.
  * EVERY /api request is handled here; unsupported writes return 501. Incoming
  * cookies/authorization and upstream Set-Cookie are never forwarded.
  */
@@ -21,7 +25,7 @@ const { randomUUID } = require("node:crypto");
 const HOST = "127.0.0.1";
 const PORT = 3011;
 const UPSTREAM = { hostname: "127.0.0.1", port: 3010 };
-const SCENARIOS = ["admin", "global", "china", "expired", "suspended", "anonymous"];
+const SCENARIOS = ["admin", "global", "china", "expired", "suspended", "pending", "anonymous"];
 const uid = (n) => `e0000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const timestamp = (offset) =>
   new Date(Date.now() + offset * 86400000).toISOString();
@@ -101,6 +105,11 @@ function initialState() {
       value.membership.moderation_reason =
         "Local QA suspension for review. No real account is affected.";
     }
+    if (extras.reviewPending) {
+      value.membership.active = false;
+      value.membership.moderation_status = "pending";
+      // A confirmed, currently valid period is retained while review gates access.
+    }
     if (extras.admin) {
       value.user.is_admin = true;
       value.profile.network_visible = false;
@@ -120,6 +129,7 @@ function initialState() {
   actor(10, "Pending Global Applicant", "global", { pending: true });
   actor(15, "Pending Trip Applicant", "global", { pending: true });
   actor(16, "Suspended Member", "global", { suspended: true });
+  actor(17, "Review Pending Member", "global", { reviewPending: true });
   const requests = [
     {
       id: uid(301),
@@ -242,7 +252,7 @@ function scenarioFor(req) {
 function currentActor(req) {
   const scenario = scenarioFor(req);
   return state.actors.get(
-    uid({ admin: 1, global: 2, china: 3, expired: 4, suspended: 16 }[scenario]),
+    uid({ admin: 1, global: 2, china: 3, expired: 4, suspended: 16, pending: 17 }[scenario]),
   );
 }
 function connectionFor(item, viewer) {
@@ -744,11 +754,28 @@ const server = http.createServer(async (req, res) => {
       const scenario = url.pathname.split("/")[2];
       if (!SCENARIOS.includes(scenario))
         return send(res, 404, {
-          error: "Choose admin, global, china, expired, suspended or anonymous.",
+          error: "Choose admin, global, china, expired, suspended, pending or anonymous.",
         });
       if (url.searchParams.get("reset") === "1") state = initialState();
+      if (scenario === "pending") {
+        const selected = state.actors.get(uid(17));
+        selected.membership = structuredClone(initialState().actors.get(uid(17)).membership);
+        const variant = url.searchParams.get("variant");
+        if (["payment", "unpaid", "renewal"].includes(variant)) {
+          selected.membership.moderation_status = "approved";
+          selected.membership.active = variant === "renewal";
+          if (variant !== "renewal") selected.membership.current = null;
+          if (variant !== "unpaid") selected.membership.requests = [{
+            id: uid(304), user_id: uid(17), plan: "global_monthly",
+            reference: "LOCAL-QA-MEMBERSHIP-ONLY",
+            note: "Fictional reference awaiting manual confirmation. No payment was made.",
+            status: "pending", rejection_reason: null,
+            created_at: timestamp(-1), reviewed_at: null,
+          }];
+        }
+      }
       if (url.searchParams.get("images") === "empty") {
-        const selected = state.actors.get(uid({ admin: 1, global: 2, china: 3, expired: 4, suspended: 16 }[scenario]));
+        const selected = state.actors.get(uid({ admin: 1, global: 2, china: 3, expired: 4, suspended: 16, pending: 17 }[scenario]));
         if (selected) {
           selected.profile.avatar_url = "";
           selected.profile.cover_url = "";
@@ -756,7 +783,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
       const next = url.searchParams.get("next");
-      const destination = [
+      let destination = [
         "/admin",
         "/account",
         "/connections",
@@ -772,6 +799,8 @@ const server = http.createServer(async (req, res) => {
           : scenario === "anonymous"
             ? "/login"
             : "/account";
+      if (destination === "/account" && (scenario === "pending" || url.searchParams.get("view") === "membership"))
+        destination = "/account?tab=membership";
       res.writeHead(303, {
         Location: destination,
         "Set-Cookie": [
@@ -837,6 +866,6 @@ const server = http.createServer(async (req, res) => {
 });
 server.listen(PORT, HOST, () =>
   console.log(
-    `Local QA only: http://${HOST}:${PORT}/__qa/admin?reset=1\nScenarios: /__qa/global /__qa/china /__qa/expired /__qa/suspended /__qa/anonymous\nEvery /api request is in memory. No cookies or API writes are forwarded.`,
+    `Local QA only: http://${HOST}:${PORT}/__qa/admin?reset=1\nScenarios: /__qa/global /__qa/china /__qa/expired /__qa/suspended /__qa/pending /__qa/anonymous\nEvery /api request is in memory. No cookies or API writes are forwarded.`,
   ),
 );

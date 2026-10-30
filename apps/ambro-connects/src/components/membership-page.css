@@ -1,0 +1,222 @@
+.premium-membership-view .pw-section-intro {
+  margin-bottom: 30px;
+}
+.premium-membership-view .pw-section-intro > p {
+  font-size: 14px;
+}
+.pw-page .premium-membership-view .pw-membership-layout {
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+  gap: 32px;
+}
+.membership-wallet-column {
+  min-width: 0;
+  display: grid;
+  gap: 22px;
+}
+.wallet-membership-details {
+  border: 1px solid #e1e3db;
+  border-radius: 20px;
+  background: #ffffffb8;
+  padding: 24px;
+}
+.wallet-membership-details h2 {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.5px;
+  margin-bottom: 20px;
+}
+.wallet-membership-details dl {
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+.wallet-membership-details dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.wallet-membership-details dt {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.wallet-membership-details dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 550;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.wallet-membership-details .wallet-review-approved {
+  color: var(--green);
+}
+.wallet-membership-details .wallet-review-rejected,
+.wallet-membership-details .wallet-review-suspended {
+  color: #a14d30;
+}
+.wallet-membership-details .wallet-review-pending {
+  color: #85672c;
+}
+.wallet-recorded-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: 18px;
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: #536458;
+  line-height: 1.75;
+}
+.wallet-recorded-note svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--green);
+}
+.wallet-team-note {
+  padding: 16px;
+  margin-top: 18px;
+  background: #fbf1e8;
+  border: 1px solid #efdfd0;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: #684a38;
+  overflow-wrap: anywhere;
+}
+.wallet-review-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  padding: 10px 0 0;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 600;
+}
+.wallet-team-note p {
+  margin-top: 5px;
+}
+.premium-membership-view .ac-membership-form {
+  padding: 28px !important;
+  border-color: #e0e4da;
+  box-shadow: 0 10px 30px #213d2a04;
+}
+.premium-membership-view .ac-membership-form > h3 {
+  font-size: 26px;
+  font-weight: 600;
+  margin-bottom: 18px;
+  line-height: 1.2;
+}
+.wallet-access-note {
+  display: grid;
+  gap: 20px;
+}
+.wallet-access-note p,
+.wallet-renewal-intro {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.wallet-access-note > .btn {
+  justify-self: start;
+  min-height: 46px;
+}
+.wallet-renewal-intro {
+  margin-bottom: 24px;
+}
+.wallet-renewal-details:not(.is-primary) {
+  margin-top: 24px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.wallet-renewal-details > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 0;
+  color: var(--green);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wallet-renewal-details > summary::-webkit-details-marker {
+  display: none;
+}
+.wallet-renewal-details[open] > summary svg {
+  transform: rotate(90deg);
+}
+.wallet-renewal-details.is-primary > summary {
+  display: none;
+}
+.wallet-renewal-details:not(.is-primary)[open] > form {
+  padding-top: 18px;
+}
+.premium-membership-view .ac-membership-form .ac-plan-options legend {
+  font-size: 13px;
+}
+.premium-membership-view .ac-membership-form .ac-plan-options label {
+  border-radius: 13px;
+}
+@media (max-width: 1000px) {
+  .pw-page .premium-membership-view .pw-membership-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+  .membership-wallet-column {
+    gap: 18px;
+  }
+}
+@media (max-width: 760px) {
+  .premium-membership-view .pw-section-intro {
+    margin-bottom: 18px;
+  }
+  .pw-page .premium-membership-view .pw-section-intro h1 {
+    font-size: 28px;
+  }
+  .premium-membership-view .pw-section-intro > p {
+    font-size: 13px;
+    margin-top: 9px;
+  }
+  .wallet-membership-details {
+    border-radius: 18px;
+    padding: 22px 20px;
+  }
+  .wallet-membership-details dl > div {
+    font-size: 13px;
+    gap: 14px;
+  }
+  .wallet-membership-details h2 {
+    font-size: 18px;
+    margin-bottom: 18px;
+  }
+  .premium-membership-view .ac-membership-form {
+    padding: 24px 20px !important;
+  }
+  .premium-membership-view .ac-membership-form > h3 {
+    font-size: 24px;
+  }
+  .wallet-access-note > .btn {
+    min-height: 48px;
+  }
+  .wallet-renewal-details > summary {
+    min-height: 52px;
+  }
+}
+
+.pw-view-nav button > svg {
+  flex-shrink: 0;
+}
+@media (max-width: 359px) {
+  .pw-page .pw-view-nav button {
+    padding-inline: 0;
+    gap: 4px;
+  }
+}
